@@ -16,7 +16,8 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { 
   Search, 
@@ -27,120 +28,38 @@ import {
   Calendar,
   DollarSign,
   Plus,
-  Download
+  Download,
+  Trash2
 } from "lucide-react";
-import { Sale, User } from "@/types";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { User } from "@/types";
 import { format } from "date-fns";
+import { useSales } from "@/hooks/useSales";
 
 const SalesList = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
+  const { sales, loading, deleteSale } = useSales();
+  const [filteredSales, setFilteredSales] = useState(sales);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
       setUser(JSON.parse(userData));
     }
-    
-    // Mock sales data
-    const mockSales: Sale[] = [
-      {
-        id: "1",
-        customer_id: "c1",
-        customer: {
-          id: "c1",
-          name: "Ahmed Hassan",
-          contact: "+92 300 1234567",
-          email: "ahmed@email.com"
-        },
-        agent_id: "a1",
-        agent: {
-          id: "a1",
-          email: "agent1@company.com",
-          role: "agent",
-          name: "Sara Khan",
-          created_at: "2024-01-01"
-        },
-        unit_number: "A-101",
-        unit_total_price: 5000000,
-        status: "active",
-        created_at: "2024-01-15T10:00:00Z",
-        updated_at: "2024-01-15T10:00:00Z",
-        payment_plan: {
-          downpayment_amount: 1000000,
-          downpayment_due_date: "2024-02-15",
-          monthly_installment: 100000,
-          installment_months: 42,
-          possession_amount: 500000,
-          possession_due_date: "2027-07-15"
-        }
-      },
-      {
-        id: "2",
-        customer_id: "c2",
-        customer: {
-          id: "c2",
-          name: "Fatima Sheikh",
-          contact: "+92 301 9876543",
-          email: "fatima@email.com"
-        },
-        agent_id: "a2",
-        agent: {
-          id: "a2",
-          email: "agent2@company.com",
-          role: "agent",
-          name: "Ali Ahmed",
-          created_at: "2024-01-01"
-        },
-        unit_number: "B-205",
-        unit_total_price: 3800000,
-        status: "active",
-        created_at: "2024-01-20T14:30:00Z",
-        updated_at: "2024-01-20T14:30:00Z",
-        payment_plan: {
-          downpayment_amount: 800000,
-          downpayment_due_date: "2024-02-20",
-          monthly_installment: 75000,
-          installment_months: 40
-        }
-      },
-      {
-        id: "3",
-        customer_id: "c3",
-        customer: {
-          id: "c3",
-          name: "Muhammad Khan",
-          contact: "+92 302 5555555",
-          email: "muhammad@email.com"
-        },
-        agent_id: "a1",
-        agent: {
-          id: "a1",
-          email: "agent1@company.com",
-          role: "agent",
-          name: "Sara Khan",
-          created_at: "2024-01-01"
-        },
-        unit_number: "C-301",
-        unit_total_price: 7200000,
-        status: "completed",
-        created_at: "2023-06-10T09:15:00Z",
-        updated_at: "2024-01-10T16:45:00Z",
-        payment_plan: {
-          downpayment_amount: 1500000,
-          monthly_installment: 135000,
-          installment_months: 42,
-          possession_amount: 720000
-        }
-      }
-    ];
-    
-    setSales(mockSales);
-    setFilteredSales(mockSales);
   }, []);
 
   useEffect(() => {
@@ -175,15 +94,28 @@ const SalesList = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-green-100 text-green-800 border-green-200";
-      case "completed": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "defaulted": return "bg-red-100 text-red-800 border-red-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
+      case "active": return "bg-success text-success-foreground";
+      case "completed": return "bg-primary text-primary-foreground";
+      case "defaulted": return "bg-destructive text-destructive-foreground";
+      default: return "bg-muted text-muted-foreground";
     }
   };
 
-  const canEdit = (sale: Sale) => {
+  const canEdit = (sale: any) => {
     return user?.role === "admin" || (user?.role === "agent" && sale.agent_id === user.id);
+  };
+
+  const handleDeleteSale = (saleId: string) => {
+    setSaleToDelete(saleId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (saleToDelete) {
+      await deleteSale(saleToDelete);
+      setDeleteDialogOpen(false);
+      setSaleToDelete(null);
+    }
   };
 
   return (
@@ -362,10 +294,20 @@ const SalesList = () => {
                             Payment Ledger
                           </DropdownMenuItem>
                           {canEdit(sale) && (
-                            <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}/edit`)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Sale
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}/edit`)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Sale
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteSale(sale.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Sale
+                              </DropdownMenuItem>
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -393,6 +335,28 @@ const SalesList = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the sale
+              and all associated payment records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

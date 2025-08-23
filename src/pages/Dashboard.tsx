@@ -95,10 +95,10 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">
-          Welcome back, {user?.name}!
+          B&B Builders Sales Dashboard
         </h1>
         <p className="text-muted-foreground">
-          Here's your sales overview for today
+          Welcome back, {user?.name}! Here's your sales overview for today
         </p>
       </div>
 
