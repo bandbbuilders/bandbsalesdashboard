@@ -4,6 +4,7 @@ import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
@@ -13,15 +14,41 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+
+  const years = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+  }, []);
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const handleYearChange = (year: string) => {
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(parseInt(year));
+    setCurrentMonth(newDate);
+  };
+
+  const handleMonthChange = (month: string) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(months.indexOf(month));
+    setCurrentMonth(newDate);
+  };
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      className={cn("p-3 pointer-events-auto", className)}
+      month={currentMonth}
+      onMonthChange={setCurrentMonth}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption: "flex justify-center pt-1 relative items-center gap-2",
+        caption_label: "hidden",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -54,6 +81,40 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        Caption: ({ displayMonth }) => (
+          <div className="flex items-center gap-2">
+            <Select
+              value={months[displayMonth.getMonth()]}
+              onValueChange={handleMonthChange}
+            >
+              <SelectTrigger className="w-32 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={displayMonth.getFullYear().toString()}
+              onValueChange={handleYearChange}
+            >
+              <SelectTrigger className="w-20 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ),
       }}
       {...props}
     />
