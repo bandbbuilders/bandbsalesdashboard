@@ -14,7 +14,208 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          address: string | null
+          contact: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ledger_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          due_date: string
+          entry_type: string
+          id: string
+          paid_amount: number | null
+          paid_date: string | null
+          sale_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          due_date: string
+          entry_type: string
+          id?: string
+          paid_amount?: number | null
+          paid_date?: string | null
+          sale_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          due_date?: string
+          entry_type?: string
+          id?: string
+          paid_amount?: number | null
+          paid_date?: string | null
+          sale_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_plans: {
+        Row: {
+          created_at: string
+          downpayment_amount: number | null
+          downpayment_due_date: string | null
+          id: string
+          installment_months: number | null
+          monthly_installment: number | null
+          possession_amount: number | null
+          possession_due_date: string | null
+          sale_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          downpayment_amount?: number | null
+          downpayment_due_date?: string | null
+          id?: string
+          installment_months?: number | null
+          monthly_installment?: number | null
+          possession_amount?: number | null
+          possession_due_date?: string | null
+          sale_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          downpayment_amount?: number | null
+          downpayment_due_date?: string | null
+          id?: string
+          installment_months?: number | null
+          monthly_installment?: number | null
+          possession_amount?: number | null
+          possession_due_date?: string | null
+          sale_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_plans_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          agent_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          status: string
+          unit_number: string
+          unit_total_price: number
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          status?: string
+          unit_number: string
+          unit_total_price: number
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          status?: string
+          unit_number?: string
+          unit_total_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
