@@ -13,6 +13,7 @@ import { CalendarIcon, Plus, Trash2, Save } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LedgerEntry {
   id: string;
@@ -128,33 +129,81 @@ const NewSale = () => {
 
   const handleSave = async () => {
     try {
-      const saleData = {
-        customer: {
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        toast({
+          title: "Error",
+          description: "User not authenticated",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const user = JSON.parse(userData);
+      
+      // Create customer first
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .insert({
           name: customerName,
           contact: customerContact,
-          email: customerEmail,
-          address: customerAddress
-        },
-        unit: {
-          number: unitNumber,
-          totalPrice: parseFloat(unitTotalPrice)
-        },
-        paymentPlan: {
-          downpaymentAmount: downpaymentAmount ? parseFloat(downpaymentAmount) : null,
-          downpaymentDate: downpaymentDate?.toISOString(),
-          monthlyInstallment: parseFloat(monthlyInstallment),
-          installmentMonths: parseInt(installmentMonths),
-          possessionAmount: possessionAmount ? parseFloat(possessionAmount) : null,
-          possessionDate: possessionDate?.toISOString()
-        },
-        ledgerEntries: ledgerEntries.map(entry => ({
-          ...entry,
-          dueDate: entry.dueDate.toISOString()
-        }))
-      };
-      
-      // TODO: Save to Supabase
-      console.log("Saving sale data:", saleData);
+          email: customerEmail || null,
+          address: customerAddress || null,
+        })
+        .select()
+        .single();
+
+      if (customerError) throw customerError;
+
+      // Create sale
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .insert({
+          customer_id: customerData.id,
+          agent_id: user.id,
+          unit_number: unitNumber,
+          unit_total_price: parseFloat(unitTotalPrice),
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (saleError) throw saleError;
+
+      // Create payment plan
+      if (monthlyInstallment) {
+        const { error: paymentPlanError } = await supabase
+          .from('payment_plans')
+          .insert({
+            sale_id: saleData.id,
+            downpayment_amount: downpaymentAmount ? parseFloat(downpaymentAmount) : null,
+            downpayment_due_date: downpaymentDate ? downpaymentDate.toISOString().split('T')[0] : null,
+            monthly_installment: parseFloat(monthlyInstallment),
+            installment_months: parseInt(installmentMonths),
+            possession_amount: possessionAmount ? parseFloat(possessionAmount) : null,
+            possession_due_date: possessionDate ? possessionDate.toISOString().split('T')[0] : null,
+          });
+
+        if (paymentPlanError) throw paymentPlanError;
+      }
+
+      // Create ledger entries
+      if (ledgerEntries.length > 0) {
+        const ledgerInserts = ledgerEntries.map(entry => ({
+          sale_id: saleData.id,
+          due_date: entry.dueDate.toISOString().split('T')[0],
+          entry_type: entry.type,
+          amount: entry.amount,
+          description: entry.description,
+          status: 'pending',
+        }));
+
+        const { error: ledgerError } = await supabase
+          .from('ledger_entries')
+          .insert(ledgerInserts);
+
+        if (ledgerError) throw ledgerError;
+      }
       
       toast({
         title: "Sale Created",
@@ -163,6 +212,7 @@ const NewSale = () => {
       
       navigate("/sales");
     } catch (error) {
+      console.error('Error creating sale:', error);
       toast({
         title: "Error",
         description: "Failed to create sale record. Please try again.",
@@ -171,7 +221,7 @@ const NewSale = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => `PKR ${amount.toLocaleString()}`;
 
   const getTypeColor = (type: string) => {
     switch (type) {
