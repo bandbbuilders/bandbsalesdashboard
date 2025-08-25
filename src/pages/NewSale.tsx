@@ -166,8 +166,10 @@ const NewSale = () => {
         return;
       }
       
-      const userData = localStorage.getItem("user");
-      if (!userData) {
+      // Get current user from Supabase auth
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
         toast({
           title: "Error",
           description: "User not authenticated. Please log in again.",
@@ -176,17 +178,7 @@ const NewSale = () => {
         return;
       }
       
-      const user = JSON.parse(userData);
-      console.log("User data from localStorage:", user);
-      
-      if (!user.id) {
-        toast({
-          title: "Error", 
-          description: "Invalid user session. Please log in again.",
-          variant: "destructive",
-        });
-        return;
-      }
+      console.log("Current authenticated user:", user);
       
       // Create customer first
       console.log("Creating customer...");
@@ -209,7 +201,7 @@ const NewSale = () => {
       console.log("Customer created successfully:", customerData);
 
       // Create sale
-      console.log("Creating sale...");
+      console.log("Creating sale with user ID:", user.id);
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
