@@ -129,49 +129,109 @@ const NewSale = () => {
 
   const handleSave = async () => {
     try {
+      // Basic validation
+      if (!customerName.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Customer name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!customerContact.trim()) {
+        toast({
+          title: "Validation Error", 
+          description: "Customer contact is required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!unitNumber.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Unit number is required", 
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!unitTotalPrice || parseFloat(unitTotalPrice) <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Valid unit price is required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const userData = localStorage.getItem("user");
       if (!userData) {
         toast({
           title: "Error",
-          description: "User not authenticated",
+          description: "User not authenticated. Please log in again.",
           variant: "destructive",
         });
         return;
       }
       
       const user = JSON.parse(userData);
+      console.log("User data from localStorage:", user);
+      
+      if (!user.id) {
+        toast({
+          title: "Error", 
+          description: "Invalid user session. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       // Create customer first
+      console.log("Creating customer...");
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
         .insert({
-          name: customerName,
-          contact: customerContact,
-          email: customerEmail || null,
-          address: customerAddress || null,
+          name: customerName.trim(),
+          contact: customerContact.trim(),
+          email: customerEmail?.trim() || null,
+          address: customerAddress?.trim() || null,
         })
         .select()
         .single();
 
-      if (customerError) throw customerError;
+      if (customerError) {
+        console.error("Customer creation error:", customerError);
+        throw customerError;
+      }
+      
+      console.log("Customer created successfully:", customerData);
 
       // Create sale
+      console.log("Creating sale...");
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           customer_id: customerData.id,
           agent_id: user.id,
-          unit_number: unitNumber,
+          unit_number: unitNumber.trim(),
           unit_total_price: parseFloat(unitTotalPrice),
           status: 'active',
         })
         .select()
         .single();
 
-      if (saleError) throw saleError;
+      if (saleError) {
+        console.error("Sale creation error:", saleError);
+        throw saleError;
+      }
+      
+      console.log("Sale created successfully:", saleData);
 
       // Create payment plan
-      if (monthlyInstallment) {
+      if (monthlyInstallment && parseFloat(monthlyInstallment) > 0) {
+        console.log("Creating payment plan...");
         const { error: paymentPlanError } = await supabase
           .from('payment_plans')
           .insert({
@@ -179,16 +239,22 @@ const NewSale = () => {
             downpayment_amount: downpaymentAmount ? parseFloat(downpaymentAmount) : null,
             downpayment_due_date: downpaymentDate ? downpaymentDate.toISOString().split('T')[0] : null,
             monthly_installment: parseFloat(monthlyInstallment),
-            installment_months: parseInt(installmentMonths),
+            installment_months: parseInt(installmentMonths) || 42,
             possession_amount: possessionAmount ? parseFloat(possessionAmount) : null,
             possession_due_date: possessionDate ? possessionDate.toISOString().split('T')[0] : null,
           });
 
-        if (paymentPlanError) throw paymentPlanError;
+        if (paymentPlanError) {
+          console.error("Payment plan creation error:", paymentPlanError);
+          throw paymentPlanError;
+        }
+        
+        console.log("Payment plan created successfully");
       }
 
       // Create ledger entries
       if (ledgerEntries.length > 0) {
+        console.log("Creating ledger entries...", ledgerEntries.length);
         const ledgerInserts = ledgerEntries.map(entry => ({
           sale_id: saleData.id,
           due_date: entry.dueDate.toISOString().split('T')[0],
@@ -202,7 +268,12 @@ const NewSale = () => {
           .from('ledger_entries')
           .insert(ledgerInserts);
 
-        if (ledgerError) throw ledgerError;
+        if (ledgerError) {
+          console.error("Ledger entries creation error:", ledgerError);
+          throw ledgerError;
+        }
+        
+        console.log("Ledger entries created successfully");
       }
       
       toast({
