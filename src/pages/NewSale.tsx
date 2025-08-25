@@ -213,6 +213,7 @@ const NewSale = () => {
       navigate("/sales");
     } catch (error) {
       console.error('Error creating sale:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       toast({
         title: "Error",
         description: "Failed to create sale record. Please try again.",
