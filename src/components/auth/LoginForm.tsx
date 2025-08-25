@@ -28,7 +28,9 @@ export const LoginForm = () => {
       
       // Mock user data based on email
       const mockUser = {
-        id: "1",
+        id: email.includes("admin") ? "11111111-1111-1111-1111-111111111111" : 
+            email.includes("manager") ? "33333333-3333-3333-3333-333333333333" : 
+            "22222222-2222-2222-2222-222222222222",
         email,
         name: email.split("@")[0],
         role: email.includes("admin") ? "admin" : email.includes("manager") ? "manager" : "agent"
