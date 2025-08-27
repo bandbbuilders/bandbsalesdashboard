@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -166,17 +167,20 @@ const NewSale = () => {
         return;
       }
       
-      // Get current user from Supabase auth
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
+      // Get current user from localStorage (mock authentication)
+      const userData = localStorage.getItem("user");
+      if (!userData) {
         toast({
           title: "Error",
           description: "User not authenticated. Please log in again.",
           variant: "destructive",
         });
+        navigate("/login");
         return;
       }
+      
+      const user = JSON.parse(userData);
+      console.log("Current user from localStorage:", user);
       
       // Check if user exists in users table, if not create them
       const { data: existingUser, error: userCheckError } = await supabase
@@ -197,8 +201,8 @@ const NewSale = () => {
           .insert({
             id: user.id,
             email: user.email || '',
-            name: user.user_metadata?.name || user.email || 'User',
-            role: 'agent'
+            name: user.name || user.email || 'User',
+            role: user.role || 'agent'
           });
         
         if (createUserError) {
