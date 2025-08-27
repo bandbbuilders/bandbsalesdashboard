@@ -7,6 +7,7 @@ import { LoginForm } from "./components/auth/LoginForm";
 import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import NewSale from "./pages/NewSale";
+import EditSale from "./pages/EditSale";
 import SalesList from "./pages/SalesList";
 import SaleDetails from "./pages/SaleDetails";
 import Reports from "./pages/Reports";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="sales/new" element={<NewSale />} />
             <Route path="sales" element={<SalesList />} />
             <Route path="sales/:id" element={<SaleDetails />} />
+            <Route path="sales/:id/edit" element={<EditSale />} />
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
           </Route>

@@ -29,10 +29,12 @@ import {
 } from "lucide-react";
 import { DashboardStats, User } from "@/types";
 import { useSales } from "@/hooks/useSales";
+import { useLedgerEntries } from "@/hooks/useLedgerEntries";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const { sales, loading } = useSales();
+  const { ledgerEntries, loading: ledgerLoading } = useLedgerEntries();
   
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -41,16 +43,49 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Calculate real stats from sales data
+  // Calculate real stats from sales and ledger data
   const stats: DashboardStats = {
     total_sales_value: sales.reduce((sum, sale) => sum + sale.unit_total_price, 0),
-    receivables_3_months: 0, // Would need ledger data to calculate
-    receivables_6_months: 0,
-    receivables_1_year: 0,
-    receivables_total: sales.reduce((sum, sale) => sum + sale.unit_total_price, 0),
-    collections_made: 0, // Would need payment data to calculate
-    pending_amount: sales.reduce((sum, sale) => sum + sale.unit_total_price, 0),
-    overdue_amount: 0, // Would need ledger data to calculate
+    receivables_3_months: ledgerEntries
+      .filter(entry => {
+        const dueDate = new Date(entry.due_date);
+        const threeMonthsFromNow = new Date();
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        return entry.status === 'pending' && dueDate <= threeMonthsFromNow;
+      })
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    receivables_6_months: ledgerEntries
+      .filter(entry => {
+        const dueDate = new Date(entry.due_date);
+        const sixMonthsFromNow = new Date();
+        sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+        return entry.status === 'pending' && dueDate <= sixMonthsFromNow;
+      })
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    receivables_1_year: ledgerEntries
+      .filter(entry => {
+        const dueDate = new Date(entry.due_date);
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        return entry.status === 'pending' && dueDate <= oneYearFromNow;
+      })
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    receivables_total: ledgerEntries
+      .filter(entry => entry.status === 'pending')
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    collections_made: ledgerEntries
+      .filter(entry => entry.status === 'paid')
+      .reduce((sum, entry) => sum + entry.paid_amount, 0),
+    pending_amount: ledgerEntries
+      .filter(entry => entry.status === 'pending')
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    overdue_amount: ledgerEntries
+      .filter(entry => {
+        const dueDate = new Date(entry.due_date);
+        const today = new Date();
+        return entry.status === 'pending' && dueDate < today;
+      })
+      .reduce((sum, entry) => sum + entry.amount, 0),
     active_sales_count: sales.filter(sale => sale.status === 'active').length,
     completed_sales_count: sales.filter(sale => sale.status === 'completed').length
   };
@@ -65,6 +100,7 @@ const Dashboard = () => {
     }
   };
 
+  // Real receivables data from ledger entries
   const receivablesData = [
     { period: "3 Months", amount: stats.receivables_3_months, color: "#0ea5e9" },
     { period: "6 Months", amount: stats.receivables_6_months, color: "#3b82f6" },
@@ -72,31 +108,80 @@ const Dashboard = () => {
     { period: "Total", amount: stats.receivables_total, color: "#8b5cf6" }
   ];
 
+  // Real collection data from ledger entries
   const collectionData = [
     { name: "Collections Made", value: stats.collections_made, color: "#10b981" },
     { name: "Pending Amount", value: stats.pending_amount, color: "#f59e0b" },
     { name: "Overdue Amount", value: stats.overdue_amount, color: "#ef4444" }
   ];
 
-  const monthlyTrendData = [
-    { month: "Jan", sales: 12, collections: 8.5 },
-    { month: "Feb", sales: 15, collections: 12.2 },
-    { month: "Mar", sales: 18, collections: 15.8 },
-    { month: "Apr", sales: 22, collections: 18.5 },
-    { month: "May", sales: 25, collections: 22.1 },
-    { month: "Jun", sales: 28, collections: 25.3 }
-  ];
+  // Calculate monthly trend from real sales data
+  const monthlyTrendData = (() => {
+    const months = [];
+    const currentDate = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+      
+      const salesInMonth = sales.filter(sale => {
+        const saleDate = new Date(sale.created_at);
+        return saleDate.getMonth() === monthDate.getMonth() && 
+               saleDate.getFullYear() === monthDate.getFullYear();
+      });
+      
+      const collectionsInMonth = ledgerEntries.filter(entry => {
+        if (entry.status !== 'paid' || !entry.paid_date) return false;
+        const paidDate = new Date(entry.paid_date);
+        return paidDate.getMonth() === monthDate.getMonth() && 
+               paidDate.getFullYear() === monthDate.getFullYear();
+      });
+      
+      months.push({
+        month: monthName,
+        sales: salesInMonth.reduce((sum, sale) => sum + sale.unit_total_price, 0) / 10000000, // Convert to Crores
+        collections: collectionsInMonth.reduce((sum, entry) => sum + entry.paid_amount, 0) / 10000000 // Convert to Crores
+      });
+    }
+    
+    return months;
+  })();
 
-  const upcomingPayments = [
-    { customer: "Ahmed Hassan", unit: "A-101", amount: 450000, dueDate: "2024-08-25", daysLeft: 3 },
-    { customer: "Fatima Sheikh", unit: "B-205", amount: 380000, dueDate: "2024-08-28", daysLeft: 6 },
-    { customer: "Ali Khan", unit: "C-301", amount: 520000, dueDate: "2024-09-02", daysLeft: 11 },
-    { customer: "Sarah Ahmed", unit: "A-105", amount: 290000, dueDate: "2024-09-05", daysLeft: 14 }
-  ];
+  // Real upcoming payments from ledger entries
+  const upcomingPayments = ledgerEntries
+    .filter(entry => {
+      const dueDate = new Date(entry.due_date);
+      const today = new Date();
+      const twoWeeksFromNow = new Date();
+      twoWeeksFromNow.setDate(today.getDate() + 14);
+      return entry.status === 'pending' && dueDate >= today && dueDate <= twoWeeksFromNow;
+    })
+    .slice(0, 4)
+    .map(entry => {
+      const sale = sales.find(s => s.id === entry.sale_id);
+      const dueDate = new Date(entry.due_date);
+      const today = new Date();
+      const daysLeft = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      return {
+        customer: sale?.customer.name || 'Unknown Customer',
+        unit: sale?.unit_number || 'Unknown Unit',
+        amount: entry.amount,
+        dueDate: entry.due_date,
+        daysLeft: daysLeft
+      };
+    });
+
+  if (loading || ledgerLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">
           B&B Builders Sales Dashboard
