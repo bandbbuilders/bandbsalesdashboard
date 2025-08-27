@@ -28,28 +28,32 @@ import {
   Target
 } from "lucide-react";
 import { DashboardStats, User } from "@/types";
+import { useSales } from "@/hooks/useSales";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<DashboardStats>({
-    total_sales_value: 125000000, // PKR 12.5 Crore
-    receivables_3_months: 8500000,
-    receivables_6_months: 15200000,
-    receivables_1_year: 28900000,
-    receivables_total: 45600000,
-    collections_made: 79400000,
-    pending_amount: 45600000,
-    overdue_amount: 3200000,
-    active_sales_count: 67,
-    completed_sales_count: 23
-  });
-
+  const { sales, loading } = useSales();
+  
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
       setUser(JSON.parse(userData));
     }
   }, []);
+
+  // Calculate real stats from sales data
+  const stats: DashboardStats = {
+    total_sales_value: sales.reduce((sum, sale) => sum + sale.unit_total_price, 0),
+    receivables_3_months: 0, // Would need ledger data to calculate
+    receivables_6_months: 0,
+    receivables_1_year: 0,
+    receivables_total: sales.reduce((sum, sale) => sum + sale.unit_total_price, 0),
+    collections_made: 0, // Would need payment data to calculate
+    pending_amount: sales.reduce((sum, sale) => sum + sale.unit_total_price, 0),
+    overdue_amount: 0, // Would need ledger data to calculate
+    active_sales_count: sales.filter(sale => sale.status === 'active').length,
+    completed_sales_count: sales.filter(sale => sale.status === 'completed').length
+  };
 
   const formatCurrency = (amount: number) => {
     if (amount >= 10000000) {
