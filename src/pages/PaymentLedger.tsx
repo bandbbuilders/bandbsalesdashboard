@@ -54,6 +54,7 @@ const PaymentLedger = () => {
   
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editAmount, setEditAmount] = useState("");
+  const [editPaidDate, setEditPaidDate] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
@@ -88,7 +89,43 @@ const PaymentLedger = () => {
       return;
     }
 
-    if (newAmount !== originalAmount) {
+    // Update data with paid amount and date if provided
+    const updateData: any = { amount: newAmount };
+    
+    if (editPaidDate) {
+      updateData.paid_date = editPaidDate;
+      updateData.paid_amount = newAmount;
+      updateData.status = 'paid';
+      
+      // Check for overpayment
+      if (newAmount > originalAmount) {
+        const overpayment = newAmount - originalAmount;
+        
+        // Find all remaining pending installments
+        const remainingInstallments = saleEntries.filter(entry => 
+          entry.entry_type === 'installment' && 
+          entry.status === 'pending' &&
+          entry.id !== editingEntry.id
+        ).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+
+        if (remainingInstallments.length > 0) {
+          const reductionPerInstallment = overpayment / remainingInstallments.length;
+          
+          // Update all remaining installments
+          for (const installment of remainingInstallments) {
+            const newInstallmentAmount = Math.max(0, installment.amount - reductionPerInstallment);
+            await updateLedgerEntry(installment.id, {
+              amount: newInstallmentAmount
+            });
+          }
+          
+          toast({
+            title: "Overpayment Applied",
+            description: `PKR ${overpayment.toLocaleString()} distributed across ${remainingInstallments.length} remaining installments`,
+          });
+        }
+      }
+    } else if (newAmount !== originalAmount) {
       const difference = originalAmount - newAmount;
       
       // Find the next installment entry after this one
@@ -133,12 +170,11 @@ const PaymentLedger = () => {
     }
 
     // Update the current entry
-    await updateLedgerEntry(editingEntry.id, {
-      amount: newAmount
-    });
+    await updateLedgerEntry(editingEntry.id, updateData);
 
     setEditingEntry(null);
     setEditAmount("");
+    setEditPaidDate("");
     refetch();
   };
 
@@ -358,6 +394,18 @@ const PaymentLedger = () => {
                                   onChange={(e) => setEditAmount(e.target.value)}
                                   placeholder="Enter amount"
                                 />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Paid Date (optional)</label>
+                                <Input
+                                  type="date"
+                                  value={editPaidDate}
+                                  onChange={(e) => setEditPaidDate(e.target.value)}
+                                  placeholder="Select paid date"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Set paid date to mark as paid. Leave empty to just edit amount.
+                                </p>
                               </div>
                             </div>
                             <DialogFooter>
