@@ -10,6 +10,7 @@ import NewSale from "./pages/NewSale";
 import EditSale from "./pages/EditSale";
 import SalesList from "./pages/SalesList";
 import SaleDetails from "./pages/SaleDetails";
+import PaymentLedger from "./pages/PaymentLedger";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="sales" element={<SalesList />} />
             <Route path="sales/:id" element={<SaleDetails />} />
             <Route path="sales/:id/edit" element={<EditSale />} />
+            <Route path="sales/:saleId/ledger" element={<PaymentLedger />} />
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
           </Route>

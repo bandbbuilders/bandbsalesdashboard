@@ -62,9 +62,57 @@ export const useLedgerEntries = () => {
     fetchLedgerEntries();
   }, []);
 
+  const updateLedgerEntry = async (entryId: string, updates: Partial<LedgerEntry>) => {
+    try {
+      const { error } = await supabase
+        .from('ledger_entries')
+        .update(updates)
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Ledger entry updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating ledger entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update ledger entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteLedgerEntry = async (entryId: string) => {
+    try {
+      const { error } = await supabase
+        .from('ledger_entries')
+        .delete()
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Ledger entry deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting ledger entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete ledger entry",
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     ledgerEntries,
     loading,
-    refetch: fetchLedgerEntries
+    refetch: fetchLedgerEntries,
+    updateLedgerEntry,
+    deleteLedgerEntry
   };
 };
