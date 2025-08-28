@@ -80,10 +80,14 @@ const Dashboard = () => {
       .filter(entry => entry.status === 'pending')
       .reduce((sum, entry) => sum + entry.amount, 0),
     overdue_amount: ledgerEntries
+      .filter(entry => entry.status === 'overdue')
+      .reduce((sum, entry) => sum + entry.amount, 0),
+    total_payment_pending: ledgerEntries
       .filter(entry => {
         const dueDate = new Date(entry.due_date);
-        const today = new Date();
-        return entry.status === 'pending' && dueDate < today;
+        const fiveYearsFromNow = new Date();
+        fiveYearsFromNow.setFullYear(fiveYearsFromNow.getFullYear() + 5);
+        return entry.status === 'pending' && dueDate <= fiveYearsFromNow;
       })
       .reduce((sum, entry) => sum + entry.amount, 0),
     active_sales_count: sales.filter(sale => sale.status === 'active').length,
@@ -192,7 +196,7 @@ const Dashboard = () => {
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales Value</CardTitle>
@@ -241,6 +245,19 @@ const Dashboard = () => {
             <div className="text-2xl font-bold text-destructive">{formatCurrency(stats.overdue_amount)}</div>
             <p className="text-xs text-muted-foreground">
               Requires immediate attention
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Payment Pending</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(stats.total_payment_pending)}</div>
+            <p className="text-xs text-muted-foreground">
+              Next 5 years receivables
             </p>
           </CardContent>
         </Card>

@@ -88,24 +88,47 @@ const PaymentLedger = () => {
       return;
     }
 
-    if (newAmount < originalAmount) {
-      // Redistribute remaining amount to other installment entries
+    if (newAmount !== originalAmount) {
       const difference = originalAmount - newAmount;
-      const installmentEntries = saleEntries.filter(entry => 
-        entry.entry_type === 'installment' && 
-        entry.id !== editingEntry.id &&
-        entry.status === 'pending'
-      );
+      
+      // Find the next installment entry after this one
+      const currentEntryIndex = saleEntries
+        .filter(entry => entry.entry_type === 'installment' && entry.status === 'pending')
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+        .findIndex(entry => entry.id === editingEntry.id);
+      
+      const nextInstallments = saleEntries
+        .filter(entry => entry.entry_type === 'installment' && entry.status === 'pending')
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+        .slice(currentEntryIndex + 1);
 
-      if (installmentEntries.length > 0) {
-        const amountPerEntry = difference / installmentEntries.length;
+      if (nextInstallments.length > 0) {
+        const nextInstallment = nextInstallments[0];
         
-        // Update all other installment entries
-        for (const entry of installmentEntries) {
-          await updateLedgerEntry(entry.id, {
-            amount: entry.amount + amountPerEntry
+        // If decreasing amount, add difference to next installment
+        // If increasing amount, subtract difference from next installment
+        const newNextAmount = nextInstallment.amount + difference;
+        
+        if (newNextAmount <= 0) {
+          toast({
+            title: "Error",
+            description: "Cannot adjust - would make next installment negative",
+            variant: "destructive",
           });
+          return;
         }
+        
+        // Update the next installment
+        await updateLedgerEntry(nextInstallment.id, {
+          amount: newNextAmount
+        });
+      } else if (newAmount > originalAmount) {
+        toast({
+          title: "Error",
+          description: "Cannot increase amount - no next installment to deduct from",
+          variant: "destructive",
+        });
+        return;
       }
     }
 

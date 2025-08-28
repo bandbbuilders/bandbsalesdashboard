@@ -73,6 +73,7 @@ export interface DashboardStats {
   collections_made: number;
   pending_amount: number;
   overdue_amount: number;
+  total_payment_pending: number;
   active_sales_count: number;
   completed_sales_count: number;
 }
