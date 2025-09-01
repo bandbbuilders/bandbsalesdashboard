@@ -291,9 +291,9 @@ const PaymentLedger = () => {
           <CardContent>
             <div className="text-2xl font-bold text-warning">
               {formatCurrency(
-                saleEntries
-                  .filter(entry => entry.status === 'pending')
-                  .reduce((sum, entry) => sum + entry.amount, 0)
+                sale.unit_total_price - saleEntries
+                  .filter(entry => entry.status === 'paid')
+                  .reduce((sum, entry) => sum + entry.paid_amount, 0)
               )}
             </div>
           </CardContent>
