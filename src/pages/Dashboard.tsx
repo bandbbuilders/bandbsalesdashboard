@@ -263,6 +263,55 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Sales Target Progress */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Sales Target Progress (Next 8 Months)
+          </CardTitle>
+          <CardDescription>50% target - 59 units out of 118 total units</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Progress</span>
+              <span className="text-sm text-muted-foreground">
+                {sales.length} / 59 units ({((sales.length / 59) * 100).toFixed(1)}%)
+              </span>
+            </div>
+            <Progress value={(sales.length / 59) * 100} className="h-3" />
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-2xl font-bold text-primary">{sales.length}</div>
+                <div className="text-xs text-muted-foreground">Units Sold</div>
+              </div>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-2xl font-bold text-warning">{59 - sales.length}</div>
+                <div className="text-xs text-muted-foreground">Remaining</div>
+              </div>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-2xl font-bold text-success">
+                  {Math.ceil((59 - sales.length) / 8)}
+                </div>
+                <div className="text-xs text-muted-foreground">Units/Month Needed</div>
+              </div>
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-2xl font-bold text-info">8</div>
+                <div className="text-xs text-muted-foreground">Months Left</div>
+              </div>
+            </div>
+            
+            {sales.length >= 59 && (
+              <div className="text-center p-4 bg-success/10 text-success rounded-lg">
+                🎉 Target Achieved! Congratulations on reaching the 50% sales target!
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Charts Section */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Receivables Breakdown */}
