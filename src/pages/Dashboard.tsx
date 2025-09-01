@@ -30,6 +30,7 @@ import {
 import { DashboardStats, User } from "@/types";
 import { useSales } from "@/hooks/useSales";
 import { useLedgerEntries } from "@/hooks/useLedgerEntries";
+import { format, parseISO } from "date-fns";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -308,6 +309,89 @@ const Dashboard = () => {
                 🎉 Target Achieved! Congratulations on reaching the 50% sales target!
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Downpayment Completion Tracker */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Downpayment Completions by Month
+          </CardTitle>
+          <CardDescription>Track which clients' downpayments are completing each month</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {(() => {
+              // Get downpayment entries and group by month/year
+              const downpaymentEntries = ledgerEntries.filter(entry => 
+                entry.entry_type === 'downpayment' && entry.status !== 'paid'
+              );
+              
+              // Group by month/year
+              const groupedByMonth = downpaymentEntries.reduce((acc, entry) => {
+                const date = parseISO(entry.due_date);
+                const monthYear = format(date, 'MMMM yyyy');
+                
+                if (!acc[monthYear]) {
+                  acc[monthYear] = [];
+                }
+                
+                // Find the sale for this entry
+                const sale = sales.find(s => s.id === entry.sale_id);
+                if (sale) {
+                  acc[monthYear].push({
+                    ...entry,
+                    customerName: sale.customer.name,
+                    unitNumber: sale.unit_number
+                  });
+                }
+                
+                return acc;
+              }, {} as Record<string, any[]>);
+
+              // Sort months chronologically
+              const sortedMonths = Object.keys(groupedByMonth).sort((a, b) => {
+                return new Date(a).getTime() - new Date(b).getTime();
+              });
+
+              if (sortedMonths.length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No pending downpayments found
+                  </div>
+                );
+              }
+
+              return sortedMonths.map(monthYear => (
+                <div key={monthYear} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-lg">{monthYear}</h3>
+                    <Badge variant="secondary">
+                      {groupedByMonth[monthYear].length} payment{groupedByMonth[monthYear].length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {groupedByMonth[monthYear].map(entry => (
+                      <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                        <div>
+                          <p className="font-medium">{entry.customerName}</p>
+                          <p className="text-sm text-muted-foreground">Unit {entry.unitNumber}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">PKR {entry.amount.toLocaleString()}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Due: {format(parseISO(entry.due_date), 'dd MMM')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
         </CardContent>
       </Card>

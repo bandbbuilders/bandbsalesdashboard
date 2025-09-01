@@ -40,6 +40,7 @@ import {
   Calendar,
   DollarSign
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { useLedgerEntries } from "@/hooks/useLedgerEntries";
 import { useSales } from "@/hooks/useSales";
@@ -55,6 +56,7 @@ const PaymentLedger = () => {
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editPaidDate, setEditPaidDate] = useState("");
+  const [editType, setEditType] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
@@ -90,7 +92,10 @@ const PaymentLedger = () => {
     }
 
     // Update data with paid amount and date if provided
-    const updateData: any = { amount: newAmount };
+    const updateData: any = { 
+      amount: newAmount,
+      entry_type: editType
+    };
     
     if (editPaidDate) {
       updateData.paid_date = editPaidDate;
@@ -175,6 +180,7 @@ const PaymentLedger = () => {
     setEditingEntry(null);
     setEditAmount("");
     setEditPaidDate("");
+    setEditType("");
     refetch();
   };
 
@@ -373,6 +379,7 @@ const PaymentLedger = () => {
                               onClick={() => {
                                 setEditingEntry(entry);
                                 setEditAmount(entry.amount.toString());
+                                setEditType(entry.entry_type);
                               }}
                             >
                               <Edit className="h-4 w-4" />
@@ -382,10 +389,23 @@ const PaymentLedger = () => {
                             <DialogHeader>
                               <DialogTitle>Edit Payment</DialogTitle>
                               <DialogDescription>
-                                Modify the payment amount. If reduced, the difference will be redistributed to remaining installments.
+                                Modify the payment details. If amount is reduced, the difference will be redistributed to remaining installments.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium">Type</label>
+                                <Select value={editType} onValueChange={setEditType}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select payment type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="downpayment">Downpayment</SelectItem>
+                                    <SelectItem value="installment">Installment</SelectItem>
+                                    <SelectItem value="possession">Possession</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                               <div>
                                 <label className="text-sm font-medium">Amount</label>
                                 <Input
