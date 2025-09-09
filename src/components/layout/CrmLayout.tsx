@@ -11,20 +11,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Building2, 
+  Users, 
   LayoutDashboard, 
   Plus, 
-  FileText, 
-  Users, 
+  Clock, 
   Bell, 
   LogOut,
   Menu,
-  X
+  X,
+  Home
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
 
-export const AppLayout = () => {
+export const CrmLayout = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -45,11 +45,10 @@ export const AppLayout = () => {
   };
 
   const navigation = [
-    { name: "Dashboard", href: "/sales", icon: LayoutDashboard, roles: ["admin", "agent", "manager"] },
-    { name: "New Sale", href: "/sales/new", icon: Plus, roles: ["admin", "agent"] },
-    { name: "Sales List", href: "/sales/list", icon: FileText, roles: ["admin", "agent", "manager"] },
-    { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
-    { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
+    { name: "Dashboard", href: "/crm", icon: LayoutDashboard, roles: ["admin", "agent", "manager"] },
+    { name: "Leads", href: "/crm/leads", icon: Users, roles: ["admin", "agent", "manager"] },
+    { name: "New Lead", href: "/crm/leads/new", icon: Plus, roles: ["admin", "agent"] },
+    { name: "Reminders", href: "/crm/reminders", icon: Clock, roles: ["admin", "agent", "manager"] },
   ];
 
   const filteredNavigation = navigation.filter(item => 
@@ -57,8 +56,8 @@ export const AppLayout = () => {
   );
 
   const isActive = (href: string) => {
-    if (href === "/sales") {
-      return location.pathname === "/sales";
+    if (href === "/crm") {
+      return location.pathname === "/crm";
     }
     return location.pathname.startsWith(href);
   };
@@ -88,13 +87,13 @@ export const AppLayout = () => {
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
             
-            <Building2 className="h-6 w-6 text-primary" />
-            <h1 className="text-lg font-semibold hidden sm:block">Sales Management</h1>
+            <Users className="h-6 w-6 text-primary" />
+            <h1 className="text-lg font-semibold hidden sm:block">B&B CRM</h1>
           </div>
 
           <div className="flex flex-1 items-center justify-end space-x-2">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <Building2 className="h-4 w-4" />
+              <Home className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon">
               <Bell className="h-4 w-4" />
@@ -162,8 +161,8 @@ export const AppLayout = () => {
         )}>
           <div className="flex h-full flex-col bg-background border-r">
             <div className="flex h-14 items-center px-4 border-b">
-              <Building2 className="h-6 w-6 text-primary mr-2" />
-              <span className="text-lg font-semibold">Sales App</span>
+              <Users className="h-6 w-6 text-primary mr-2" />
+              <span className="text-lg font-semibold">B&B CRM</span>
             </div>
             <nav className="flex-1 overflow-y-auto p-4 space-y-2">
               {filteredNavigation.map((item) => {

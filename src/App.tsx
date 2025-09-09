@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LoginForm } from "./components/auth/LoginForm";
 import { AppLayout } from "./components/layout/AppLayout";
+import { CrmLayout } from "./components/layout/CrmLayout";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import NewSale from "./pages/NewSale";
 import EditSale from "./pages/EditSale";
@@ -13,6 +15,9 @@ import SaleDetails from "./pages/SaleDetails";
 import PaymentLedger from "./pages/PaymentLedger";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
+import CrmDashboard from "./pages/crm/CrmDashboard";
+import LeadsList from "./pages/crm/LeadsList";
+import NewLead from "./pages/crm/NewLead";
 
 const queryClient = new QueryClient();
 
@@ -24,16 +29,22 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginForm />} />
-          <Route path="/" element={<AppLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/sales" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="sales/new" element={<NewSale />} />
-            <Route path="sales" element={<SalesList />} />
-            <Route path="sales/:id" element={<SaleDetails />} />
-            <Route path="sales/:id/edit" element={<EditSale />} />
-            <Route path="sales/:saleId/ledger" element={<PaymentLedger />} />
+            <Route path="new" element={<NewSale />} />
+            <Route path="list" element={<SalesList />} />
+            <Route path=":id" element={<SaleDetails />} />
+            <Route path=":id/edit" element={<EditSale />} />
+            <Route path=":saleId/ledger" element={<PaymentLedger />} />
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
+          </Route>
+          <Route path="/crm" element={<CrmLayout />}>
+            <Route index element={<CrmDashboard />} />
+            <Route path="leads" element={<LeadsList />} />
+            <Route path="leads/new" element={<NewLead />} />
           </Route>
         </Routes>
       </BrowserRouter>
