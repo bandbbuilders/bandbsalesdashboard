@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Edit } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Eye, Edit, Columns } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { StageManager } from "@/components/crm/StageManager";
+import { KanbanBoard } from "@/components/crm/KanbanBoard";
 
 interface Lead {
   id: string;
@@ -20,15 +23,26 @@ interface Lead {
   assigned_to: string;
 }
 
+interface Stage {
+  id: string;
+  name: string;
+  color: string;
+  order_position: number;
+}
+
 const LeadsList = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showStageManager, setShowStageManager] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchLeads();
+    fetchStages();
   }, []);
 
   useEffect(() => {
@@ -48,6 +62,20 @@ const LeadsList = () => {
       console.error('Error fetching leads:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lead_stages')
+        .select('*')
+        .order('order_position', { ascending: true });
+
+      if (error) throw error;
+      setStages(data || []);
+    } catch (error) {
+      console.error('Error fetching stages:', error);
     }
   };
 
@@ -89,82 +117,118 @@ const LeadsList = () => {
           <h1 className="text-3xl font-bold">Leads</h1>
           <p className="text-muted-foreground">Manage your sales leads and prospects</p>
         </div>
-        <Button onClick={() => navigate('/crm/leads/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Lead
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder="Search leads..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Leads Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredLeads.map((lead) => (
-          <Card key={lead.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{lead.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{lead.company}</p>
-                </div>
-                <Badge className={getStageColor(lead.stage)}>
-                  {lead.stage.replace('_', ' ')}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm">
-                  <span className="font-medium">Email:</span> {lead.email || 'N/A'}
-                </p>
-                <p className="text-sm">
-                  <span className="font-medium">Phone:</span> {lead.phone || 'N/A'}
-                </p>
-                <p className="text-sm">
-                  <span className="font-medium">Budget:</span> {lead.budget ? `₹${lead.budget.toLocaleString()}` : 'N/A'}
-                </p>
-                <p className="text-sm">
-                  <span className="font-medium">Source:</span> {lead.source || 'N/A'}
-                </p>
-              </div>
-              
-              <div className="flex gap-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate(`/crm/leads/${lead.id}`)}
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  View
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate(`/crm/leads/${lead.id}/edit`)}
-                >
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredLeads.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No leads found</p>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/crm/leads/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Lead
+          </Button>
+          <Button variant="outline" onClick={() => setShowStageManager(true)}>
+            Add Stage
+          </Button>
         </div>
+      </div>
+
+      {/* Search and View Toggle */}
+      <div className="flex gap-4 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search leads..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'list' | 'kanban')}>
+          <TabsList>
+            <TabsTrigger value="list">List View</TabsTrigger>
+            <TabsTrigger value="kanban">
+              <Columns className="h-4 w-4 mr-2" />
+              Kanban
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Content */}
+      {viewMode === 'kanban' ? (
+        <KanbanBoard 
+          leads={filteredLeads} 
+          stages={stages} 
+          onLeadUpdate={fetchLeads}
+          onStageUpdate={fetchStages}
+        />
+      ) : (
+        <>
+          {/* Leads Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLeads.map((lead) => (
+              <Card key={lead.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{lead.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{lead.company}</p>
+                    </div>
+                    <Badge className={getStageColor(lead.stage)}>
+                      {lead.stage.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <p className="text-sm">
+                      <span className="font-medium">Email:</span> {lead.email || 'N/A'}
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium">Phone:</span> {lead.phone || 'N/A'}
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium">Budget:</span> {lead.budget ? `₹${lead.budget.toLocaleString()}` : 'N/A'}
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium">Source:</span> {lead.source || 'N/A'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => navigate(`/crm/leads/${lead.id}`)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/crm/leads/${lead.id}/edit`)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredLeads.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No leads found</p>
+            </div>
+          )}
+        </>
       )}
+
+      {/* Stage Manager Dialog */}
+      <StageManager 
+        open={showStageManager}
+        onOpenChange={setShowStageManager}
+        stages={stages}
+        onStagesUpdate={fetchStages}
+      />
     </div>
   );
 };
