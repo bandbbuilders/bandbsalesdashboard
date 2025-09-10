@@ -75,7 +75,7 @@ export const KanbanBoard = ({ leads, stages, onLeadUpdate, onStageUpdate }: Kanb
     try {
       const { error } = await supabase
         .from('leads')
-        .update({ stage: newStage.name.toLowerCase().replace(' ', '_') })
+        .update({ stage: newStage.name.toLowerCase().replace(/\s+/g, '_') as any })
         .eq('id', leadId);
 
       if (error) throw error;

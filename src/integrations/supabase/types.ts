@@ -89,6 +89,33 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          order_position: number
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          name: string
+          order_position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_tags: {
         Row: {
           created_at: string

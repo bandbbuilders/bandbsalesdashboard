@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LoginForm } from "./components/auth/LoginForm";
+import { AuthGuard } from "./components/auth/AuthGuard";
 import { AppLayout } from "./components/layout/AppLayout";
 import { CrmLayout } from "./components/layout/CrmLayout";
 import Home from "./pages/Home";
@@ -28,9 +29,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginForm />} />
           <Route path="/" element={<Home />} />
-          <Route path="/sales" element={<AppLayout />}>
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/sales/*" element={
+            <AuthGuard>
+              <AppLayout />
+            </AuthGuard>
+          }>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="new" element={<NewSale />} />
@@ -41,7 +46,11 @@ const App = () => (
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
           </Route>
-          <Route path="/crm" element={<CrmLayout />}>
+          <Route path="/crm/*" element={
+            <AuthGuard>
+              <CrmLayout />
+            </AuthGuard>
+          }>
             <Route index element={<CrmDashboard />} />
             <Route path="leads" element={<LeadsList />} />
             <Route path="leads/new" element={<NewLead />} />
