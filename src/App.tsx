@@ -19,6 +19,8 @@ import Users from "./pages/Users";
 import CrmDashboard from "./pages/crm/CrmDashboard";
 import LeadsList from "./pages/crm/LeadsList";
 import NewLead from "./pages/crm/NewLead";
+import LeadDetails from "./pages/crm/LeadDetails";
+import EditLead from "./pages/crm/EditLead";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +56,8 @@ const App = () => (
             <Route index element={<CrmDashboard />} />
             <Route path="leads" element={<LeadsList />} />
             <Route path="leads/new" element={<NewLead />} />
+            <Route path="leads/:id" element={<LeadDetails />} />
+            <Route path="leads/:id/edit" element={<EditLead />} />
           </Route>
         </Routes>
       </BrowserRouter>

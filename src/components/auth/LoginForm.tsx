@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -22,30 +23,95 @@ export const LoginForm = () => {
     setError("");
 
     try {
-      // TODO: Implement Supabase authentication
-      // For now, simulate login
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data based on email
-      const mockUser = {
-        id: email.includes("admin") ? "11111111-1111-1111-1111-111111111111" : 
-            email.includes("manager") ? "33333333-3333-3333-3333-333333333333" : 
-            "22222222-2222-2222-2222-222222222222",
-        email,
-        name: email.split("@")[0],
-        role: email.includes("admin") ? "admin" : email.includes("manager") ? "manager" : "agent"
-      };
-      
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${mockUser.name}!`,
-      });
-      
-      navigate("/dashboard");
+      // Check for specific demo accounts
+      if (email === "manager@B&Bbuilders" && password === "manager") {
+        // Sign in with Supabase Auth using a real account or create mock session
+        const { error } = await supabase.auth.signInWithPassword({
+          email: "manager@demo.com", // Using a standard email format
+          password: "manager123"
+        });
+
+        if (error) {
+          // If account doesn't exist, sign up first
+          await supabase.auth.signUp({
+            email: "manager@demo.com",
+            password: "manager123",
+            options: { emailRedirectTo: `${window.location.origin}/` }
+          });
+          
+          await supabase.auth.signInWithPassword({
+            email: "manager@demo.com",
+            password: "manager123"
+          });
+        }
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back, Manager!",
+        });
+        navigate("/crm");
+        return;
+      }
+
+      if (email === "Umer@B&Bbuilders" && password === "Umer@B&B") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: "umer@demo.com",
+          password: "umer123"
+        });
+
+        if (error) {
+          await supabase.auth.signUp({
+            email: "umer@demo.com",
+            password: "umer123",
+            options: { emailRedirectTo: `${window.location.origin}/` }
+          });
+          
+          await supabase.auth.signInWithPassword({
+            email: "umer@demo.com",
+            password: "umer123"
+          });
+        }
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back, Umer!",
+        });
+        navigate("/crm");
+        return;
+      }
+
+      // Check if user is admin for sales management access
+      if (email.includes("admin")) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: "admin@demo.com",
+          password: "admin123"
+        });
+
+        if (error) {
+          await supabase.auth.signUp({
+            email: "admin@demo.com",
+            password: "admin123",
+            options: { emailRedirectTo: `${window.location.origin}/` }
+          });
+          
+          await supabase.auth.signInWithPassword({
+            email: "admin@demo.com",
+            password: "admin123"
+          });
+        }
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back, Admin!",
+        });
+        navigate("/sales");
+        return;
+      }
+
+      setError("Access denied. Please use authorized credentials.");
     } catch (err) {
-      setError("Invalid email or password");
+      console.error("Login error:", err);
+      setError("Invalid credentials or access denied");
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +144,7 @@ export const LoginForm = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="agent@company.com"
+                placeholder="Enter your email"
                 required
               />
             </div>
@@ -100,11 +166,6 @@ export const LoginForm = () => {
               Sign In
             </Button>
             
-            <div className="text-sm text-muted-foreground text-center mt-4">
-              <p>Demo accounts:</p>
-              <p>admin@company.com | manager@company.com | agent@company.com</p>
-              <p>Password: any</p>
-            </div>
           </form>
         </CardContent>
       </Card>

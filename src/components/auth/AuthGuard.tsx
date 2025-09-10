@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -11,6 +11,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Check initial session
@@ -21,6 +22,16 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
       if (!session?.user) {
         navigate("/login");
+        return;
+      }
+
+      // Check access control for Sales Management (admin only)
+      if (location.pathname.startsWith('/sales')) {
+        const isAdmin = session.user.email === 'admin@demo.com';
+        if (!isAdmin) {
+          navigate("/login");
+          return;
+        }
       }
     };
 
@@ -34,6 +45,16 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
         if (!session?.user) {
           navigate("/login");
+          return;
+        }
+
+        // Check access control for Sales Management (admin only)
+        if (location.pathname.startsWith('/sales')) {
+          const isAdmin = session.user.email === 'admin@demo.com';
+          if (!isAdmin) {
+            navigate("/login");
+            return;
+          }
         }
       }
     );
