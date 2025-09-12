@@ -25,6 +25,8 @@ export const LoginForm = () => {
     try {
       // Simple dummy admin account - no Supabase auth required
       if (email === "admin" && password === "admin123") {
+        // Set demo mode flag
+        localStorage.setItem('demoMode', 'true');
         toast({
           title: "Login successful",
           description: "Welcome back, Admin!",

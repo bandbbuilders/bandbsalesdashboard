@@ -10,10 +10,19 @@ interface AuthGuardProps {
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    // Check for demo mode flag in localStorage
+    const demoMode = localStorage.getItem('demoMode');
+    if (demoMode === 'true') {
+      setIsDemoMode(true);
+      setLoading(false);
+      return;
+    }
+
     // Check initial session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -60,7 +69,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   if (loading) {
     return (
@@ -70,9 +79,10 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
-  if (!user) {
-    return null;
+  // Allow access in demo mode or with valid user
+  if (isDemoMode || user) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return null;
 };
