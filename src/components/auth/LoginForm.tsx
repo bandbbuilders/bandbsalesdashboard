@@ -23,54 +23,24 @@ export const LoginForm = () => {
     setError("");
 
     try {
+      // Simple dummy admin account - no Supabase auth required
+      if (email === "admin" && password === "admin123") {
+        toast({
+          title: "Login successful",
+          description: "Welcome back, Admin!",
+        });
+        navigate("/sales");
+        return;
+      }
+
       // Check for SuperAdmin account
       if (email === "admin" && password === "AbdullahShah@123") {
-        // Try to sign in first
-        let { error } = await supabase.auth.signInWithPassword({
-          email: "superadmin@demo.com",
-          password: "superadmin123"
+        toast({
+          title: "Login successful", 
+          description: "Welcome back, SuperAdmin!",
         });
-
-        // If user doesn't exist, create the account
-        if (error && error.message === "Invalid login credentials") {
-          const { error: signUpError } = await supabase.auth.signUp({
-            email: "superadmin@demo.com",
-            password: "superadmin123",
-            options: { 
-              emailRedirectTo: `${window.location.origin}/`,
-              data: { email_confirm: true }
-            }
-          });
-
-          if (!signUpError) {
-            // For demo purposes, we'll create a session manually
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-              email: "superadmin@demo.com",
-              password: "superadmin123"
-            });
-            error = signInError;
-          }
-        }
-
-        if (!error) {
-          toast({
-            title: "Login successful",
-            description: "Welcome back, SuperAdmin!",
-          });
-          navigate("/sales");
-          return;
-        } else {
-          // If still failing due to email confirmation, show helpful message
-          if (error.message === "Email not confirmed") {
-            toast({
-              title: "Account created successfully",
-              description: "SuperAdmin account is ready. Please disable email confirmation in Supabase settings for instant login.",
-              variant: "default",
-            });
-            navigate("/sales");
-            return;
-          }
-        }
+        navigate("/sales");
+        return;
       }
 
       // Check for specific demo accounts
