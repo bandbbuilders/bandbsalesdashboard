@@ -54,7 +54,10 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
 
       setFormData({ title: "", description: "", due_date: "", due_time: "" });
       onOpenChange(false);
-      window.location.reload(); // Refresh to show new reminder
+      // Trigger parent refresh instead of full page reload
+      if (window.location.pathname.includes('/crm/leads/')) {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error adding reminder:', error);
       toast({

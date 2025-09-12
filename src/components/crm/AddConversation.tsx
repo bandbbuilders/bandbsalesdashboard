@@ -50,7 +50,10 @@ export const AddConversation = ({ leadId, open, onOpenChange }: AddConversationP
 
       setFormData({ type: "note", subject: "", content: "" });
       onOpenChange(false);
-      window.location.reload(); // Refresh to show new conversation
+      // Trigger parent refresh instead of full page reload
+      if (window.location.pathname.includes('/crm/leads/')) {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error adding conversation:', error);
       toast({
