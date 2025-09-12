@@ -23,6 +23,34 @@ export const LoginForm = () => {
     setError("");
 
     try {
+      // Check for SuperAdmin account
+      if (email === "admin" && password === "AbdullahShah@123") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: "superadmin@demo.com",
+          password: "superadmin123"
+        });
+
+        if (error) {
+          await supabase.auth.signUp({
+            email: "superadmin@demo.com",
+            password: "superadmin123",
+            options: { emailRedirectTo: `${window.location.origin}/` }
+          });
+          
+          await supabase.auth.signInWithPassword({
+            email: "superadmin@demo.com",
+            password: "superadmin123"
+          });
+        }
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back, SuperAdmin!",
+        });
+        navigate("/sales");
+        return;
+      }
+
       // Check for specific demo accounts
       if (email === "manager@B&Bbuilders" && password === "manager") {
         // Sign in with Supabase Auth using a real account or create mock session

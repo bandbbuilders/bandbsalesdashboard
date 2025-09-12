@@ -27,7 +27,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
       // Check access control for Sales Management (admin only)
       if (location.pathname.startsWith('/sales')) {
-        const isAdmin = session.user.email === 'admin@demo.com';
+        const isAdmin = session.user.email === 'admin@demo.com' || session.user.email === 'superadmin@demo.com';
         if (!isAdmin) {
           navigate("/login");
           return;
@@ -50,7 +50,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
         // Check access control for Sales Management (admin only)
         if (location.pathname.startsWith('/sales')) {
-          const isAdmin = session.user.email === 'admin@demo.com';
+          const isAdmin = session.user.email === 'admin@demo.com' || session.user.email === 'superadmin@demo.com';
           if (!isAdmin) {
             navigate("/login");
             return;
