@@ -7,23 +7,57 @@ interface AuthGuardProps {
   children: React.ReactNode;
 }
 
+interface DemoUser {
+  id: string;
+  email: string;
+  role: string;
+  name: string;
+}
+
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    // Check for demo mode flag in localStorage
+    // Check for demo mode
     const demoMode = localStorage.getItem('demoMode');
-    if (demoMode === 'true') {
-      setIsDemoMode(true);
-      setLoading(false);
-      return;
+    const currentUser = localStorage.getItem('currentUser');
+    
+    if (demoMode === 'true' && currentUser) {
+      try {
+        const user = JSON.parse(currentUser);
+        setDemoUser(user);
+        setLoading(false);
+        
+        // Check access control for demo users
+        if (location.pathname.startsWith('/sales')) {
+          const canAccessSales = user.role === 'superadmin' || user.role === 'admin';
+          if (!canAccessSales) {
+            navigate("/crm");
+            return;
+          }
+        }
+        
+        if (location.pathname.startsWith('/crm')) {
+          const canAccessCrm = user.role === 'manager' || user.role === 'agent';
+          if (!canAccessCrm && user.role !== 'superadmin') {
+            navigate("/sales");
+            return;
+          }
+        }
+        
+        return;
+      } catch {
+        // Invalid stored user data, clear it
+        localStorage.removeItem('demoMode');
+        localStorage.removeItem('currentUser');
+      }
     }
 
-    // Check initial session
+    // Check Supabase session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
@@ -32,15 +66,6 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       if (!session?.user) {
         navigate("/login");
         return;
-      }
-
-      // Check access control for Sales Management (admin only)
-      if (location.pathname.startsWith('/sales')) {
-        const isAdmin = session.user.email === 'admin@demo.com' || session.user.email === 'superadmin@demo.com';
-        if (!isAdmin) {
-          navigate("/login");
-          return;
-        }
       }
     };
 
@@ -56,15 +81,6 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           navigate("/login");
           return;
         }
-
-        // Check access control for Sales Management (admin only)
-        if (location.pathname.startsWith('/sales')) {
-          const isAdmin = session.user.email === 'admin@demo.com' || session.user.email === 'superadmin@demo.com';
-          if (!isAdmin) {
-            navigate("/login");
-            return;
-          }
-        }
       }
     );
 
@@ -79,8 +95,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
-  // Allow access in demo mode or with valid user
-  if (isDemoMode || user) {
+  // Allow access if demo user is logged in or valid Supabase user
+  if (demoUser || user) {
     return <>{children}</>;
   }
 

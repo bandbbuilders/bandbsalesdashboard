@@ -9,8 +9,40 @@ import { Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+// Demo user accounts with different roles
+const DEMO_ACCOUNTS = {
+  superadmin: {
+    email: "superadmin",
+    password: "super2025",
+    role: "superadmin",
+    name: "Super Administrator",
+    route: "/sales"
+  },
+  admin: {
+    email: "admin",
+    password: "admin2025", 
+    role: "admin",
+    name: "Administrator",
+    route: "/sales"
+  },
+  manager: {
+    email: "manager",
+    password: "manager2025",
+    role: "manager", 
+    name: "Sales Manager",
+    route: "/crm"
+  },
+  agent: {
+    email: "agent",
+    password: "agent2025",
+    role: "agent",
+    name: "Sales Agent", 
+    route: "/crm"
+  }
+};
+
 export const LoginForm = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,117 +55,54 @@ export const LoginForm = () => {
     setError("");
 
     try {
-      // Simple dummy admin account - no Supabase auth required
-      if (email === "admin" && password === "admin123") {
-        // Set demo mode flag
+      // Check demo accounts
+      const account = Object.values(DEMO_ACCOUNTS).find(
+        acc => acc.email === username && acc.password === password
+      );
+
+      if (account) {
+        // For demo accounts, we'll use localStorage to track the logged in user
+        localStorage.setItem('currentUser', JSON.stringify({
+          id: `demo-${account.role}`,
+          email: `${account.role}@demo.com`,
+          role: account.role,
+          name: account.name
+        }));
         localStorage.setItem('demoMode', 'true');
+
         toast({
           title: "Login successful",
-          description: "Welcome back, Admin!",
+          description: `Welcome back, ${account.name}!`,
+        });
+        
+        navigate(account.route);
+        return;
+      }
+
+      // Try Supabase authentication as fallback
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password
+      });
+
+      if (error) {
+        setError("Invalid username or password. Please use one of the demo accounts.");
+        return;
+      }
+
+      if (data.user) {
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
         });
         navigate("/sales");
         return;
       }
 
-      // Check for SuperAdmin account
-      if (email === "admin" && password === "AbdullahShah@123") {
-        toast({
-          title: "Login successful", 
-          description: "Welcome back, SuperAdmin!",
-        });
-        navigate("/sales");
-        return;
-      }
-
-      // Check for specific demo accounts
-      if (email === "manager@B&Bbuilders" && password === "manager") {
-        // Sign in with Supabase Auth using a real account or create mock session
-        const { error } = await supabase.auth.signInWithPassword({
-          email: "manager@demo.com", // Using a standard email format
-          password: "manager123"
-        });
-
-        if (error) {
-          // If account doesn't exist, sign up first
-          await supabase.auth.signUp({
-            email: "manager@demo.com",
-            password: "manager123",
-            options: { emailRedirectTo: `${window.location.origin}/` }
-          });
-          
-          await supabase.auth.signInWithPassword({
-            email: "manager@demo.com",
-            password: "manager123"
-          });
-        }
-
-        toast({
-          title: "Login successful",
-          description: "Welcome back, Manager!",
-        });
-        navigate("/crm");
-        return;
-      }
-
-      if (email === "Umer@B&Bbuilders" && password === "Umer@B&B") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: "umer@demo.com",
-          password: "umer123"
-        });
-
-        if (error) {
-          await supabase.auth.signUp({
-            email: "umer@demo.com",
-            password: "umer123",
-            options: { emailRedirectTo: `${window.location.origin}/` }
-          });
-          
-          await supabase.auth.signInWithPassword({
-            email: "umer@demo.com",
-            password: "umer123"
-          });
-        }
-
-        toast({
-          title: "Login successful",
-          description: "Welcome back, Umer!",
-        });
-        navigate("/crm");
-        return;
-      }
-
-      // Check if user is admin for sales management access
-      if (email.includes("admin")) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: "admin@demo.com",
-          password: "admin123"
-        });
-
-        if (error) {
-          await supabase.auth.signUp({
-            email: "admin@demo.com",
-            password: "admin123",
-            options: { emailRedirectTo: `${window.location.origin}/` }
-          });
-          
-          await supabase.auth.signInWithPassword({
-            email: "admin@demo.com",
-            password: "admin123"
-          });
-        }
-
-        toast({
-          title: "Login successful",
-          description: "Welcome back, Admin!",
-        });
-        navigate("/sales");
-        return;
-      }
-
-      setError("Access denied. Please use authorized credentials.");
+      setError("Invalid username or password.");
     } catch (err) {
       console.error("Login error:", err);
-      setError("Invalid credentials or access denied");
+      setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -146,9 +115,9 @@ export const LoginForm = () => {
           <div className="mx-auto mb-4 w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
             <Building2 className="w-6 h-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Sales Management</CardTitle>
+          <CardTitle className="text-2xl">B&B Sales Dashboard</CardTitle>
           <CardDescription>
-            Sign in to access your sales dashboard
+            Sign in to access your dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -160,13 +129,13 @@ export const LoginForm = () => {
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="email">Username/Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
+                id="username"
                 type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your username or email"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
                 required
               />
             </div>
@@ -187,6 +156,17 @@ export const LoginForm = () => {
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
+
+            {/* Demo Accounts Info */}
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+              <h4 className="text-sm font-medium mb-3">Demo Accounts:</h4>
+              <div className="space-y-2 text-xs">
+                <div><strong>SuperAdmin:</strong> superadmin / super2025</div>
+                <div><strong>Admin:</strong> admin / admin2025</div>
+                <div><strong>Manager:</strong> manager / manager2025</div>
+                <div><strong>Agent:</strong> agent / agent2025</div>
+              </div>
+            </div>
             
           </form>
         </CardContent>

@@ -31,16 +31,21 @@ export const CrmLayout = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      setUser(JSON.parse(userData));
+    const currentUser = localStorage.getItem("currentUser");
+    if (currentUser) {
+      try {
+        setUser(JSON.parse(currentUser));
+      } catch {
+        navigate("/login");
+      }
     } else {
       navigate("/login");
     }
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("demoMode");
     navigate("/login");
   };
 
