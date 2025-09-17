@@ -21,6 +21,8 @@ import LeadsList from "./pages/crm/LeadsList";
 import NewLead from "./pages/crm/NewLead";
 import LeadDetails from "./pages/crm/LeadDetails";
 import EditLead from "./pages/crm/EditLead";
+import RemindersPage from "./pages/crm/RemindersPage";
+import TaskManager from "./pages/TaskManager";
 
 const queryClient = new QueryClient();
 
@@ -58,7 +60,13 @@ const App = () => (
             <Route path="leads/new" element={<NewLead />} />
             <Route path="leads/:id" element={<LeadDetails />} />
             <Route path="leads/:id/edit" element={<EditLead />} />
+            <Route path="reminders" element={<RemindersPage />} />
           </Route>
+          <Route path="/tasks" element={
+            <AuthGuard>
+              <TaskManager />
+            </AuthGuard>
+          } />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

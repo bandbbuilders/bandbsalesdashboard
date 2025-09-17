@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface AddReminderProps {
-  leadId: string;
+  leadId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -37,7 +37,7 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
       const { error } = await supabase
         .from('reminders')
         .insert({
-          lead_id: leadId,
+          lead_id: leadId || null,
           user_id: mockUserId,
           title: formData.title,
           description: formData.description || null,

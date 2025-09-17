@@ -19,7 +19,8 @@ import {
   Bell, 
   LogOut,
   Menu,
-  X
+  X,
+  CheckSquare
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ export const AppLayout = () => {
     { name: "Sales List", href: "/sales/list", icon: FileText, roles: ["admin", "agent", "manager"] },
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
+    { name: "Task Manager", href: "/tasks", icon: CheckSquare, roles: ["admin", "agent", "manager"] },
   ];
 
   const filteredNavigation = navigation.filter(item => 
