@@ -73,9 +73,10 @@ export const KanbanBoard = ({ leads, stages, onLeadUpdate, onStageUpdate }: Kanb
     }
 
     try {
+      const stageValue = newStage.name.toLowerCase().replace(/\s+/g, '_') as "new" | "contacted" | "qualified" | "proposal" | "closed_won" | "closed_lost" | "negotiation";
       const { error } = await supabase
         .from('leads')
-        .update({ stage: newStage.name.toLowerCase().replace(/\s+/g, '_') as any })
+        .update({ stage: stageValue })
         .eq('id', leadId);
 
       if (error) throw error;
@@ -100,9 +101,11 @@ export const KanbanBoard = ({ leads, stages, onLeadUpdate, onStageUpdate }: Kanb
   };
 
   const getLeadsForStage = (stageName: string) => {
-    return leads.filter(lead => 
-      lead.stage.toLowerCase().replace('_', ' ') === stageName.toLowerCase()
-    );
+    return leads.filter(lead => {
+      const leadStage = lead.stage.toLowerCase().replace(/_/g, ' ');
+      const targetStage = stageName.toLowerCase().replace(/_/g, ' ');
+      return leadStage === targetStage;
+    });
   };
 
   // Create default stages if none exist

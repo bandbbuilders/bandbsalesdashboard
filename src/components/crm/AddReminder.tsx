@@ -31,14 +31,15 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
       // Combine date and time
       const dueDateTime = new Date(`${formData.due_date}T${formData.due_time}`);
       
-      // For now, we'll use a mock user ID. In a real app, this would come from auth
-      const mockUserId = "11111111-1111-1111-1111-111111111111";
+      // Get current user for demo mode
+      const currentUser = localStorage.getItem('currentUser');
+      const userId = currentUser ? JSON.parse(currentUser).id : '11111111-1111-1111-1111-111111111111';
 
       const { error } = await supabase
         .from('reminders')
         .insert({
           lead_id: leadId || null,
-          user_id: mockUserId,
+          user_id: userId,
           title: formData.title,
           description: formData.description || null,
           due_date: dueDateTime.toISOString(),

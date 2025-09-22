@@ -31,9 +31,14 @@ export default function RemindersPage() {
 
   const fetchReminders = async () => {
     try {
+      // Fetch reminders and set dummy user_id for demo mode
+      const currentUser = localStorage.getItem('currentUser');
+      const userId = currentUser ? JSON.parse(currentUser).id : '11111111-1111-1111-1111-111111111111';
+      
       const { data, error } = await supabase
         .from('reminders')
         .select('*')
+        .eq('user_id', userId)
         .order('due_date', { ascending: true });
 
       if (error) throw error;
