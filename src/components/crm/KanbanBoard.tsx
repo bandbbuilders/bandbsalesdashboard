@@ -73,7 +73,7 @@ export const KanbanBoard = ({ leads, stages, onLeadUpdate, onStageUpdate }: Kanb
     }
 
     try {
-      const stageValue = newStage.name.toLowerCase().replace(/\s+/g, '_') as "new" | "contacted" | "qualified" | "proposal" | "closed_won" | "closed_lost" | "negotiation";
+      const stageValue = newStage.name.toLowerCase().replace(/\s+/g, '_') as any;
       const { error } = await supabase
         .from('leads')
         .update({ stage: stageValue })
@@ -102,8 +102,9 @@ export const KanbanBoard = ({ leads, stages, onLeadUpdate, onStageUpdate }: Kanb
 
   const getLeadsForStage = (stageName: string) => {
     return leads.filter(lead => {
-      const leadStage = lead.stage.toLowerCase().replace(/_/g, ' ');
-      const targetStage = stageName.toLowerCase().replace(/_/g, ' ');
+      // Handle both underscore and space separated stage names
+      const leadStage = lead.stage.toLowerCase().replace(/[_\s]+/g, '_');
+      const targetStage = stageName.toLowerCase().replace(/[_\s]+/g, '_');
       return leadStage === targetStage;
     });
   };
