@@ -169,25 +169,18 @@ const NewSale = () => {
       
       // Get current user from localStorage (mock authentication)
       const userData = localStorage.getItem("user");
-      if (!userData) {
-        toast({
-          title: "Error",
-          description: "User not authenticated. Please log in again.",
-          variant: "destructive",
-        });
-        navigate("/login");
-        return;
-      }
+      // For now, create a default user since authentication isn't fully set up
+      const defaultUser = userData ? JSON.parse(userData) : { id: 'default-user', email: 'user@example.com', name: 'Default User' };
       
-      const user = JSON.parse(userData);
-      console.log("Current user from localStorage:", user);
+      const user = defaultUser;
+      console.log("Current user:", user);
       
       // Check if user exists in users table, if not create them
       const { data: existingUser, error: userCheckError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (userCheckError && userCheckError.code !== 'PGRST116') {
         console.error("Error checking user:", userCheckError);

@@ -58,7 +58,7 @@ export const KanbanCard = ({ lead, onLeadClick, onLeadEdit }: KanbanCardProps) =
         <div className="space-y-1 text-xs">
           <p><span className="font-medium">Email:</span> {lead.email || 'N/A'}</p>
           <p><span className="font-medium">Phone:</span> {lead.phone || 'N/A'}</p>
-          <p><span className="font-medium">Budget:</span> {lead.budget ? `₹${lead.budget.toLocaleString()}` : 'N/A'}</p>
+          <p><span className="font-medium">Budget:</span> {lead.budget ? `PKR ${lead.budget.toLocaleString()}` : 'N/A'}</p>
           <p><span className="font-medium">Source:</span> {lead.source || 'N/A'}</p>
         </div>
         

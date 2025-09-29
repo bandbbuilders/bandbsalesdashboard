@@ -30,6 +30,7 @@ import {
 import { DashboardStats, User } from "@/types";
 import { useSales } from "@/hooks/useSales";
 import { useLedgerEntries } from "@/hooks/useLedgerEntries";
+import { MonthlyInstallmentChart } from "@/components/dashboard/MonthlyInstallmentChart";
 import { format, parseISO } from "date-fns";
 
 const Dashboard = () => {
@@ -395,6 +396,9 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Monthly Installment Receivables */}
+      <MonthlyInstallmentChart ledgerEntries={ledgerEntries} sales={sales} />
 
       {/* Charts Section */}
       <div className="grid gap-6 md:grid-cols-2">

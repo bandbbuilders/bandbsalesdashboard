@@ -184,7 +184,7 @@ const LeadsList = () => {
                       <span className="font-medium">Phone:</span> {lead.phone || 'N/A'}
                     </p>
                     <p className="text-sm">
-                      <span className="font-medium">Budget:</span> {lead.budget ? `₹${lead.budget.toLocaleString()}` : 'N/A'}
+                      <span className="font-medium">Budget:</span> {lead.budget ? `PKR ${lead.budget.toLocaleString()}` : 'N/A'}
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Source:</span> {lead.source || 'N/A'}
