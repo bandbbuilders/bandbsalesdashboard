@@ -20,7 +20,8 @@ import {
   LogOut,
   Menu,
   X,
-  CheckSquare
+  CheckSquare,
+  Home
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -100,8 +101,8 @@ export const AppLayout = () => {
           </div>
 
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <Building2 className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")} title="Go to App Selector">
+              <Home className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon">
               <Bell className="h-4 w-4" />
