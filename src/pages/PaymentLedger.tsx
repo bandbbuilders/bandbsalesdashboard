@@ -38,13 +38,15 @@ import {
   CheckCircle, 
   XCircle,
   Calendar,
-  DollarSign
+  DollarSign,
+  Plus
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { useLedgerEntries } from "@/hooks/useLedgerEntries";
 import { useSales } from "@/hooks/useSales";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const PaymentLedger = () => {
   const { saleId } = useParams<{ saleId: string }>();
@@ -55,10 +57,15 @@ const PaymentLedger = () => {
   
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editAmount, setEditAmount] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
   const [editPaidDate, setEditPaidDate] = useState("");
   const [editType, setEditType] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [newPaymentAmount, setNewPaymentAmount] = useState("");
+  const [newPaymentDueDate, setNewPaymentDueDate] = useState("");
+  const [newPaymentType, setNewPaymentType] = useState("installment");
 
   const sale = sales.find(s => s.id === saleId);
   const saleEntries = ledgerEntries.filter(entry => entry.sale_id === saleId);
@@ -91,13 +98,18 @@ const PaymentLedger = () => {
       return;
     }
 
-    // Update data with paid amount and date if provided
+    // Update data with new values
     const updateData: any = { 
       amount: newAmount,
       entry_type: editType
     };
     
-    if (editPaidDate) {
+    if (editDueDate) {
+      updateData.due_date = editDueDate;
+    }
+    
+    // Only mark as paid if paid_date is set AND wasn't already paid
+    if (editPaidDate && editingEntry.status !== 'paid') {
       updateData.paid_date = editPaidDate;
       updateData.paid_amount = newAmount;
       updateData.status = 'paid';
@@ -179,9 +191,76 @@ const PaymentLedger = () => {
 
     setEditingEntry(null);
     setEditAmount("");
+    setEditDueDate("");
     setEditPaidDate("");
     setEditType("");
     refetch();
+  };
+
+  const handleAddAdjustedPayment = async () => {
+    if (!newPaymentAmount || !newPaymentDueDate || !saleId) return;
+
+    const paymentAmount = parseFloat(newPaymentAmount);
+    
+    if (paymentAmount <= 0) {
+      toast({
+        title: "Error",
+        description: "Amount must be greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Create new payment entry
+      const { data: newEntry, error: insertError } = await supabase
+        .from('ledger_entries')
+        .insert({
+          sale_id: saleId,
+          amount: paymentAmount,
+          due_date: newPaymentDueDate,
+          entry_type: newPaymentType,
+          status: 'pending',
+          paid_amount: 0,
+          description: `Adjusted ${newPaymentType}`
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Adjust remaining pending installments
+      const remainingInstallments = saleEntries
+        .filter(entry => entry.entry_type === 'installment' && entry.status === 'pending')
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+
+      if (remainingInstallments.length > 0) {
+        const reductionPerInstallment = paymentAmount / remainingInstallments.length;
+        
+        for (const installment of remainingInstallments) {
+          const newAmount = Math.max(0, installment.amount - reductionPerInstallment);
+          await updateLedgerEntry(installment.id, { amount: newAmount });
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: `Added adjusted payment of PKR ${paymentAmount.toLocaleString()}`,
+      });
+
+      setAddPaymentOpen(false);
+      setNewPaymentAmount("");
+      setNewPaymentDueDate("");
+      setNewPaymentType("installment");
+      refetch();
+    } catch (error) {
+      console.error('Error adding adjusted payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add adjusted payment",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteEntry = async () => {
@@ -324,11 +403,69 @@ const PaymentLedger = () => {
 
       {/* Payment Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Payment Schedule</CardTitle>
-          <CardDescription>
-            Manage individual payments and installments
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Payment Schedule</CardTitle>
+            <CardDescription>
+              Manage individual payments and installments
+            </CardDescription>
+          </div>
+          <Dialog open={addPaymentOpen} onOpenChange={setAddPaymentOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Adjusted Payment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Adjusted Payment</DialogTitle>
+                <DialogDescription>
+                  Add a new payment entry. The amount will be deducted from remaining pending installments.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Type</label>
+                  <Select value={newPaymentType} onValueChange={setNewPaymentType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="downpayment">Downpayment</SelectItem>
+                      <SelectItem value="installment">Installment</SelectItem>
+                      <SelectItem value="possession">Possession</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Amount (PKR)</label>
+                  <Input
+                    type="number"
+                    value={newPaymentAmount}
+                    onChange={(e) => setNewPaymentAmount(e.target.value)}
+                    placeholder="Enter amount"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Due Date</label>
+                  <Input
+                    type="date"
+                    value={newPaymentDueDate}
+                    onChange={(e) => setNewPaymentDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddPaymentOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddAdjustedPayment}>
+                  Add Payment
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -379,6 +516,7 @@ const PaymentLedger = () => {
                               onClick={() => {
                                 setEditingEntry(entry);
                                 setEditAmount(entry.amount.toString());
+                                setEditDueDate(entry.due_date);
                                 setEditType(entry.entry_type);
                               }}
                             >
@@ -407,12 +545,20 @@ const PaymentLedger = () => {
                                 </Select>
                               </div>
                               <div>
-                                <label className="text-sm font-medium">Amount</label>
+                                <label className="text-sm font-medium">Amount (PKR)</label>
                                 <Input
                                   type="number"
                                   value={editAmount}
                                   onChange={(e) => setEditAmount(e.target.value)}
                                   placeholder="Enter amount"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Due Date</label>
+                                <Input
+                                  type="date"
+                                  value={editDueDate}
+                                  onChange={(e) => setEditDueDate(e.target.value)}
                                 />
                               </div>
                               <div>
@@ -424,7 +570,7 @@ const PaymentLedger = () => {
                                   placeholder="Select paid date"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Set paid date to mark as paid. Leave empty to just edit amount.
+                                  Set paid date only to mark payment as paid. Leave empty to keep current status.
                                 </p>
                               </div>
                             </div>
