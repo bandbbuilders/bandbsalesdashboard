@@ -31,8 +31,13 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
       // Combine date and time
       const dueDateTime = new Date(`${formData.due_date}T${formData.due_time}`);
       
-      // Get current user for demo mode - use a consistent demo user ID
-      const userId = 'demo-user-id';
+      // Get current user from localStorage
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        throw new Error("User not found");
+      }
+      const user = JSON.parse(userData);
+      const userId = user.id;
 
       const { error } = await supabase
         .from('reminders')

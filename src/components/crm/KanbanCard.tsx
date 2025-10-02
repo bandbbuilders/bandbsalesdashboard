@@ -43,26 +43,28 @@ export const KanbanCard = ({ lead, onLeadClick, onLeadEdit }: KanbanCardProps) =
     <Card
       ref={setNodeRef}
       style={style}
-      className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
-      {...attributes}
-      {...listeners}
+      className="hover:shadow-md transition-shadow"
     >
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <CardTitle className="text-sm font-medium">{lead.name}</CardTitle>
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <p className="text-xs text-muted-foreground">{lead.company}</p>
-      </CardHeader>
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between">
+            <CardTitle className="text-sm font-medium">{lead.name}</CardTitle>
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="text-xs text-muted-foreground">{lead.company}</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-1 text-xs">
+            <p><span className="font-medium">Email:</span> {lead.email || 'N/A'}</p>
+            <p><span className="font-medium">Phone:</span> {lead.phone || 'N/A'}</p>
+            <p><span className="font-medium">Budget:</span> {lead.budget ? `PKR ${lead.budget.toLocaleString()}` : 'N/A'}</p>
+            <p><span className="font-medium">Source:</span> {lead.source || 'N/A'}</p>
+          </div>
+        </CardContent>
+      </div>
+      
       <CardContent className="pt-0">
-        <div className="space-y-1 text-xs">
-          <p><span className="font-medium">Email:</span> {lead.email || 'N/A'}</p>
-          <p><span className="font-medium">Phone:</span> {lead.phone || 'N/A'}</p>
-          <p><span className="font-medium">Budget:</span> {lead.budget ? `PKR ${lead.budget.toLocaleString()}` : 'N/A'}</p>
-          <p><span className="font-medium">Source:</span> {lead.source || 'N/A'}</p>
-        </div>
-        
-        <div className="flex gap-1 mt-3">
+        <div className="flex gap-1">
           <Button 
             variant="outline" 
             size="sm" 

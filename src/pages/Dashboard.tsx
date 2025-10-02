@@ -319,76 +319,95 @@ const Dashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Downpayment Completions by Month
+            Downpayment Completions
           </CardTitle>
-          <CardDescription>Track which clients' downpayments are completing each month</CardDescription>
+          <CardDescription>Track when clients complete their 15% downpayments</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {(() => {
-              // Get downpayment entries and group by month/year
-              const downpaymentEntries = ledgerEntries.filter(entry => 
-                entry.entry_type === 'downpayment' && entry.status !== 'paid'
-              );
+              // Calculate downpayment completion for each sale
+              const downpaymentCompletions = sales.map(sale => {
+                // Calculate expected 15% downpayment
+                const expectedDownpayment = sale.unit_total_price * 0.15;
+                
+                // Get all downpayment entries for this sale
+                const downpaymentEntries = ledgerEntries.filter(entry => 
+                  entry.sale_id === sale.id && entry.entry_type === 'downpayment'
+                );
+                
+                // Calculate total paid and pending
+                const totalPaid = downpaymentEntries
+                  .filter(e => e.status === 'paid')
+                  .reduce((sum, e) => sum + e.paid_amount, 0);
+                
+                const pendingEntries = downpaymentEntries
+                  .filter(e => e.status !== 'paid')
+                  .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+                
+                // Find completion date (when total paid + pending reaches 15%)
+                let cumulativeAmount = totalPaid;
+                let completionDate = null;
+                
+                for (const entry of pendingEntries) {
+                  cumulativeAmount += entry.amount;
+                  if (cumulativeAmount >= expectedDownpayment) {
+                    completionDate = entry.due_date;
+                    break;
+                  }
+                }
+                
+                const percentagePaid = (totalPaid / expectedDownpayment) * 100;
+                
+                return {
+                  sale,
+                  expectedDownpayment,
+                  totalPaid,
+                  percentagePaid,
+                  completionDate,
+                  isComplete: totalPaid >= expectedDownpayment
+                };
+              }).filter(item => !item.isComplete); // Only show incomplete downpayments
               
-              // Group by month/year
-              const groupedByMonth = downpaymentEntries.reduce((acc, entry) => {
-                const date = parseISO(entry.due_date);
-                const monthYear = format(date, 'MMMM yyyy');
-                
-                if (!acc[monthYear]) {
-                  acc[monthYear] = [];
-                }
-                
-                // Find the sale for this entry
-                const sale = sales.find(s => s.id === entry.sale_id);
-                if (sale) {
-                  acc[monthYear].push({
-                    ...entry,
-                    customerName: sale.customer.name,
-                    unitNumber: sale.unit_number
-                  });
-                }
-                
-                return acc;
-              }, {} as Record<string, any[]>);
-
-              // Sort months chronologically
-              const sortedMonths = Object.keys(groupedByMonth).sort((a, b) => {
-                return new Date(a).getTime() - new Date(b).getTime();
+              // Sort by completion date
+              downpaymentCompletions.sort((a, b) => {
+                if (!a.completionDate) return 1;
+                if (!b.completionDate) return -1;
+                return new Date(a.completionDate).getTime() - new Date(b.completionDate).getTime();
               });
 
-              if (sortedMonths.length === 0) {
+              if (downpaymentCompletions.length === 0) {
                 return (
                   <div className="text-center py-8 text-muted-foreground">
-                    No pending downpayments found
+                    All downpayments are complete! 🎉
                   </div>
                 );
               }
 
-              return sortedMonths.map(monthYear => (
-                <div key={monthYear} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">{monthYear}</h3>
-                    <Badge variant="secondary">
-                      {groupedByMonth[monthYear].length} payment{groupedByMonth[monthYear].length !== 1 ? 's' : ''}
-                    </Badge>
+              return downpaymentCompletions.map(item => (
+                <div key={item.sale.id} className="p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-semibold text-lg">{item.sale.customer.name}</p>
+                      <p className="text-sm text-muted-foreground">Unit {item.sale.unit_number}</p>
+                    </div>
+                    {item.completionDate && (
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-primary">
+                          {format(parseISO(item.completionDate), 'dd MMM yyyy')}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Completion Date</p>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    {groupedByMonth[monthYear].map(entry => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
-                        <div>
-                          <p className="font-medium">{entry.customerName}</p>
-                          <p className="text-sm text-muted-foreground">Unit {entry.unitNumber}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">PKR {entry.amount.toLocaleString()}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Due: {format(parseISO(entry.due_date), 'dd MMM')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                    <div className="flex justify-between text-sm">
+                      <span>Expected: PKR {item.expectedDownpayment.toLocaleString()}</span>
+                      <span className={item.percentagePaid >= 100 ? "text-success font-medium" : ""}>
+                        Paid: PKR {item.totalPaid.toLocaleString()} ({item.percentagePaid.toFixed(0)}%)
+                      </span>
+                    </div>
+                    <Progress value={Math.min(item.percentagePaid, 100)} className="h-2" />
                   </div>
                 </div>
               ));
