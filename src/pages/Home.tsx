@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, BarChart3, Users, Target } from "lucide-react";
+import { Building2, BarChart3, Users, Target, FileText, TrendingUp } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -22,6 +22,22 @@ const Home = () => {
       icon: Users,
       color: "bg-green-500",
       features: ["Lead Management", "Stage Tracking", "Conversations", "Reminders & Tasks"]
+    },
+    {
+      id: "tasks",
+      title: "Task Manager",
+      description: "Organize tasks, track progress, and manage department workflows efficiently.",
+      icon: FileText,
+      color: "bg-purple-500",
+      features: ["Task Boards", "Department Management", "Priority Tracking", "Team Collaboration"]
+    },
+    {
+      id: "accounting",
+      title: "Accounting",
+      description: "Manage general ledger, track expenses, and generate comprehensive financial reports.",
+      icon: TrendingUp,
+      color: "bg-orange-500",
+      features: ["Journal Entries", "T-Accounts", "P&L Statement", "Balance Sheet"]
     }
   ];
 
@@ -48,7 +64,10 @@ const Home = () => {
           {applications.map((app) => {
             const Icon = app.icon;
             return (
-              <Card key={app.id} className="relative group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-primary/20" onClick={() => navigate(`/${app.id}`)}>
+              <Card key={app.id} className="relative group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-primary/20" onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/${app.id}`);
+              }}>
                 <CardHeader className="pb-4">
                   <div className="flex items-center space-x-4">
                     <div className={`p-3 rounded-lg ${app.color} text-white`}>
@@ -72,7 +91,10 @@ const Home = () => {
                       ))}
                     </ul>
                   </div>
-                  <Button className="w-full mt-6 group-hover:bg-primary/90" onClick={() => navigate(`/${app.id}`)}>
+                  <Button className="w-full mt-6 group-hover:bg-primary/90" onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/${app.id}`);
+                  }}>
                     Launch {app.title}
                   </Button>
                 </CardContent>
