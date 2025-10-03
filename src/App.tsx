@@ -63,14 +63,14 @@ const App = () => (
             <Route path="leads/:id/edit" element={<EditLead />} />
             <Route path="reminders" element={<RemindersPage />} />
           </Route>
-          <Route path="/tasks/*" element={
+          <Route path="/tasks" element={
             <AuthGuard>
               <AppLayout />
             </AuthGuard>
           }>
             <Route index element={<TaskManager />} />
           </Route>
-          <Route path="/accounting/*" element={
+          <Route path="/accounting" element={
             <AuthGuard>
               <AppLayout />
             </AuthGuard>

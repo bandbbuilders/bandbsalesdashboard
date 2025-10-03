@@ -168,7 +168,7 @@ const NewSale = () => {
       }
       
       // Get current user from localStorage (mock authentication)
-      const userData = localStorage.getItem("user");
+      const userData = localStorage.getItem("currentUser");
       // For now, create a default user since authentication isn't fully set up
       const defaultUser = userData ? JSON.parse(userData) : { id: 'default-user', email: 'user@example.com', name: 'Default User' };
       
