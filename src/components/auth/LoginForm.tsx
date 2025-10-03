@@ -9,35 +9,39 @@ import { Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-// Demo user accounts with different roles
+// Demo user accounts with different roles - using fixed UUIDs for consistency
 const DEMO_ACCOUNTS = {
   superadmin: {
     email: "superadmin",
     password: "super2025",
     role: "superadmin",
     name: "Super Administrator",
-    route: "/sales"
+    route: "/sales",
+    id: "00000000-0000-0000-0000-000000000001"
   },
   admin: {
     email: "admin",
     password: "admin2025", 
     role: "admin",
     name: "Administrator",
-    route: "/sales"
+    route: "/sales",
+    id: "00000000-0000-0000-0000-000000000002"
   },
   manager: {
     email: "manager",
     password: "manager2025",
     role: "manager", 
     name: "Sales Manager",
-    route: "/crm"
+    route: "/crm",
+    id: "00000000-0000-0000-0000-000000000003"
   },
   agent: {
     email: "agent",
     password: "agent2025",
     role: "agent",
     name: "Sales Agent", 
-    route: "/crm"
+    route: "/crm",
+    id: "00000000-0000-0000-0000-000000000004"
   }
 };
 
@@ -61,9 +65,28 @@ export const LoginForm = () => {
       );
 
       if (account) {
+        // Ensure demo user exists in database
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', account.id)
+          .maybeSingle();
+
+        if (!existingUser) {
+          // Create demo user in database
+          await supabase
+            .from('users')
+            .insert({
+              id: account.id,
+              email: `${account.role}@demo.com`,
+              name: account.name,
+              role: account.role
+            });
+        }
+
         // For demo accounts, we'll use localStorage to track the logged in user
         localStorage.setItem('currentUser', JSON.stringify({
-          id: `demo-${account.role}`,
+          id: account.id,
           email: `${account.role}@demo.com`,
           role: account.role,
           name: account.name

@@ -167,44 +167,20 @@ const NewSale = () => {
         return;
       }
       
-      // Get current user from localStorage (mock authentication)
+      // Get current user from localStorage
       const userData = localStorage.getItem("currentUser");
-      // For now, create a default user since authentication isn't fully set up
-      const defaultUser = userData ? JSON.parse(userData) : { id: 'default-user', email: 'user@example.com', name: 'Default User' };
+      if (!userData) {
+        toast({
+          title: "Authentication Error",
+          description: "Please login first",
+          variant: "destructive",
+        });
+        navigate("/login");
+        return;
+      }
       
-      const user = defaultUser;
+      const user = JSON.parse(userData);
       console.log("Current user:", user);
-      
-      // Check if user exists in users table, if not create them
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-      
-      if (userCheckError && userCheckError.code !== 'PGRST116') {
-        console.error("Error checking user:", userCheckError);
-        throw userCheckError;
-      }
-      
-      if (!existingUser) {
-        // Create user record if it doesn't exist
-        const { error: createUserError } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            email: user.email || '',
-            name: user.name || user.email || 'User',
-            role: user.role || 'agent'
-          });
-        
-        if (createUserError) {
-          console.error("Error creating user:", createUserError);
-          throw createUserError;
-        }
-      }
-      
-      console.log("User authenticated:", user.id);
       
       // Create customer first
       console.log("Creating customer...");
