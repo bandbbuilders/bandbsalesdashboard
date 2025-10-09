@@ -9,7 +9,7 @@ import { Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-// Demo user accounts with different roles - using fixed UUIDs for consistency
+// Demo user accounts with different roles - using existing UUIDs from database
 const DEMO_ACCOUNTS = {
   superadmin: {
     email: "superadmin",
@@ -17,23 +17,23 @@ const DEMO_ACCOUNTS = {
     role: "superadmin",
     name: "Super Administrator",
     route: "/sales",
-    id: "00000000-0000-0000-0000-000000000001"
+    id: "11111111-1111-1111-1111-111111111111"
   },
   admin: {
     email: "admin",
     password: "admin2025", 
     role: "admin",
-    name: "Administrator",
+    name: "Admin User",
     route: "/sales",
-    id: "00000000-0000-0000-0000-000000000002"
+    id: "11111111-1111-1111-1111-111111111111"
   },
   manager: {
     email: "manager",
     password: "manager2025",
     role: "manager", 
-    name: "Sales Manager",
+    name: "Manager User",
     route: "/crm",
-    id: "00000000-0000-0000-0000-000000000003"
+    id: "33333333-3333-3333-3333-333333333333"
   },
   agent: {
     email: "agent",
@@ -41,7 +41,7 @@ const DEMO_ACCOUNTS = {
     role: "agent",
     name: "Sales Agent", 
     route: "/crm",
-    id: "00000000-0000-0000-0000-000000000004"
+    id: "22222222-2222-2222-2222-222222222222"
   }
 };
 
