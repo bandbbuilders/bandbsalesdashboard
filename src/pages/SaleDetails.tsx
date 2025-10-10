@@ -5,7 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Edit, Calendar, User, MapPin, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Edit, Calendar, User, MapPin, Phone, Mail, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Sale, Customer, User as UserType } from "@/types";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +26,7 @@ const SaleDetails = () => {
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserType | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -105,6 +116,33 @@ const SaleDetails = () => {
     return user?.role === "admin" || (user?.role === "agent" && sale.agent_id === user.id);
   };
 
+  const handleDelete = async () => {
+    if (!sale) return;
+
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', sale.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Sale deleted successfully",
+      });
+      
+      navigate("/sales");
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete sale",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -150,10 +188,19 @@ const SaleDetails = () => {
         </div>
         
         {canEdit(sale) && (
-          <Button onClick={() => navigate(`/sales/${sale.id}/edit`)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Sale
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate(`/sales/${sale.id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Sale
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
         )}
       </div>
 
@@ -291,6 +338,24 @@ const SaleDetails = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the sale for Unit {sale.unit_number}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
