@@ -180,26 +180,6 @@ const NewSale = () => {
       }
       
       const user = JSON.parse(userData);
-      console.log("Current user data:", user);
-      console.log("User ID type:", typeof user.id, "Value:", user.id);
-      
-      // Verify user exists in database
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-      
-      console.log("Database user check:", existingUser, userCheckError);
-      
-      if (!existingUser) {
-        toast({
-          title: "Error",
-          description: "User not found in database. Please contact support.",
-          variant: "destructive",
-        });
-        return;
-      }
       
       // Create customer first
       console.log("Creating customer...");
