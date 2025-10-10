@@ -181,22 +181,6 @@ const NewSale = () => {
       
       const user = JSON.parse(userData);
       
-      // Fetch the actual user from database by email to get the UUID
-      const { data: dbUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', user.email)
-        .maybeSingle();
-      
-      if (userError || !dbUser) {
-        toast({
-          title: "Error",
-          description: "Could not find user in database",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       // Create customer first
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
@@ -214,12 +198,12 @@ const NewSale = () => {
         throw customerError;
       }
 
-      // Create sale
+      // Create sale - use user.id directly (it's already a UUID from LoginForm)
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           customer_id: customerData.id,
-          agent_id: dbUser.id,
+          agent_id: user.id,
           unit_number: unitNumber.trim(),
           unit_total_price: parseFloat(unitTotalPrice),
           status: 'active',
