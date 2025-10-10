@@ -72,13 +72,15 @@ export const LoginForm = () => {
           .eq('id', account.id)
           .maybeSingle();
 
+        const demoEmail = account.role === 'superadmin' ? 'admin@example.com' : `${account.role}@example.com`;
+        
         if (!existingUser) {
           // Create demo user in database
           await supabase
             .from('users')
             .insert({
               id: account.id,
-              email: `${account.role}@demo.com`,
+              email: demoEmail,
               name: account.name,
               role: account.role
             });
@@ -87,7 +89,7 @@ export const LoginForm = () => {
         // For demo accounts, we'll use localStorage to track the logged in user
         localStorage.setItem('currentUser', JSON.stringify({
           id: account.id,
-          email: `${account.role}@demo.com`,
+          email: demoEmail,
           role: account.role,
           name: account.name
         }));
