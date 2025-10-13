@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, BarChart3, Users, Target, FileText, TrendingUp } from "lucide-react";
+import { Building2, BarChart3, Users, Target, FileText, TrendingUp, PenTool } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -38,6 +38,14 @@ const Home = () => {
       icon: TrendingUp,
       color: "bg-orange-500",
       features: ["Journal Entries", "T-Accounts", "P&L Statement", "Balance Sheet"]
+    },
+    {
+      id: "scripts",
+      title: "Script Writer",
+      description: "Generate professional marketing scripts using AI with customizable baselines.",
+      icon: PenTool,
+      color: "bg-pink-500",
+      features: ["AI Script Generation", "Custom Baselines", "Template Management", "Marketing Content"]
     }
   ];
 
