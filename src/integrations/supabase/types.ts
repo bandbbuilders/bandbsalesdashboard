@@ -116,6 +116,41 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_scripts: {
+        Row: {
+          baseline_id: string | null
+          created_at: string
+          id: string
+          prompt: string
+          script_content: string
+          user_id: string | null
+        }
+        Insert: {
+          baseline_id?: string | null
+          created_at?: string
+          id?: string
+          prompt: string
+          script_content: string
+          user_id?: string | null
+        }
+        Update: {
+          baseline_id?: string | null
+          created_at?: string
+          id?: string
+          prompt?: string
+          script_content?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_scripts_baseline_id_fkey"
+            columns: ["baseline_id"]
+            isOneToOne: false
+            referencedRelation: "script_baselines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           amount: number
@@ -486,6 +521,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      script_baselines: {
+        Row: {
+          baseline_content: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          baseline_content: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          baseline_content?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       task_comments: {
         Row: {

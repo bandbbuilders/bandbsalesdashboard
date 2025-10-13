@@ -24,6 +24,7 @@ import EditLead from "./pages/crm/EditLead";
 import RemindersPage from "./pages/crm/RemindersPage";
 import TaskManager from "./pages/TaskManager";
 import Accounting from "./pages/Accounting";
+import ScriptWriter from "./pages/ScriptWriter";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,13 @@ const App = () => (
             </AuthGuard>
           }>
             <Route index element={<Accounting />} />
+          </Route>
+          <Route path="/scripts" element={
+            <AuthGuard>
+              <AppLayout />
+            </AuthGuard>
+          }>
+            <Route index element={<ScriptWriter />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -21,7 +21,8 @@ import {
   Menu,
   X,
   CheckSquare,
-  Home
+  Home,
+  PenTool
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ export const AppLayout = () => {
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
     { name: "Task Manager", href: "/tasks", icon: CheckSquare, roles: ["admin", "agent", "manager"] },
+    { name: "Script Writer", href: "/scripts", icon: PenTool, roles: ["admin", "agent", "manager"] },
   ];
 
   const filteredNavigation = navigation.filter(item => 
