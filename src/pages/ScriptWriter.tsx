@@ -244,7 +244,6 @@ const ScriptWriter = () => {
                   <SelectValue placeholder="No baseline selected" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No baseline</SelectItem>
                   {baselines.map((baseline) => (
                     <SelectItem key={baseline.id} value={baseline.id}>
                       {baseline.title}
