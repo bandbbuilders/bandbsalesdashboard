@@ -36,7 +36,7 @@ const ScriptWriter = () => {
   const [baselines, setBaselines] = useState<Baseline[]>([]);
   const [selectedBaseline, setSelectedBaseline] = useState<string>("");
   const [prompt, setPrompt] = useState("");
-  const [generatedScript, setGeneratedScript] = useState("");
+  const [generatedScripts, setGeneratedScripts] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showNewBaselineDialog, setShowNewBaselineDialog] = useState(false);
   const [newBaseline, setNewBaseline] = useState({
@@ -99,10 +99,19 @@ const ScriptWriter = () => {
   };
 
   const handleGenerateScript = async () => {
+    if (!selectedBaseline) {
+      toast({
+        title: "Error",
+        description: "Please select a baseline first",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!prompt.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a prompt",
+        description: "Please enter a generation prompt (e.g., 'Generate 5 scripts')",
         variant: "destructive",
       });
       return;
@@ -121,30 +130,34 @@ const ScriptWriter = () => {
 
       if (error) throw error;
 
-      setGeneratedScript(data.script);
+      const scripts = data.scripts || [data.script];
+      setGeneratedScripts(scripts);
       
       // Save to database
       const userStr = localStorage.getItem('user');
       if (userStr) {
         const user = JSON.parse(userStr);
-        await supabase.from('generated_scripts').insert({
-          user_id: user.id,
-          baseline_id: selectedBaseline || null,
-          prompt,
-          script_content: data.script
-        });
+        const insertPromises = scripts.map((script: string) => 
+          supabase.from('generated_scripts').insert({
+            user_id: user.id,
+            baseline_id: selectedBaseline || null,
+            prompt,
+            script_content: script
+          })
+        );
+        await Promise.all(insertPromises);
         fetchSavedScripts();
       }
 
       toast({
         title: "Success",
-        description: "Script generated successfully!",
+        description: `Generated ${scripts.length} script(s) successfully!`,
       });
     } catch (error) {
       console.error('Error generating script:', error);
       toast({
         title: "Error",
-        description: "Failed to generate script",
+        description: "Failed to generate scripts",
         variant: "destructive",
       });
     } finally {
@@ -238,10 +251,10 @@ const ScriptWriter = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Select Baseline (Optional)</Label>
+              <Label>Select Baseline *</Label>
               <Select value={selectedBaseline} onValueChange={setSelectedBaseline}>
                 <SelectTrigger>
-                  <SelectValue placeholder="No baseline selected" />
+                  <SelectValue placeholder="Select a baseline" />
                 </SelectTrigger>
                 <SelectContent>
                   {baselines.map((baseline) => (
@@ -251,16 +264,24 @@ const ScriptWriter = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {selectedBaseline && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {baselines.find(b => b.id === selectedBaseline)?.description}
+                </p>
+              )}
             </div>
 
             <div>
-              <Label>Your Prompt</Label>
+              <Label>Generation Prompt *</Label>
               <Textarea
-                placeholder="Describe the marketing script you want to generate..."
+                placeholder="e.g., 'Generate 5 scripts for social media promotion'"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                rows={6}
+                rows={4}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Specify how many scripts you want and any additional requirements
+              </p>
             </div>
 
             <Button 
@@ -285,19 +306,29 @@ const ScriptWriter = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Generated Script</CardTitle>
+            <CardTitle>Generated Scripts</CardTitle>
+            {generatedScripts.length > 0 && (
+              <CardDescription>{generatedScripts.length} script(s) generated</CardDescription>
+            )}
           </CardHeader>
           <CardContent>
-            {generatedScript ? (
-              <Textarea
-                value={generatedScript}
-                readOnly
-                rows={15}
-                className="font-mono text-sm"
-              />
+            {generatedScripts.length > 0 ? (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                {generatedScripts.map((script, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-2">Script {index + 1}</h3>
+                    <Textarea
+                      value={script}
+                      readOnly
+                      rows={8}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="text-center text-muted-foreground py-12">
-                Your generated script will appear here
+                Your generated scripts will appear here
               </div>
             )}
           </CardContent>
@@ -359,13 +390,16 @@ const ScriptWriter = () => {
               />
             </div>
             <div>
-              <Label>Baseline Content *</Label>
+              <Label>Baseline Prompt *</Label>
               <Textarea
-                placeholder="Enter the template/baseline content that AI should follow..."
+                placeholder="Enter the baseline prompt that defines how scripts should be generated (e.g., 'Generate professional marketing scripts that focus on benefits and include a strong call-to-action')"
                 value={newBaseline.baseline_content}
                 onChange={(e) => setNewBaseline({ ...newBaseline, baseline_content: e.target.value })}
                 rows={10}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                This prompt will guide the AI when generating scripts
+              </p>
             </div>
           </div>
           <DialogFooter>

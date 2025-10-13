@@ -16,11 +16,23 @@ serve(async (req) => {
   try {
     const { prompt, baseline } = await req.json();
 
-    console.log('Generating script with baseline:', baseline?.substring(0, 100));
+    console.log('Generating script(s) with baseline:', baseline?.substring(0, 100));
+    console.log('User prompt:', prompt);
+
+    // Extract number of scripts requested from prompt
+    const numberMatch = prompt.match(/(\d+)\s*scripts?/i);
+    const requestedCount = numberMatch ? parseInt(numberMatch[1]) : 1;
+    const count = Math.min(requestedCount, 10); // Limit to max 10 scripts
+
+    console.log(`Generating ${count} script(s)`);
 
     const systemPrompt = baseline 
-      ? `You are a professional marketing script writer. Generate scripts based on the following baseline/template:\n\n${baseline}\n\nFollow the style, tone, and structure of this baseline while incorporating the user's specific requirements.`
+      ? `You are a professional marketing script writer. Generate scripts based on the following baseline/template:\n\n${baseline}\n\nFollow the style, tone, and structure defined in this baseline while incorporating the user's specific requirements.`
       : 'You are a professional marketing script writer. Generate creative and engaging marketing scripts based on the user\'s requirements.';
+
+    const userPrompt = count > 1
+      ? `${prompt}\n\nIMPORTANT: Generate exactly ${count} distinct scripts. Separate each script with "---SCRIPT_SEPARATOR---" marker. Each script should be unique and complete.`
+      : prompt;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -32,10 +44,9 @@ serve(async (req) => {
         model: 'gpt-5-mini-2025-08-07',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.8,
-        max_completion_tokens: 2000,
+        max_completion_tokens: count > 1 ? 4000 : 2000,
       }),
     });
 
@@ -46,11 +57,25 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const generatedScript = data.choices[0].message.content;
+    const generatedContent = data.choices[0].message.content;
 
-    console.log('Script generated successfully');
+    // Split into multiple scripts if separator is present
+    let scripts: string[];
+    if (count > 1 && generatedContent.includes('---SCRIPT_SEPARATOR---')) {
+      scripts = generatedContent
+        .split('---SCRIPT_SEPARATOR---')
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+    } else {
+      scripts = [generatedContent];
+    }
 
-    return new Response(JSON.stringify({ script: generatedScript }), {
+    console.log(`Successfully generated ${scripts.length} script(s)`);
+
+    return new Response(JSON.stringify({ 
+      scripts,
+      script: scripts[0] // For backward compatibility
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
