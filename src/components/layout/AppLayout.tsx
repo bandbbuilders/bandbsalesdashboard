@@ -58,8 +58,6 @@ export const AppLayout = () => {
     { name: "Sales List", href: "/sales/list", icon: FileText, roles: ["admin", "agent", "manager"] },
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
-    { name: "Task Manager", href: "/tasks", icon: CheckSquare, roles: ["admin", "agent", "manager"] },
-    { name: "Script Writer", href: "/scripts", icon: PenTool, roles: ["admin", "agent", "manager"] },
   ];
 
   const filteredNavigation = navigation.filter(item => 
