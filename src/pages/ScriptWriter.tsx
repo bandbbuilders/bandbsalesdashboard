@@ -231,16 +231,14 @@ const ScriptWriter = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Script Writer</h1>
-          <p className="text-muted-foreground">Generate marketing scripts with AI</p>
-        </div>
-        {userRole === 'admin' && (
-          <Button onClick={() => setShowNewBaselineDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create New Baseline
-          </Button>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold">Script Writer</h1>
+        <p className="text-muted-foreground">Generate marketing scripts with AI</p>
+      </div>
+      <Button onClick={() => setShowNewBaselineDialog(true)}>
+        <Plus className="mr-2 h-4 w-4" />
+        Create New Baseline
+      </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -335,10 +333,10 @@ const ScriptWriter = () => {
         </Card>
       </div>
 
-      {userRole === 'admin' && baselines.length > 0 && (
+      {baselines.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Manage Baselines</CardTitle>
+            <CardTitle>My Baselines</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
