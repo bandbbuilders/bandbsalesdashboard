@@ -55,7 +55,7 @@ const ScriptWriter = () => {
   }, []);
 
   const fetchUserRole = async () => {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('currentUser');
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserRole(user.role);
@@ -81,7 +81,7 @@ const ScriptWriter = () => {
   };
 
   const fetchSavedScripts = async () => {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('currentUser');
     if (!userStr) return;
 
     const user = JSON.parse(userStr);
@@ -134,7 +134,7 @@ const ScriptWriter = () => {
       setGeneratedScripts(scripts);
       
       // Save to database
-      const userStr = localStorage.getItem('user');
+      const userStr = localStorage.getItem('currentUser');
       if (userStr) {
         const user = JSON.parse(userStr);
         const insertPromises = scripts.map((script: string) => 
@@ -175,7 +175,7 @@ const ScriptWriter = () => {
       return;
     }
 
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('currentUser');
     if (!userStr) {
       console.error('No user found in localStorage');
       toast({
