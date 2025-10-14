@@ -176,24 +176,35 @@ const ScriptWriter = () => {
     }
 
     const userStr = localStorage.getItem('user');
-    if (!userStr) return;
+    if (!userStr) {
+      console.error('No user found in localStorage');
+      toast({
+        title: "Error",
+        description: "User not found. Please log in again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const user = JSON.parse(userStr);
+    console.log('Creating baseline for user:', user.id);
 
-    const { error } = await supabase.from('script_baselines').insert({
+    const { data, error } = await supabase.from('script_baselines').insert({
       title: newBaseline.title,
       description: newBaseline.description,
       baseline_content: newBaseline.baseline_content,
       created_by: user.id
-    });
+    }).select();
 
     if (error) {
+      console.error('Error creating baseline:', error);
       toast({
         title: "Error",
-        description: "Failed to create baseline",
+        description: `Failed to create baseline: ${error.message}`,
         variant: "destructive",
       });
     } else {
+      console.log('Baseline created successfully:', data);
       toast({
         title: "Success",
         description: "Baseline created successfully",
