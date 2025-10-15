@@ -8,9 +8,15 @@ import { TAccounts } from "@/components/accounting/TAccounts";
 import { ProfitAndLoss } from "@/components/accounting/ProfitAndLoss";
 import { BalanceSheet } from "@/components/accounting/BalanceSheet";
 import { CashFlow } from "@/components/accounting/CashFlow";
+import { ImportExpenses } from "@/components/accounting/ImportExpenses";
 
 const Accounting = () => {
   const [activeTab, setActiveTab] = useState("journal");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleImportComplete = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   return (
     <div className="space-y-6 p-8">
@@ -46,7 +52,8 @@ const Accounting = () => {
         </TabsList>
 
         <TabsContent value="journal" className="space-y-4">
-          <GeneralJournal />
+          <ImportExpenses onImportComplete={handleImportComplete} />
+          <GeneralJournal key={refreshKey} />
         </TabsContent>
 
         <TabsContent value="taccounts" className="space-y-4">
