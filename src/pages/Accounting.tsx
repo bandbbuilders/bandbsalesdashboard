@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Plus, BookOpen, FileText, TrendingUp, DollarSign } from "lucide-react";
+import { LayoutDashboard, BookOpen, FileText, TrendingUp, DollarSign, Activity } from "lucide-react";
+import { AccountingDashboard } from "@/components/accounting/AccountingDashboard";
 import { GeneralJournal } from "@/components/accounting/GeneralJournal";
 import { TAccounts } from "@/components/accounting/TAccounts";
 import { ProfitAndLoss } from "@/components/accounting/ProfitAndLoss";
@@ -11,7 +10,7 @@ import { CashFlow } from "@/components/accounting/CashFlow";
 import { ImportExpenses } from "@/components/accounting/ImportExpenses";
 
 const Accounting = () => {
-  const [activeTab, setActiveTab] = useState("journal");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleImportComplete = () => {
@@ -19,37 +18,46 @@ const Accounting = () => {
   };
 
   return (
-    <div className="space-y-6 p-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Accounting</h1>
-          <p className="text-muted-foreground">Manage your financial records and reports</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="space-y-6 p-4 md:p-8">
+        <div className="flex flex-col space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Financial Management
+          </h1>
+          <p className="text-muted-foreground text-lg">Track your financial health and performance metrics</p>
         </div>
-      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="journal">
-            <BookOpen className="h-4 w-4 mr-2" />
-            Journal Entries
-          </TabsTrigger>
-          <TabsTrigger value="taccounts">
-            <FileText className="h-4 w-4 mr-2" />
-            T-Accounts
-          </TabsTrigger>
-          <TabsTrigger value="pnl">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            P&L Statement
-          </TabsTrigger>
-          <TabsTrigger value="balance">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Balance Sheet
-          </TabsTrigger>
-          <TabsTrigger value="cashflow">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Cash Flow
-          </TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6 h-auto p-1 bg-card/50 backdrop-blur-sm">
+            <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <LayoutDashboard className="h-4 w-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="journal" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Journal
+            </TabsTrigger>
+            <TabsTrigger value="taccounts" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <FileText className="h-4 w-4 mr-2" />
+              T-Accounts
+            </TabsTrigger>
+            <TabsTrigger value="pnl" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              P&L
+            </TabsTrigger>
+            <TabsTrigger value="balance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Balance Sheet
+            </TabsTrigger>
+            <TabsTrigger value="cashflow" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Activity className="h-4 w-4 mr-2" />
+              Cash Flow
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-4">
+            <AccountingDashboard />
+          </TabsContent>
 
         <TabsContent value="journal" className="space-y-4">
           <ImportExpenses onImportComplete={handleImportComplete} />
@@ -72,6 +80,7 @@ const Accounting = () => {
           <CashFlow />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 };
