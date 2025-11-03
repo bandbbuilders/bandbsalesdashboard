@@ -77,10 +77,10 @@ export const useLedgerEntries = () => {
         if (entry) {
           await supabase.from('journal_entries').insert({
             date: updates.paid_date || new Date().toISOString().split('T')[0],
-            debit_account: 'Cash/Bank',
-            credit_account: 'Accounts Receivable',
+            debit_account: 'Cash',
+            credit_account: 'Sales Revenue',
             amount: updates.paid_amount,
-            description: `Payment received for ${entry.entry_type} - Sale ${entry.sale_id.substring(0, 8)}`
+            description: `Collection from ${entry.entry_type} - Sale ${entry.sale_id.substring(0, 8)}`
           });
         }
       }

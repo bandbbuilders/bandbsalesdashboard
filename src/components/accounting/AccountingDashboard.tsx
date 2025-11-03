@@ -68,6 +68,17 @@ export const AccountingDashboard = () => {
         }
       });
 
+      // Calculate cash balance from Cash account in journal entries
+      let cashFromJournal = 0;
+      journalEntries?.forEach((entry) => {
+        if (entry.debit_account === 'Cash') {
+          cashFromJournal += parseFloat(entry.amount?.toString() || '0');
+        }
+        if (entry.credit_account === 'Cash') {
+          cashFromJournal -= parseFloat(entry.amount?.toString() || '0');
+        }
+      });
+
       const netIncome = totalRevenue - totalExpenses;
 
       // Calculate monthly trend
@@ -92,7 +103,7 @@ export const AccountingDashboard = () => {
         .slice(-6);
 
       setStats({
-        cashBalance,
+        cashBalance: cashFromJournal, // Use cash from journal entries instead
         totalRevenue,
         totalExpenses,
         accountsReceivable,
