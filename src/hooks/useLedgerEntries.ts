@@ -71,6 +71,20 @@ export const useLedgerEntries = () => {
 
       if (error) throw error;
 
+      // If payment is being marked as paid, create journal entry
+      if (updates.status === 'paid' && updates.paid_amount && updates.paid_amount > 0) {
+        const entry = ledgerEntries.find(e => e.id === entryId);
+        if (entry) {
+          await supabase.from('journal_entries').insert({
+            date: updates.paid_date || new Date().toISOString().split('T')[0],
+            debit_account: 'Cash/Bank',
+            credit_account: 'Accounts Receivable',
+            amount: updates.paid_amount,
+            description: `Payment received for ${entry.entry_type} - Sale ${entry.sale_id.substring(0, 8)}`
+          });
+        }
+      }
+
       toast({
         title: "Success",
         description: "Ledger entry updated successfully",
