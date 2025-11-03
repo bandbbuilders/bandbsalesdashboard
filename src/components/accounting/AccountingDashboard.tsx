@@ -27,7 +27,44 @@ export const AccountingDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    syncPaidLedgerEntries(); // Sync existing paid entries to journal
   }, []);
+
+  const syncPaidLedgerEntries = async () => {
+    try {
+      // Get all paid ledger entries
+      const { data: paidEntries, error: ledgerError } = await supabase
+        .from('ledger_entries')
+        .select('*')
+        .eq('status', 'paid');
+
+      if (ledgerError) throw ledgerError;
+
+      // For each paid entry, check if journal entry exists
+      for (const entry of paidEntries || []) {
+        const { data: existingJournal, error: checkError } = await supabase
+          .from('journal_entries')
+          .select('id')
+          .eq('description', `Collection from ${entry.entry_type} - Sale ${entry.sale_id.substring(0, 8)}`)
+          .maybeSingle();
+
+        if (checkError) throw checkError;
+
+        // If no journal entry exists, create one
+        if (!existingJournal && entry.paid_amount > 0) {
+          await supabase.from('journal_entries').insert({
+            date: entry.paid_date || new Date().toISOString().split('T')[0],
+            debit_account: 'Cash',
+            credit_account: 'Sales Revenue',
+            amount: entry.paid_amount,
+            description: `Collection from ${entry.entry_type} - Sale ${entry.sale_id.substring(0, 8)}`
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing ledger entries:', error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
