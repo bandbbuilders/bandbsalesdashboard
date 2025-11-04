@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard, AlertCircle } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { formatCurrency } from "@/lib/formatNumber";
 
 interface DashboardStats {
   cashBalance: number;
@@ -179,7 +180,7 @@ export const AccountingDashboard = () => {
             <Wallet className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">PKR {stats.cashBalance.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-primary">PKR {formatCurrency(stats.cashBalance)}</div>
             <p className="text-xs text-muted-foreground mt-1">From sales payments</p>
           </CardContent>
         </Card>
@@ -190,7 +191,7 @@ export const AccountingDashboard = () => {
             <TrendingUp className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">PKR {stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-green-600">PKR {formatCurrency(stats.totalRevenue)}</div>
             <p className="text-xs text-muted-foreground mt-1">All-time earnings</p>
           </CardContent>
         </Card>
@@ -201,7 +202,7 @@ export const AccountingDashboard = () => {
             <TrendingDown className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">PKR {stats.totalExpenses.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-orange-600">PKR {formatCurrency(stats.totalExpenses)}</div>
             <p className="text-xs text-muted-foreground mt-1">All-time costs</p>
           </CardContent>
         </Card>
@@ -212,7 +213,7 @@ export const AccountingDashboard = () => {
             <CreditCard className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">PKR {stats.accountsReceivable.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-blue-600">PKR {formatCurrency(stats.accountsReceivable)}</div>
             <p className="text-xs text-muted-foreground mt-1">Pending payments</p>
           </CardContent>
         </Card>
@@ -230,7 +231,7 @@ export const AccountingDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className={`text-4xl font-bold ${stats.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            PKR {stats.netIncome.toLocaleString()}
+            PKR {formatCurrency(stats.netIncome)}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             {stats.netIncome >= 0 ? 'Profitable operations' : 'Operating at a loss'}

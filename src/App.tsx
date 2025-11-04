@@ -7,6 +7,7 @@ import { LoginForm } from "./components/auth/LoginForm";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { AppLayout } from "./components/layout/AppLayout";
 import { CrmLayout } from "./components/layout/CrmLayout";
+import { AccountingLayout } from "./components/layout/AccountingLayout";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import NewSale from "./pages/NewSale";
@@ -23,7 +24,12 @@ import LeadDetails from "./pages/crm/LeadDetails";
 import EditLead from "./pages/crm/EditLead";
 import RemindersPage from "./pages/crm/RemindersPage";
 import TaskManager from "./pages/TaskManager";
-import Accounting from "./pages/Accounting";
+import AccountingDashboardPage from "./pages/accounting/AccountingDashboard";
+import Journal from "./pages/accounting/Journal";
+import TAccountsPage from "./pages/accounting/TAccountsPage";
+import PnLPage from "./pages/accounting/PnLPage";
+import BalanceSheetPage from "./pages/accounting/BalanceSheetPage";
+import CashFlowPage from "./pages/accounting/CashFlowPage";
 import ScriptWriter from "./pages/ScriptWriter";
 
 const queryClient = new QueryClient();
@@ -71,12 +77,17 @@ const App = () => (
           }>
             <Route index element={<TaskManager />} />
           </Route>
-          <Route path="/accounting" element={
+          <Route path="/accounting/*" element={
             <AuthGuard>
-              <AppLayout />
+              <AccountingLayout />
             </AuthGuard>
           }>
-            <Route index element={<Accounting />} />
+            <Route index element={<AccountingDashboardPage />} />
+            <Route path="journal" element={<Journal />} />
+            <Route path="taccounts" element={<TAccountsPage />} />
+            <Route path="pnl" element={<PnLPage />} />
+            <Route path="balance" element={<BalanceSheetPage />} />
+            <Route path="cashflow" element={<CashFlowPage />} />
           </Route>
           <Route path="/scripts" element={
             <AuthGuard>
