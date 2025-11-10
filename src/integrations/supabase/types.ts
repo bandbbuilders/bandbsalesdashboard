@@ -14,6 +14,171 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_analytics: {
+        Row: {
+          engagement: number | null
+          id: string
+          leads: number | null
+          platform: string
+          reach: number | null
+          recorded_at: string
+          saves: number | null
+          task_id: string | null
+        }
+        Insert: {
+          engagement?: number | null
+          id?: string
+          leads?: number | null
+          platform: string
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          task_id?: string | null
+        }
+        Update: {
+          engagement?: number | null
+          id?: string
+          leads?: number | null
+          platform?: string
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_analytics_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "content_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_approvals: {
+        Row: {
+          approver_id: string
+          created_at: string
+          feedback: string | null
+          id: string
+          status: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          approver_id: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          status?: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          approver_id?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_approvals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "content_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "content_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_tasks: {
+        Row: {
+          assigned_to: string | null
+          attachments: Json | null
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          hashtags: string[] | null
+          id: string
+          platform: string
+          priority: string
+          scheduled_date: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachments?: Json | null
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          hashtags?: string[] | null
+          id?: string
+          platform?: string
+          priority?: string
+          scheduled_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          attachments?: Json | null
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          hashtags?: string[] | null
+          id?: string
+          platform?: string
+          priority?: string
+          scheduled_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           content: string

@@ -9,6 +9,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { CrmLayout } from "./components/layout/CrmLayout";
 import { AccountingLayout } from "./components/layout/AccountingLayout";
 import { TaskLayout } from "./components/layout/TaskLayout";
+import { ContentLayout } from "./components/layout/ContentLayout";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import NewSale from "./pages/NewSale";
@@ -31,7 +32,11 @@ import TAccountsPage from "./pages/accounting/TAccountsPage";
 import PnLPage from "./pages/accounting/PnLPage";
 import BalanceSheetPage from "./pages/accounting/BalanceSheetPage";
 import CashFlowPage from "./pages/accounting/CashFlowPage";
-import ScriptWriter from "./pages/ScriptWriter";
+import ContentDashboard from "./pages/content/ContentDashboard";
+import ContentBoard from "./pages/content/ContentBoard";
+import AIGenerator from "./pages/content/AIGenerator";
+import Scheduler from "./pages/content/Scheduler";
+import Analytics from "./pages/content/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -90,12 +95,16 @@ const App = () => (
             <Route path="balance" element={<BalanceSheetPage />} />
             <Route path="cashflow" element={<CashFlowPage />} />
           </Route>
-          <Route path="/content" element={
+          <Route path="/content/*" element={
             <AuthGuard>
-              <AppLayout />
+              <ContentLayout />
             </AuthGuard>
           }>
-            <Route index element={<ScriptWriter />} />
+            <Route index element={<ContentDashboard />} />
+            <Route path="board" element={<ContentBoard />} />
+            <Route path="generator" element={<AIGenerator />} />
+            <Route path="scheduler" element={<Scheduler />} />
+            <Route path="analytics" element={<Analytics />} />
           </Route>
         </Routes>
       </BrowserRouter>
