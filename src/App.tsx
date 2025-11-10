@@ -8,6 +8,7 @@ import { AuthGuard } from "./components/auth/AuthGuard";
 import { AppLayout } from "./components/layout/AppLayout";
 import { CrmLayout } from "./components/layout/CrmLayout";
 import { AccountingLayout } from "./components/layout/AccountingLayout";
+import { TaskLayout } from "./components/layout/TaskLayout";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import NewSale from "./pages/NewSale";
@@ -72,7 +73,7 @@ const App = () => (
           </Route>
           <Route path="/tasks" element={
             <AuthGuard>
-              <AppLayout />
+              <TaskLayout />
             </AuthGuard>
           }>
             <Route index element={<TaskManager />} />
@@ -89,7 +90,7 @@ const App = () => (
             <Route path="balance" element={<BalanceSheetPage />} />
             <Route path="cashflow" element={<CashFlowPage />} />
           </Route>
-          <Route path="/scripts" element={
+          <Route path="/content" element={
             <AuthGuard>
               <AppLayout />
             </AuthGuard>

@@ -40,12 +40,12 @@ const Home = () => {
       features: ["Journal Entries", "T-Accounts", "P&L Statement", "Balance Sheet"]
     },
     {
-      id: "scripts",
-      title: "Script Writer",
-      description: "Generate professional marketing scripts using AI with customizable baselines.",
+      id: "content",
+      title: "Content Production",
+      description: "Plan, create, approve, and schedule all social media and marketing content.",
       icon: PenTool,
       color: "bg-pink-500",
-      features: ["AI Script Generation", "Custom Baselines", "Template Management", "Marketing Content"]
+      features: ["Content Planning", "Approval Workflow", "Social Scheduler", "AI Script Generator"]
     }
   ];
 
