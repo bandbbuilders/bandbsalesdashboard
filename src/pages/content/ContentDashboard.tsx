@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Plus, Upload, CheckCircle, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { CreateTaskDialog } from "@/components/content/CreateTaskDialog";
+import { UploadLinkDialog } from "@/components/content/UploadLinkDialog";
 
 export default function ContentDashboard() {
   const [stats, setStats] = useState({
@@ -13,6 +15,8 @@ export default function ContentDashboard() {
     scheduledPosts: 0,
     totalEngagement: 0
   });
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showUploadLinkDialog, setShowUploadLinkDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -73,13 +77,13 @@ export default function ContentDashboard() {
       title: "Create New Task",
       description: "Start a new content production task",
       icon: Plus,
-      action: () => navigate("/content/board")
+      action: () => setShowCreateDialog(true)
     },
     {
-      title: "Upload Post",
-      description: "Upload content ready for approval",
+      title: "Upload Post Link",
+      description: "Save a published post link",
       icon: Upload,
-      action: () => navigate("/content/board")
+      action: () => setShowUploadLinkDialog(true)
     },
     {
       title: "Schedule Post",
@@ -173,6 +177,18 @@ export default function ContentDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <CreateTaskDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSuccess={fetchStats}
+      />
+      
+      <UploadLinkDialog
+        open={showUploadLinkDialog}
+        onOpenChange={setShowUploadLinkDialog}
+        onSuccess={fetchStats}
+      />
     </div>
   );
 }

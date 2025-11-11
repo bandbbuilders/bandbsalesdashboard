@@ -3,8 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { Plus } from "lucide-react";
+import { CreateTaskDialog } from "@/components/content/CreateTaskDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ScheduledTask {
   id: string;
@@ -17,6 +28,10 @@ interface ScheduledTask {
 export default function Scheduler() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ScheduledTask | null>(null);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [newDate, setNewDate] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,6 +66,36 @@ export default function Scheduler() {
     }
   };
 
+  const handleMoveTask = async () => {
+    if (!selectedTask || !newDate) return;
+
+    try {
+      const { error } = await supabase
+        .from('content_tasks')
+        .update({ scheduled_date: new Date(newDate).toISOString() })
+        .eq('id', selectedTask.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Post moved successfully",
+      });
+
+      setShowMoveDialog(false);
+      setSelectedTask(null);
+      setNewDate("");
+      fetchScheduledTasks();
+    } catch (error) {
+      console.error('Error moving task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to move post",
+        variant: "destructive",
+      });
+    }
+  };
+
   const PLATFORM_COLORS: Record<string, string> = {
     instagram: 'hsl(340 75% 55%)',
     facebook: 'hsl(221 44% 41%)',
@@ -61,9 +106,15 @@ export default function Scheduler() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Content Scheduler</h1>
-        <p className="text-muted-foreground">View and manage your scheduled social media posts</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Content Scheduler</h1>
+          <p className="text-muted-foreground">View and manage your scheduled social media posts</p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Task
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -102,8 +153,20 @@ export default function Scheduler() {
                         {task.platform}
                       </Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {task.scheduled_date && format(new Date(task.scheduled_date), 'h:mm a')}
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground">
+                        {task.scheduled_date && format(new Date(task.scheduled_date), 'h:mm a')}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setShowMoveDialog(true);
+                        }}
+                      >
+                        Move
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -116,6 +179,39 @@ export default function Scheduler() {
           </CardContent>
         </Card>
       </div>
+
+      <CreateTaskDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSuccess={fetchScheduledTasks}
+      />
+
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move Post to New Date</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newDate">New Scheduled Date & Time</Label>
+              <Input
+                id="newDate"
+                type="datetime-local"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleMoveTask}>
+                Move Post
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

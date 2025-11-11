@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Sparkles, Copy, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 const TONE_PRESETS = [
   { value: 'formal', label: 'Formal', description: 'Professional and business-like' },
@@ -74,12 +75,34 @@ export default function AIGenerator() {
     });
   };
 
-  const handleSaveToTask = () => {
-    // This would open a dialog to create a task with the generated script
-    toast({
-      title: "Coming Soon",
-      description: "Save to task feature will be available soon",
-    });
+  const handleSaveToTask = async () => {
+    if (!generatedScript) return;
+
+    try {
+      const { error } = await supabase
+        .from('content_tasks')
+        .insert({
+          title: `AI Generated Script - ${format(new Date(), 'MMM dd, yyyy')}`,
+          description: generatedScript,
+          status: 'script',
+          priority: 'medium',
+          platform: 'instagram',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Script saved as a new task",
+      });
+    } catch (error) {
+      console.error('Error saving task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save script as task",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
