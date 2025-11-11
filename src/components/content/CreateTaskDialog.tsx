@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,23 +18,12 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [platform, setPlatform] = useState("instagram");
+  const [platform, setPlatform] = useState("all");
   const [dueDate, setDueDate] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
-  const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open) {
-      fetchUsers();
-    }
-  }, [open]);
-
-  const fetchUsers = async () => {
-    const { data } = await supabase.from('profiles').select('user_id, full_name, email');
-    setUsers(data || []);
-  };
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -73,7 +62,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setPlatform("instagram");
+      setPlatform("all");
       setDueDate("");
       setAssignedTo("");
       onOpenChange(false);
@@ -125,7 +114,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
@@ -139,7 +128,8 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="instagram">Instagram</SelectItem>
                   <SelectItem value="facebook">Facebook</SelectItem>
                   <SelectItem value="tiktok">TikTok</SelectItem>
@@ -166,12 +156,10 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
                 <SelectTrigger>
                   <SelectValue placeholder="Select team member" />
                 </SelectTrigger>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.user_id} value={user.user_id}>
-                      {user.full_name || user.email}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="huraira">Huraira</SelectItem>
+                  <SelectItem value="muzamil">Muzamil</SelectItem>
+                  <SelectItem value="hamna">Hamna</SelectItem>
                 </SelectContent>
               </Select>
             </div>
