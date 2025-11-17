@@ -33,7 +33,9 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
   const [departmentId, setDepartmentId] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [dueTime, setDueTime] = useState("");
   const [estimatedHours, setEstimatedHours] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,9 +74,14 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
     setLoading(true);
 
     try {
-      // For demo purposes, we'll use a placeholder user ID
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      const userId = currentUser.id || 'demo-user-id';
+      // Combine date and time if both are provided
+      let dueDatetime = null;
+      if (dueDate) {
+        const dateStr = dueDate.toISOString().split('T')[0];
+        dueDatetime = dueTime 
+          ? `${dateStr}T${dueTime}:00Z`
+          : dueDate.toISOString();
+      }
 
       const { error } = await supabase
         .from('tasks')
@@ -83,11 +90,11 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
           description: description.trim() || null,
           department_id: departmentId,
           priority,
-          due_date: dueDate?.toISOString() || null,
+          due_date: dueDatetime,
           estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
           tags: tags.length > 0 ? tags : null,
-          created_by: userId,
-          assigned_to: userId // For demo, assign to self
+          created_by: assignedTo || null,
+          assigned_to: assignedTo || null
         });
 
       if (error) throw error;
@@ -103,7 +110,9 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
       setDepartmentId("");
       setPriority("medium");
       setDueDate(undefined);
+      setDueTime("");
       setEstimatedHours("");
+      setAssignedTo("");
       setTags([]);
       setTagInput("");
 
@@ -207,18 +216,28 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
             </Popover>
           </div>
 
-          <div>
-            <Label htmlFor="hours">Estimated Hours</Label>
-            <Input
-              id="hours"
-              type="number"
-              min="0"
-              step="0.5"
-              value={estimatedHours}
-              onChange={(e) => setEstimatedHours(e.target.value)}
-              placeholder="e.g., 8"
-            />
-          </div>
+            <div>
+              <Label>Due Time</Label>
+              <Input
+                type="time"
+                value={dueTime}
+                onChange={(e) => setDueTime(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Assign To</Label>
+              <Select value={assignedTo} onValueChange={setAssignedTo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select team member" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="huraira">Huraira</SelectItem>
+                  <SelectItem value="muzamil">Muzamil</SelectItem>
+                  <SelectItem value="hamna">Hamna</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
           <div>
             <Label htmlFor="tags">Tags</Label>

@@ -46,6 +46,14 @@ const Home = () => {
       icon: PenTool,
       color: "bg-pink-500",
       features: ["Content Planning", "Approval Workflow", "Social Scheduler", "AI Script Generator"]
+    },
+    {
+      id: "attendance",
+      title: "Attendance",
+      description: "Track team attendance, working hours, and manage employee check-ins.",
+      icon: Target,
+      color: "bg-indigo-500",
+      features: ["Daily Attendance", "Time Tracking", "Leave Management", "Monthly Reports"]
     }
   ];
 
