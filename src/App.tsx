@@ -37,6 +37,8 @@ import ContentBoard from "./pages/content/ContentBoard";
 import AIGenerator from "./pages/content/AIGenerator";
 import Scheduler from "./pages/content/Scheduler";
 import Analytics from "./pages/content/Analytics";
+import Attendance from "./pages/Attendance";
+import { AttendanceLayout } from "./components/layout/AttendanceLayout";
 
 const queryClient = new QueryClient();
 
@@ -105,6 +107,13 @@ const App = () => (
             <Route path="generator" element={<AIGenerator />} />
             <Route path="scheduler" element={<Scheduler />} />
             <Route path="analytics" element={<Analytics />} />
+          </Route>
+          <Route path="/attendance" element={
+            <AuthGuard>
+              <AttendanceLayout />
+            </AuthGuard>
+          }>
+            <Route index element={<Attendance />} />
           </Route>
         </Routes>
       </BrowserRouter>

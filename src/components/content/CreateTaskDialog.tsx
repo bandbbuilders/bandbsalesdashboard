@@ -20,6 +20,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
   const [priority, setPriority] = useState("medium");
   const [platform, setPlatform] = useState("all");
   const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -40,12 +41,20 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
       const userStr = localStorage.getItem('currentUser');
       const currentUser = userStr ? JSON.parse(userStr) : null;
 
+      // Combine date and time if both are provided
+      let dueDatetime = null;
+      if (dueDate) {
+        dueDatetime = dueTime 
+          ? `${dueDate}T${dueTime}:00`
+          : `${dueDate}T23:59:59`;
+      }
+
       const { error } = await supabase.from('content_tasks').insert({
         title,
         description,
         priority,
         platform,
-        due_date: dueDate || null,
+        due_date: dueDatetime,
         assigned_to: assignedTo || null,
         created_by: currentUser?.id || null,
         status: 'idea'
@@ -64,6 +73,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
       setPriority("medium");
       setPlatform("all");
       setDueDate("");
+      setDueTime("");
       setAssignedTo("");
       onOpenChange(false);
       onSuccess();
@@ -141,13 +151,23 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Due Date</Label>
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Due Time</Label>
+                <Input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                />
+              </div>
             </div>
 
             <div>
