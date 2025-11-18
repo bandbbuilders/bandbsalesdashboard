@@ -239,50 +239,146 @@ export const AccountingDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Charts */}
+      {/* Charts Section */}
       {stats.monthlyTrend.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+        <div className="space-y-4">
+          {/* Revenue/Expense Trend Chart */}
+          <Card className="col-span-full lg:col-span-2">
             <CardHeader>
-              <CardTitle>Revenue vs Expenses Trend</CardTitle>
+              <CardTitle>Monthly Financial Trend</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-[300px]">
+              <ChartContainer
+                config={{
+                  revenue: { label: "Revenue", color: "hsl(var(--primary))" },
+                  expenses: { label: "Expenses", color: "hsl(var(--destructive))" }
+                }}
+                className="h-[300px]"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stats.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis className="text-xs" />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Legend />
-                    <Line type="monotone" dataKey="revenue" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Revenue" />
-                    <Line type="monotone" dataKey="expenses" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Expenses" />
+                    <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
+                    <Line type="monotone" dataKey="expenses" stroke="hsl(var(--destructive))" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Legend />
-                    <Bar dataKey="revenue" fill="hsl(var(--chart-1))" name="Revenue" />
-                    <Bar dataKey="expenses" fill="hsl(var(--chart-2))" name="Expenses" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Profitability Ratio */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profitability Ratio</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center h-[250px]">
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-primary">
+                      {stats.totalRevenue > 0 ? ((stats.netIncome / stats.totalRevenue) * 100).toFixed(1) : 0}%
+                    </div>
+                    <p className="text-muted-foreground mt-2">Net Profit Margin</p>
+                    <p className="text-sm text-muted-foreground mt-4">
+                      {formatCurrency(stats.netIncome)} / {formatCurrency(stats.totalRevenue)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Revenue vs Expenses Comparison */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Revenue vs Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={{
+                    revenue: { label: "Revenue", color: "hsl(var(--success))" },
+                    expenses: { label: "Expenses", color: "hsl(var(--destructive))" }
+                  }}
+                  className="h-[250px]"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.monthlyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="hsl(var(--success))" />
+                      <Bar dataKey="expenses" fill="hsl(var(--destructive))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Accounts Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Accounts Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg">
+                  <span className="text-sm font-medium">Cash Balance</span>
+                  <span className="text-lg font-bold text-success">{formatCurrency(stats.cashBalance)}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-warning/10 rounded-lg">
+                  <span className="text-sm font-medium">Receivables</span>
+                  <span className="text-lg font-bold text-warning">{formatCurrency(stats.accountsReceivable)}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
+                  <span className="text-sm font-medium">Net Income</span>
+                  <span className="text-lg font-bold text-primary">{formatCurrency(stats.netIncome)}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                  <span className="text-sm font-medium">Working Capital</span>
+                  <span className="text-lg font-bold">{formatCurrency(stats.cashBalance - stats.totalExpenses)}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Monthly Cash Flow Chart */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Monthly Cash Flow</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={{
+                    revenue: { label: "Revenue", color: "hsl(var(--success))" },
+                    expenses: { label: "Expenses", color: "hsl(var(--destructive))" },
+                    netIncome: { label: "Net Income", color: "hsl(var(--primary))" }
+                  }}
+                  className="h-[250px]"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.monthlyTrend.map(item => ({
+                      ...item,
+                      netIncome: item.revenue - item.expenses
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="hsl(var(--success))" />
+                      <Bar dataKey="expenses" fill="hsl(var(--destructive))" />
+                      <Bar dataKey="netIncome" fill="hsl(var(--primary))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </div>

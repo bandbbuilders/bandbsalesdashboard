@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string | null
+          date: string
+          id: string
+          is_late: boolean | null
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+          user_name: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string | null
+          date: string
+          id?: string
+          is_late?: boolean | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_name: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          is_late?: boolean | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_name?: string
+        }
+        Relationships: []
+      }
       content_analytics: {
         Row: {
           engagement: number | null

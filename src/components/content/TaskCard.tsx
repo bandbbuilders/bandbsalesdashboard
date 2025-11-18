@@ -1,17 +1,23 @@
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, MessageSquare, Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { EditTaskDialog } from "./EditTaskDialog";
 
 interface Task {
   id: string;
   title: string;
   description: string | null;
+  status: string;
   priority: string;
   platform: string;
   due_date: string | null;
+  assigned_to: string | null;
+  created_by?: string | null;
 }
 
 interface TaskCardProps {
@@ -33,7 +39,8 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'hsl(var(--destructive))'
 };
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, onUpdate }: TaskCardProps) {
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const {
     attributes,
     listeners,
@@ -50,48 +57,69 @@ export function TaskCard({ task }: TaskCardProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card className="cursor-move hover:shadow-md transition-shadow">
-        <CardContent className="p-4 space-y-3">
-          <div>
-            <h4 className="font-medium text-sm">{task.title}</h4>
+    <>
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <Card className="cursor-move hover:shadow-md transition-shadow">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex justify-between items-start">
+              <h4 className="font-medium text-sm flex-1">{task.title}</h4>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 -mt-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEditDialog(true);
+                }}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+            
             {task.description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                 {task.description}
               </p>
             )}
-          </div>
 
-          <div className="flex gap-2">
-            <Badge 
-              variant="outline" 
-              className="text-xs"
-              style={{ borderColor: PLATFORM_COLORS[task.platform] }}
-            >
-              {task.platform}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="text-xs"
-              style={{ borderColor: PRIORITY_COLORS[task.priority] }}
-            >
-              {task.priority}
-            </Badge>
-          </div>
-
-          {task.due_date && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {format(new Date(task.due_date), 'MMM dd')}
+            <div className="flex gap-2">
+              <Badge 
+                variant="outline" 
+                className="text-xs"
+                style={{ borderColor: PLATFORM_COLORS[task.platform] }}
+              >
+                {task.platform}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="text-xs"
+                style={{ borderColor: PRIORITY_COLORS[task.priority] }}
+              >
+                {task.priority}
+              </Badge>
             </div>
-          )}
 
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <MessageSquare className="h-3 w-3" />
-            <span>0 comments</span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            {task.due_date && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {format(new Date(task.due_date), 'MMM dd')}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MessageSquare className="h-3 w-3" />
+              <span>0 comments</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <EditTaskDialog
+        task={task}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onUpdate={onUpdate}
+      />
+    </>
   );
 }
