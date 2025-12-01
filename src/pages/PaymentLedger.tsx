@@ -39,8 +39,12 @@ import {
   XCircle,
   Calendar,
   DollarSign,
-  Plus
+  Plus,
+  Upload,
+  FileText
 } from "lucide-react";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { useLedgerEntries } from "@/hooks/useLedgerEntries";
@@ -66,6 +70,9 @@ const PaymentLedger = () => {
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
   const [newPaymentDueDate, setNewPaymentDueDate] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("installment");
+  const [generateReceivingOpen, setGenerateReceivingOpen] = useState(false);
+  const [selectedEntryForReceipt, setSelectedEntryForReceipt] = useState<any>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   const sale = sales.find(s => s.id === saleId);
   const saleEntries = ledgerEntries.filter(entry => entry.sale_id === saleId);
@@ -294,7 +301,7 @@ const PaymentLedger = () => {
     refetch();
   };
 
-  const handleStatusChange = async (entryId: string, newStatus: 'paid' | 'overdue') => {
+  const handleStatusChange = async (entryId: string, newStatus: 'paid' | 'overdue' | 'pending') => {
     const updateData: any = { status: newStatus };
     
     if (newStatus === 'paid') {
@@ -312,6 +319,105 @@ const PaymentLedger = () => {
       title: "Success",
       description: `Payment marked as ${newStatus}`,
     });
+  };
+
+  const handleGenerateReceipt = async () => {
+    if (!selectedEntryForReceipt || !sale) return;
+
+    try {
+      const doc = new jsPDF();
+      
+      // Add B&B Builders header with styling
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('B&B Builders', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Payment Receipt', 105, 30, { align: 'center' });
+      
+      // Add a decorative line
+      doc.setDrawColor(59, 130, 246); // primary color
+      doc.setLineWidth(0.5);
+      doc.line(20, 35, 190, 35);
+      
+      // Receipt details
+      doc.setFontSize(10);
+      const receiptDate = format(new Date(), 'dd MMMM yyyy');
+      doc.text(`Receipt Date: ${receiptDate}`, 20, 45);
+      doc.text(`Receipt No: RCP-${selectedEntryForReceipt.id.substring(0, 8).toUpperCase()}`, 20, 52);
+      
+      // Customer & Property Details
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Customer Details:', 20, 65);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Name: ${sale.customer.name}`, 20, 73);
+      doc.text(`Unit Number: ${sale.unit_number}`, 20, 80);
+      doc.text(`Shop/Flat No: ${sale.unit_number}`, 20, 87);
+      
+      // Payment Details Table
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Payment Details:', 20, 100);
+      
+      autoTable(doc, {
+        startY: 105,
+        head: [['Description', 'Amount (PKR)']],
+        body: [
+          ['Payment Type', selectedEntryForReceipt.entry_type.charAt(0).toUpperCase() + selectedEntryForReceipt.entry_type.slice(1)],
+          ['Amount Received', formatCurrency(selectedEntryForReceipt.paid_amount)],
+          ['Due Date', format(new Date(selectedEntryForReceipt.due_date), 'dd MMMM yyyy')],
+          ['Payment Date', selectedEntryForReceipt.paid_date ? format(new Date(selectedEntryForReceipt.paid_date), 'dd MMMM yyyy') : 'N/A'],
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 20, right: 20 },
+      });
+      
+      // Beautiful ending note
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      
+      doc.setDrawColor(59, 130, 246);
+      doc.setLineWidth(0.3);
+      doc.line(20, finalY, 190, finalY);
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Thank you for your payment!', 105, finalY + 10, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('We appreciate your trust in B&B Builders.', 105, finalY + 18, { align: 'center' });
+      doc.text('For any queries, please feel free to contact us.', 105, finalY + 25, { align: 'center' });
+      
+      // Footer
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text('B&B Builders - Building Your Dreams', 105, finalY + 40, { align: 'center' });
+      doc.text('This is a computer-generated receipt and does not require a signature.', 105, finalY + 47, { align: 'center' });
+      
+      // Save the PDF
+      doc.save(`Receipt_${sale.customer.name}_${selectedEntryForReceipt.id.substring(0, 8)}.pdf`);
+      
+      toast({
+        title: "Success",
+        description: "Receipt generated successfully!",
+      });
+      
+      setGenerateReceivingOpen(false);
+      setSelectedEntryForReceipt(null);
+      setProofFile(null);
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate receipt",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -573,6 +679,22 @@ const PaymentLedger = () => {
                                   Set paid date only to mark payment as paid. Leave empty to keep current status.
                                 </p>
                               </div>
+                              {editingEntry?.status === 'paid' && (
+                                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
+                                  <span className="text-sm font-medium">Mark as Unpaid</span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditPaidDate("");
+                                      handleStatusChange(editingEntry.id, 'pending');
+                                      setEditingEntry(null);
+                                    }}
+                                  >
+                                    Mark Unpaid
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                             <DialogFooter>
                               <Button variant="outline" onClick={() => setEditingEntry(null)}>
@@ -615,6 +737,20 @@ const PaymentLedger = () => {
                             <XCircle className="h-4 w-4" />
                           </Button>
                         )}
+
+                        {entry.status === 'paid' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedEntryForReceipt(entry);
+                              setGenerateReceivingOpen(true);
+                            }}
+                            title="Generate Receiving"
+                          >
+                            <FileText className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -645,6 +781,68 @@ const PaymentLedger = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Generate Receiving Dialog */}
+      <Dialog open={generateReceivingOpen} onOpenChange={setGenerateReceivingOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate Receipt</DialogTitle>
+            <DialogDescription>
+              Upload payment proof and generate a beautiful receipt for your client
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+              <label htmlFor="proof-upload" className="cursor-pointer">
+                <div className="text-sm font-medium mb-1">Upload Payment Proof</div>
+                <div className="text-xs text-muted-foreground">
+                  {proofFile ? proofFile.name : "Click to upload image or document"}
+                </div>
+                <Input
+                  id="proof-upload"
+                  type="file"
+                  className="hidden"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setProofFile(file);
+                  }}
+                />
+              </label>
+            </div>
+            {selectedEntryForReceipt && (
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-semibold">{formatCurrency(selectedEntryForReceipt.paid_amount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span className="font-semibold capitalize">{selectedEntryForReceipt.entry_type}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Unit:</span>
+                  <span className="font-semibold">{sale?.unit_number}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setGenerateReceivingOpen(false);
+              setSelectedEntryForReceipt(null);
+              setProofFile(null);
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleGenerateReceipt} disabled={!proofFile}>
+              <FileText className="h-4 w-4 mr-2" />
+              Generate Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
