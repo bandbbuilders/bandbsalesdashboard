@@ -32,6 +32,7 @@ import TAccountsPage from "./pages/accounting/TAccountsPage";
 import PnLPage from "./pages/accounting/PnLPage";
 import BalanceSheetPage from "./pages/accounting/BalanceSheetPage";
 import CashFlowPage from "./pages/accounting/CashFlowPage";
+import { CreateAccount } from "./components/accounting/CreateAccount";
 import ContentDashboard from "./pages/content/ContentDashboard";
 import ContentBoard from "./pages/content/ContentBoard";
 import AIGenerator from "./pages/content/AIGenerator";
@@ -92,6 +93,7 @@ const App = () => (
           }>
             <Route index element={<AccountingDashboardPage />} />
             <Route path="journal" element={<Journal />} />
+            <Route path="create-account" element={<CreateAccount />} />
             <Route path="taccounts" element={<TAccountsPage />} />
             <Route path="pnl" element={<PnLPage />} />
             <Route path="balance" element={<BalanceSheetPage />} />
