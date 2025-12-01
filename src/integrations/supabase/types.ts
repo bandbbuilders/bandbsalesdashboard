@@ -263,6 +263,36 @@ export type Database = {
           },
         ]
       }
+      custom_accounts: {
+        Row: {
+          created_at: string
+          credit_account: string
+          debit_account: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_account: string
+          debit_account: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_account?: string
+          debit_account?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
