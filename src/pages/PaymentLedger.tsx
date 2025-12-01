@@ -51,6 +51,10 @@ import { useLedgerEntries } from "@/hooks/useLedgerEntries";
 import { useSales } from "@/hooks/useSales";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { numberToWords } from "@/lib/numberToWords";
+import bbLogo from "@/assets/bb-logo.jpg";
+import ceoSignature from "@/assets/ceo-signature.jpeg";
+import companyStamp from "@/assets/company-stamp.jpeg";
 
 const PaymentLedger = () => {
   const { saleId } = useParams<{ saleId: string }>();
@@ -73,6 +77,7 @@ const PaymentLedger = () => {
   const [generateReceivingOpen, setGenerateReceivingOpen] = useState(false);
   const [selectedEntryForReceipt, setSelectedEntryForReceipt] = useState<any>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [paymentType, setPaymentType] = useState<'bank' | 'cash'>('cash');
 
   const sale = sales.find(s => s.id === saleId);
   const saleEntries = ledgerEntries.filter(entry => entry.sale_id === saleId);
@@ -326,78 +331,137 @@ const PaymentLedger = () => {
 
     try {
       const doc = new jsPDF();
+      const primaryColor = [180, 2, 2]; // #B40202
       
-      // Add B&B Builders header with styling
+      // Add logo as watermark in the center
+      const logoImg = new Image();
+      logoImg.src = bbLogo;
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+      });
+      doc.addImage(logoImg, 'JPEG', 60, 100, 90, 90, undefined, 'NONE');
+      doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
+      doc.addImage(logoImg, 'JPEG', 60, 100, 90, 90);
+      doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      
+      // Add B&B Builders header with red color
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.text('B&B Builders', 105, 20, { align: 'center' });
       
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Payment Receipt', 105, 30, { align: 'center' });
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PAYMENT RECEIPT', 105, 30, { align: 'center' });
       
       // Add a decorative line
-      doc.setDrawColor(59, 130, 246); // primary color
-      doc.setLineWidth(0.5);
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(0.8);
       doc.line(20, 35, 190, 35);
       
       // Receipt details
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(10);
       const receiptDate = format(new Date(), 'dd MMMM yyyy');
       doc.text(`Receipt Date: ${receiptDate}`, 20, 45);
       doc.text(`Receipt No: RCP-${selectedEntryForReceipt.id.substring(0, 8).toUpperCase()}`, 20, 52);
       
+      // Calculate installment number
+      const sortedEntries = saleEntries
+        .filter(e => e.entry_type === 'installment')
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+      const installmentNo = sortedEntries.findIndex(e => e.id === selectedEntryForReceipt.id) + 1;
+      
+      if (selectedEntryForReceipt.entry_type === 'installment') {
+        doc.text(`Installment No: ${installmentNo} of ${sortedEntries.length}`, 20, 59);
+      }
+      
       // Customer & Property Details
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Customer Details:', 20, 65);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Customer Details:', 20, 70);
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Name: ${sale.customer.name}`, 20, 73);
-      doc.text(`Unit Number: ${sale.unit_number}`, 20, 80);
-      doc.text(`Shop/Flat No: ${sale.unit_number}`, 20, 87);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Name: ${sale.customer.name}`, 20, 78);
+      doc.text(`Unit Number: ${sale.unit_number}`, 20, 85);
+      doc.text(`Shop/Flat No: ${sale.unit_number}`, 20, 92);
       
       // Payment Details Table
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Payment Details:', 20, 100);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Payment Details:', 20, 105);
+      
+      const amountInWords = numberToWords(Math.floor(selectedEntryForReceipt.paid_amount));
       
       autoTable(doc, {
-        startY: 105,
-        head: [['Description', 'Amount (PKR)']],
+        startY: 110,
+        head: [['Description', 'Details']],
         body: [
+          ['Payment Mode', paymentType === 'bank' ? 'Bank Transfer' : 'Cash Payment'],
           ['Payment Type', selectedEntryForReceipt.entry_type.charAt(0).toUpperCase() + selectedEntryForReceipt.entry_type.slice(1)],
           ['Amount Received', formatCurrency(selectedEntryForReceipt.paid_amount)],
+          ['Amount in Words', `${amountInWords} Rupees Only`],
           ['Due Date', format(new Date(selectedEntryForReceipt.due_date), 'dd MMMM yyyy')],
           ['Payment Date', selectedEntryForReceipt.paid_date ? format(new Date(selectedEntryForReceipt.paid_date), 'dd MMMM yyyy') : 'N/A'],
         ],
         theme: 'striped',
-        headStyles: { fillColor: [59, 130, 246] },
+        headStyles: { fillColor: primaryColor as [number, number, number] },
         margin: { left: 20, right: 20 },
       });
       
-      // Beautiful ending note
+      // Signature and stamp section
       const finalY = (doc as any).lastAutoTable.finalY + 20;
       
-      doc.setDrawColor(59, 130, 246);
+      // Add signature and stamp images
+      const signatureImg = new Image();
+      signatureImg.src = ceoSignature;
+      await new Promise((resolve) => {
+        signatureImg.onload = resolve;
+      });
+      
+      const stampImg = new Image();
+      stampImg.src = companyStamp;
+      await new Promise((resolve) => {
+        stampImg.onload = resolve;
+      });
+      
+      // Position signature and stamp
+      doc.addImage(signatureImg, 'JPEG', 130, finalY, 40, 20);
+      doc.addImage(stampImg, 'JPEG', 140, finalY + 15, 20, 20);
+      
+      // Signature text
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Abdullah Shah', 150, finalY + 38, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text('Chief Executive Officer', 150, finalY + 44, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Date: ${receiptDate}`, 150, finalY + 50, { align: 'center' });
+      
+      // Beautiful ending note
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.3);
-      doc.line(20, finalY, 190, finalY);
+      doc.line(20, finalY + 60, 190, finalY + 60);
       
       doc.setFontSize(11);
       doc.setFont('helvetica', 'italic');
-      doc.text('Thank you for your payment!', 105, finalY + 10, { align: 'center' });
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Thank you for your trust and payment!', 105, finalY + 68, { align: 'center' });
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('We appreciate your trust in B&B Builders.', 105, finalY + 18, { align: 'center' });
-      doc.text('For any queries, please feel free to contact us.', 105, finalY + 25, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+      doc.text('We appreciate your business with B&B Builders.', 105, finalY + 75, { align: 'center' });
+      doc.text('For any queries, please feel free to contact us.', 105, finalY + 82, { align: 'center' });
       
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text('B&B Builders - Building Your Dreams', 105, finalY + 40, { align: 'center' });
-      doc.text('This is a computer-generated receipt and does not require a signature.', 105, finalY + 47, { align: 'center' });
+      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 95, { align: 'center' });
       
       // Save the PDF
       doc.save(`Receipt_${sale.customer.name}_${selectedEntryForReceipt.id.substring(0, 8)}.pdf`);
@@ -410,6 +474,7 @@ const PaymentLedger = () => {
       setGenerateReceivingOpen(false);
       setSelectedEntryForReceipt(null);
       setProofFile(null);
+      setPaymentType('cash');
     } catch (error) {
       console.error('Error generating receipt:', error);
       toast({
@@ -788,10 +853,22 @@ const PaymentLedger = () => {
           <DialogHeader>
             <DialogTitle>Generate Receipt</DialogTitle>
             <DialogDescription>
-              Upload payment proof and generate a beautiful receipt for your client
+              Select payment type and upload proof to generate a receipt
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Payment Type</label>
+              <Select value={paymentType} onValueChange={(value: 'bank' | 'cash') => setPaymentType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash Payment</SelectItem>
+                  <SelectItem value="bank">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="border-2 border-dashed rounded-lg p-6 text-center">
               <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
               <label htmlFor="proof-upload" className="cursor-pointer">
@@ -833,6 +910,7 @@ const PaymentLedger = () => {
               setGenerateReceivingOpen(false);
               setSelectedEntryForReceipt(null);
               setProofFile(null);
+              setPaymentType('cash');
             }}>
               Cancel
             </Button>
