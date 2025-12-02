@@ -25,6 +25,7 @@ import NewLead from "./pages/crm/NewLead";
 import LeadDetails from "./pages/crm/LeadDetails";
 import EditLead from "./pages/crm/EditLead";
 import RemindersPage from "./pages/crm/RemindersPage";
+import CommissionManagement from "./pages/crm/CommissionManagement";
 import TaskManager from "./pages/TaskManager";
 import AccountingDashboardPage from "./pages/accounting/AccountingDashboard";
 import Journal from "./pages/accounting/Journal";
@@ -117,6 +118,9 @@ const App = () => (
           }>
             <Route index element={<Attendance />} />
           </Route>
+        
+          {/* Commission Management - Standalone with password protection */}
+          <Route path="/commission-management" element={<CommissionManagement />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

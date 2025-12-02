@@ -29,8 +29,10 @@ import {
   DollarSign,
   Plus,
   Download,
-  Trash2
+  Trash2,
+  Coins
 } from "lucide-react";
+import { CommissionDialog } from "@/components/crm/CommissionDialog";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +56,8 @@ const SalesList = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
+  const [selectedSaleForCommission, setSelectedSaleForCommission] = useState<any>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -293,6 +297,13 @@ const SalesList = () => {
                             <Calendar className="mr-2 h-4 w-4" />
                             Payment Ledger
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedSaleForCommission(sale);
+                            setCommissionDialogOpen(true);
+                          }}>
+                            <Coins className="mr-2 h-4 w-4" />
+                            Commission
+                          </DropdownMenuItem>
                           {canEdit(sale) && (
                             <>
                               <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}/edit`)}>
@@ -357,6 +368,16 @@ const SalesList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Commission Dialog */}
+      {selectedSaleForCommission && (
+        <CommissionDialog
+          open={commissionDialogOpen}
+          onOpenChange={setCommissionDialogOpen}
+          saleId={selectedSaleForCommission.id}
+          saleAmount={selectedSaleForCommission.unit_total_price}
+        />
+      )}
     </div>
   );
 };

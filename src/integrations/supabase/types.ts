@@ -53,6 +53,65 @@ export type Database = {
         }
         Relationships: []
       }
+      commissions: {
+        Row: {
+          amount_30_percent: number
+          amount_70_percent: number
+          created_at: string
+          id: string
+          notes: string | null
+          recipient_name: string
+          recipient_type: string
+          released_30_date: string | null
+          released_70_date: string | null
+          sale_id: string
+          status_30_percent: string
+          status_70_percent: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_30_percent: number
+          amount_70_percent: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recipient_name: string
+          recipient_type: string
+          released_30_date?: string | null
+          released_70_date?: string | null
+          sale_id: string
+          status_30_percent?: string
+          status_70_percent?: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          amount_30_percent?: number
+          amount_70_percent?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recipient_name?: string
+          recipient_type?: string
+          released_30_date?: string | null
+          released_70_date?: string | null
+          sale_id?: string
+          status_30_percent?: string
+          status_70_percent?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_analytics: {
         Row: {
           engagement: number | null
