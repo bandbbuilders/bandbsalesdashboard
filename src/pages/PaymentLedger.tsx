@@ -52,9 +52,9 @@ import { useSales } from "@/hooks/useSales";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { numberToWords } from "@/lib/numberToWords";
+import ceoSignature from "@/assets/ceo-signature-new.png";
+import paidStamp from "@/assets/paid-stamp.jpeg";
 import bbLogo from "@/assets/bb-logo.jpg";
-import ceoSignature from "@/assets/ceo-signature.jpeg";
-import companyStamp from "@/assets/company-stamp.jpeg";
 
 const PaymentLedger = () => {
   const { saleId } = useParams<{ saleId: string }>();
@@ -77,7 +77,7 @@ const PaymentLedger = () => {
   const [generateReceivingOpen, setGenerateReceivingOpen] = useState(false);
   const [selectedEntryForReceipt, setSelectedEntryForReceipt] = useState<any>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
-  const [paymentType, setPaymentType] = useState<'bank' | 'cash'>('cash');
+  const [paymentType, setPaymentType] = useState('');
 
   const sale = sales.find(s => s.id === saleId);
   const saleEntries = ledgerEntries.filter(entry => entry.sale_id === saleId);
@@ -416,52 +416,60 @@ const PaymentLedger = () => {
       // Signature and stamp section
       const finalY = (doc as any).lastAutoTable.finalY + 20;
       
-      // Add signature and stamp images
+      // Add paid stamp in center under table
+      const paidStampImg = new Image();
+      paidStampImg.src = paidStamp;
+      await new Promise((resolve) => {
+        paidStampImg.onload = resolve;
+      });
+      doc.addImage(paidStampImg, 'JPEG', 75, finalY, 60, 30);
+      
+      // LEFT: CEO signature with date
       const signatureImg = new Image();
       signatureImg.src = ceoSignature;
       await new Promise((resolve) => {
         signatureImg.onload = resolve;
       });
+      doc.addImage(signatureImg, 'PNG', 20, finalY + 40, 50, 20);
       
-      const stampImg = new Image();
-      stampImg.src = companyStamp;
-      await new Promise((resolve) => {
-        stampImg.onload = resolve;
-      });
-      
-      // Position signature and stamp
-      doc.addImage(signatureImg, 'JPEG', 130, finalY, 40, 20);
-      doc.addImage(stampImg, 'JPEG', 140, finalY + 15, 20, 20);
-      
-      // Signature text
+      // Signature text on LEFT
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Abdullah Shah', 150, finalY + 38, { align: 'center' });
+      doc.text('Abdullah Shah', 20, finalY + 65);
       doc.setFont('helvetica', 'bold');
-      doc.text('Chief Executive Officer', 150, finalY + 44, { align: 'center' });
+      doc.text('CEO', 20, finalY + 70);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Date: ${receiptDate}`, 150, finalY + 50, { align: 'center' });
+      doc.text(`Date: ${receiptDate}`, 20, finalY + 75);
+      
+      // RIGHT: Company logo
+      const logoImgRight = new Image();
+      logoImgRight.src = bbLogo;
+      await new Promise((resolve) => {
+        logoImgRight.onload = resolve;
+      });
+      doc.addImage(logoImgRight, 'JPEG', 155, finalY + 40, 35, 35);
       
       // Beautiful ending note
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.3);
-      doc.line(20, finalY + 60, 190, finalY + 60);
+      doc.line(20, finalY + 85, 190, finalY + 85);
       
       doc.setFontSize(11);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text('Thank you for your trust and payment!', 105, finalY + 68, { align: 'center' });
+      doc.text('Thank you for choosing B&B Builders!', 105, finalY + 93, { align: 'center' });
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      doc.text('We appreciate your business with B&B Builders.', 105, finalY + 75, { align: 'center' });
-      doc.text('For any queries, please feel free to contact us.', 105, finalY + 82, { align: 'center' });
+      const endingNote = 'We appreciate your trust in us for your property investment. For any queries, please feel free to contact us.';
+      const splitNote = doc.splitTextToSize(endingNote, 170);
+      doc.text(splitNote, 105, finalY + 100, { align: 'center' });
       
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 95, { align: 'center' });
+      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 115, { align: 'center' });
       
       // Save the PDF
       doc.save(`Receipt_${sale.customer.name}_${selectedEntryForReceipt.id.substring(0, 8)}.pdf`);
@@ -474,7 +482,7 @@ const PaymentLedger = () => {
       setGenerateReceivingOpen(false);
       setSelectedEntryForReceipt(null);
       setProofFile(null);
-      setPaymentType('cash');
+      setPaymentType('');
     } catch (error) {
       console.error('Error generating receipt:', error);
       toast({

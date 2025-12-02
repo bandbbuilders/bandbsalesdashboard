@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, BarChart3, Users, Target, FileText, TrendingUp, PenTool } from "lucide-react";
+import { Building2, BarChart3, Users, Target, FileText, TrendingUp, PenTool, Coins } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -54,6 +54,15 @@ const Home = () => {
       icon: Target,
       color: "bg-indigo-500",
       features: ["Daily Attendance", "Time Tracking", "Leave Management", "Monthly Reports"]
+    },
+    {
+      id: "commission-management",
+      title: "Commission Management",
+      description: "Password-protected module to track and manage all agent, dealer, and COO commissions.",
+      icon: Coins,
+      color: "bg-red-500",
+      features: ["Commission Tracking", "Release Management", "Analytics", "Reports"],
+      protected: true
     }
   ];
 
@@ -80,7 +89,7 @@ const Home = () => {
           {applications.map((app) => {
             const Icon = app.icon;
             return (
-              <Card key={app.id} className="relative group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-primary/20" onClick={(e) => {
+              <Card key={app.id} className={`relative group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-primary/20 ${app.protected ? 'border-red-500/30' : ''}`} onClick={(e) => {
                 e.stopPropagation();
                 navigate(`/${app.id}`);
               }}>
@@ -90,7 +99,10 @@ const Home = () => {
                       <Icon className="h-8 w-8" />
                     </div>
                     <div>
-                      <CardTitle className="text-2xl">{app.title}</CardTitle>
+                      <CardTitle className="text-2xl flex items-center gap-2">
+                        {app.title}
+                        {app.protected && <span className="text-xs bg-red-500 text-white px-2 py-1 rounded">Protected</span>}
+                      </CardTitle>
                       <CardDescription className="text-base">{app.description}</CardDescription>
                     </div>
                   </div>
