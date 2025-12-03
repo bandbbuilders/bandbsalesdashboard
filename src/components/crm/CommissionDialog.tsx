@@ -13,6 +13,7 @@ interface CommissionEntry {
   id: string;
   recipient_name: string;
   recipient_type: 'agent' | 'dealer' | 'coo';
+  percentage: number;
   total_amount: number;
   notes?: string;
 }
@@ -49,6 +50,7 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
           id: c.id,
           recipient_name: c.recipient_name,
           recipient_type: c.recipient_type as 'agent' | 'dealer' | 'coo',
+          percentage: (parseFloat(c.total_amount.toString()) / saleAmount) * 100,
           total_amount: parseFloat(c.total_amount.toString()),
           notes: c.notes || '',
         })));
@@ -58,6 +60,7 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
           id: crypto.randomUUID(),
           recipient_name: '',
           recipient_type: 'agent',
+          percentage: 0,
           total_amount: 0,
           notes: '',
         }]);
@@ -72,6 +75,7 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
       id: crypto.randomUUID(),
       recipient_name: '',
       recipient_type: 'agent',
+      percentage: 0,
       total_amount: 0,
       notes: '',
     }]);
@@ -82,21 +86,29 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
   };
 
   const updateCommission = (id: string, field: keyof CommissionEntry, value: any) => {
-    setCommissions(commissions.map(c => 
-      c.id === id ? { ...c, [field]: value } : c
-    ));
+    setCommissions(commissions.map(c => {
+      if (c.id !== id) return c;
+      
+      if (field === 'percentage') {
+        const percentage = parseFloat(value) || 0;
+        const total_amount = (percentage / 100) * saleAmount;
+        return { ...c, percentage, total_amount };
+      }
+      
+      return { ...c, [field]: value };
+    }));
   };
 
   const handleSave = async () => {
     // Validate
     const invalidEntries = commissions.filter(c => 
-      !c.recipient_name.trim() || c.total_amount <= 0
+      !c.recipient_name.trim() || c.percentage <= 0
     );
 
     if (invalidEntries.length > 0) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all recipient names and amounts",
+        description: "Please fill in all recipient names and percentages",
         variant: "destructive",
       });
       return;
@@ -151,7 +163,7 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
         <DialogHeader>
           <DialogTitle>Manage Commissions</DialogTitle>
           <DialogDescription>
-            Add or edit commission details for this sale. 70% will be released on downpayment completion, 30% after 2 installments.
+            Enter commission percentage to auto-calculate amount.
           </DialogDescription>
         </DialogHeader>
 
@@ -203,17 +215,24 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Total Commission Amount (PKR) *</Label>
+                  <Label>Commission Percentage (%) *</Label>
                   <Input
                     type="number"
-                    value={commission.total_amount || ''}
-                    onChange={(e) => updateCommission(commission.id, 'total_amount', parseFloat(e.target.value) || 0)}
-                    placeholder="0"
+                    step="0.1"
+                    value={commission.percentage || ''}
+                    onChange={(e) => updateCommission(commission.id, 'percentage', e.target.value)}
+                    placeholder="e.g., 2.5"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    70% = PKR {(commission.total_amount * 0.7).toLocaleString()} | 
-                    30% = PKR {(commission.total_amount * 0.3).toLocaleString()}
-                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Calculated Amount (PKR)</Label>
+                  <Input
+                    type="text"
+                    value={`PKR ${commission.total_amount.toLocaleString()}`}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
 
                 <div className="space-y-2">

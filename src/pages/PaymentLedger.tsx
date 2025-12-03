@@ -53,8 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { numberToWords } from "@/lib/numberToWords";
 import ceoSignature from "@/assets/ceo-signature-new.png";
-import paidStamp from "@/assets/paid-stamp.jpeg";
-import bbLogo from "@/assets/bb-logo.jpg";
+import bbBuildersLogo from "@/assets/bb-builders-logo.png";
 
 const PaymentLedger = () => {
   const { saleId } = useParams<{ saleId: string }>();
@@ -333,17 +332,6 @@ const PaymentLedger = () => {
       const doc = new jsPDF();
       const primaryColor = [180, 2, 2]; // #B40202
       
-      // Add logo as watermark in the center
-      const logoImg = new Image();
-      logoImg.src = bbLogo;
-      await new Promise((resolve) => {
-        logoImg.onload = resolve;
-      });
-      doc.addImage(logoImg, 'JPEG', 60, 100, 90, 90, undefined, 'NONE');
-      doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
-      doc.addImage(logoImg, 'JPEG', 60, 100, 90, 90);
-      doc.setGState(new (doc as any).GState({ opacity: 1 }));
-      
       // Add B&B Builders header with red color
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setFontSize(24);
@@ -416,60 +404,52 @@ const PaymentLedger = () => {
       // Signature and stamp section
       const finalY = (doc as any).lastAutoTable.finalY + 20;
       
-      // Add paid stamp in center under table
-      const paidStampImg = new Image();
-      paidStampImg.src = paidStamp;
-      await new Promise((resolve) => {
-        paidStampImg.onload = resolve;
-      });
-      doc.addImage(paidStampImg, 'JPEG', 75, finalY, 60, 30);
-      
       // LEFT: CEO signature with date
       const signatureImg = new Image();
       signatureImg.src = ceoSignature;
       await new Promise((resolve) => {
         signatureImg.onload = resolve;
       });
-      doc.addImage(signatureImg, 'PNG', 20, finalY + 40, 50, 20);
+      doc.addImage(signatureImg, 'PNG', 20, finalY, 50, 20);
       
       // Signature text on LEFT
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Abdullah Shah', 20, finalY + 65);
+      doc.text('Abdullah Shah', 20, finalY + 25);
       doc.setFont('helvetica', 'bold');
-      doc.text('CEO', 20, finalY + 70);
+      doc.text('CEO', 20, finalY + 30);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Date: ${receiptDate}`, 20, finalY + 75);
+      doc.text(`Date: ${receiptDate}`, 20, finalY + 35);
       
       // RIGHT: Company logo
       const logoImgRight = new Image();
-      logoImgRight.src = bbLogo;
+      logoImgRight.src = bbBuildersLogo;
       await new Promise((resolve) => {
         logoImgRight.onload = resolve;
       });
-      doc.addImage(logoImgRight, 'JPEG', 155, finalY + 40, 35, 35);
+      doc.addImage(logoImgRight, 'PNG', 155, finalY, 35, 35);
       
       // Beautiful ending note
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.3);
-      doc.line(20, finalY + 85, 190, finalY + 85);
+      doc.line(20, finalY + 45, 190, finalY + 45);
       
       doc.setFontSize(11);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text('Thank you for choosing B&B Builders!', 105, finalY + 93, { align: 'center' });
+      doc.text('Thank you for choosing B&B Builders!', 105, finalY + 53, { align: 'center' });
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       const endingNote = 'We appreciate your trust in us for your property investment. For any queries, please feel free to contact us.';
       const splitNote = doc.splitTextToSize(endingNote, 170);
-      doc.text(splitNote, 105, finalY + 100, { align: 'center' });
+      doc.text(splitNote, 105, finalY + 60, { align: 'center' });
       
       // Footer
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 115, { align: 'center' });
+      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 75, { align: 'center' });
       
       // Save the PDF
       doc.save(`Receipt_${sale.customer.name}_${selectedEntryForReceipt.id.substring(0, 8)}.pdf`);
