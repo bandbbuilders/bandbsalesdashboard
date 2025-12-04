@@ -13,7 +13,7 @@ import { Lock, TrendingUp, Users, DollarSign, Home, Calendar, CheckCircle, FileT
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from "date-fns";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import ceoSignature from "@/assets/ceo-signature-new.png";
 import bbBuildersLogo from "@/assets/bb-builders-logo.png";
 import { numberToWords } from "@/lib/numberToWords";
@@ -160,7 +160,7 @@ const CommissionManagement = () => {
       yPos += 15;
       
       // Payment table
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: yPos,
         head: [['Description', 'Amount (PKR)']],
         body: [
@@ -168,7 +168,7 @@ const CommissionManagement = () => {
           ['Amount in Words', numberToWords(amount)],
         ],
         theme: 'grid',
-        headStyles: { fillColor: primaryColor, textColor: [255, 255, 255] },
+        headStyles: { fillColor: [180, 2, 2] as [number, number, number], textColor: [255, 255, 255] as [number, number, number] },
         styles: { fontSize: 10 },
         columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70, halign: 'right' } },
       });
