@@ -60,6 +60,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          paid_amount: number | null
           recipient_name: string
           recipient_type: string
           released_30_date: string | null
@@ -76,6 +77,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          paid_amount?: number | null
           recipient_name: string
           recipient_type: string
           released_30_date?: string | null
@@ -92,6 +94,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          paid_amount?: number | null
           recipient_name?: string
           recipient_type?: string
           released_30_date?: string | null
