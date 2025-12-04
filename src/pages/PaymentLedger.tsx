@@ -332,11 +332,11 @@ const PaymentLedger = () => {
       const doc = new jsPDF();
       const primaryColor = [180, 2, 2]; // #B40202
       
-      // Add B&B Builders header with red color
+      // Add B&B BUILDERS header with red color
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      doc.text('B&B Builders', 105, 20, { align: 'center' });
+      doc.text('B&B BUILDERS', 105, 20, { align: 'center' });
       
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -412,44 +412,70 @@ const PaymentLedger = () => {
       });
       doc.addImage(signatureImg, 'PNG', 20, finalY, 50, 20);
       
+      // Add a line between signature and name
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.3);
+      doc.line(20, finalY + 22, 70, finalY + 22);
+      
       // Signature text on LEFT
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Abdullah Shah', 20, finalY + 25);
+      doc.text('Abdullah Shah', 20, finalY + 28);
       doc.setFont('helvetica', 'bold');
-      doc.text('CEO', 20, finalY + 30);
+      doc.text('CEO', 20, finalY + 33);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Date: ${receiptDate}`, 20, finalY + 35);
+      doc.text(`Date: ${receiptDate}`, 20, finalY + 38);
       
-      // RIGHT: Company logo
+      // RIGHT: Company logo (double size and rotated 30 degrees)
       const logoImgRight = new Image();
       logoImgRight.src = bbBuildersLogo;
       await new Promise((resolve) => {
         logoImgRight.onload = resolve;
       });
-      doc.addImage(logoImgRight, 'PNG', 155, finalY, 35, 35);
       
-      // Beautiful ending note
+      // Save state, translate, rotate, draw logo, restore
+      doc.saveGraphicsState();
+      const logoX = 155;
+      const logoY = finalY + 15;
+      const logoSize = 70; // Double the original size (35 * 2)
+      
+      // Translate to logo center, rotate, then draw
+      const centerX = logoX + logoSize / 2;
+      const centerY = logoY + logoSize / 2;
+      const angle = -30 * Math.PI / 180; // 30 degrees in radians, negative for clockwise
+      
+      // Apply rotation transformation
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      
+      // jsPDF uses internal matrix transformation
+      (doc as any).internal.write('q'); // Save graphics state
+      (doc as any).internal.write(`${cos.toFixed(4)} ${sin.toFixed(4)} ${(-sin).toFixed(4)} ${cos.toFixed(4)} ${centerX.toFixed(2)} ${centerY.toFixed(2)} cm`);
+      doc.addImage(logoImgRight, 'PNG', -logoSize/2, -logoSize/2, logoSize, logoSize);
+      (doc as any).internal.write('Q'); // Restore graphics state
+      
+      // Footer section
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.3);
-      doc.line(20, finalY + 45, 190, finalY + 45);
+      doc.line(20, finalY + 55, 190, finalY + 55);
       
       doc.setFontSize(11);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text('Thank you for choosing B&B Builders!', 105, finalY + 53, { align: 'center' });
+      doc.text('Thank you for choosing B&B Builders!', 105, finalY + 63, { align: 'center' });
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       const endingNote = 'We appreciate your trust in us for your property investment. For any queries, please feel free to contact us.';
       const splitNote = doc.splitTextToSize(endingNote, 170);
-      doc.text(splitNote, 105, finalY + 60, { align: 'center' });
+      doc.text(splitNote, 105, finalY + 70, { align: 'center' });
       
-      // Footer
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 75, { align: 'center' });
+      // Footer with company tagline
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 85, { align: 'center' });
       
       // Save the PDF
       doc.save(`Receipt_${sale.customer.name}_${selectedEntryForReceipt.id.substring(0, 8)}.pdf`);
