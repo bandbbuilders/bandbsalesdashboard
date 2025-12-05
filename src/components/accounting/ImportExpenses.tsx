@@ -184,6 +184,7 @@ export const ImportExpenses = ({ onImportComplete }: { onImportComplete?: () => 
   ];
 
   const handleImport = async () => {
+    console.log('Import started, processing', expenseData.length, 'entries');
     setImporting(true);
     try {
       let successCount = 0;
@@ -205,6 +206,7 @@ export const ImportExpenses = ({ onImportComplete }: { onImportComplete?: () => 
           errorCount++;
         } else {
           successCount++;
+          console.log('Imported:', expense.description);
         }
       }
 
