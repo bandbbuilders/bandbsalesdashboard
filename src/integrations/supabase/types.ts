@@ -447,9 +447,37 @@ export type Database = {
           },
         ]
       }
+      import_batches: {
+        Row: {
+          created_at: string
+          entries_count: number
+          file_name: string
+          id: string
+          imported_at: string
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string
+          entries_count?: number
+          file_name: string
+          id?: string
+          imported_at?: string
+          total_amount?: number
+        }
+        Update: {
+          created_at?: string
+          entries_count?: number
+          file_name?: string
+          id?: string
+          imported_at?: string
+          total_amount?: number
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           amount: number
+          batch_id: string | null
           created_at: string
           credit_account: string
           date: string
@@ -460,6 +488,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          batch_id?: string | null
           created_at?: string
           credit_account: string
           date: string
@@ -470,6 +499,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          batch_id?: string | null
           created_at?: string
           credit_account?: string
           date?: string
@@ -478,7 +508,15 @@ export type Database = {
           id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_stages: {
         Row: {
