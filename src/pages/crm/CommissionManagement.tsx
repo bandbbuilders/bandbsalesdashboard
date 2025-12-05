@@ -175,13 +175,13 @@ const CommissionManagement = () => {
       
       const finalY = (doc as any).lastAutoTable.finalY + 20;
       
-      // Signature on LEFT
+      // Two signature sections side by side
+      // LEFT: CEO Signature
       const signatureImg = new Image();
       signatureImg.src = ceoSignature;
       await new Promise((resolve) => { signatureImg.onload = resolve; });
       doc.addImage(signatureImg, 'PNG', 20, finalY, 50, 20);
       
-      // Line between signature and name
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.3);
       doc.line(20, finalY + 22, 70, finalY + 22);
@@ -194,14 +194,27 @@ const CommissionManagement = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`Date: ${format(new Date(paymentDate), 'dd/MM/yyyy')}`, 20, finalY + 38);
       
-      // Logo on RIGHT (rotated 30 degrees, double size)
+      // RIGHT: Agent/Recipient Signature
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.3);
+      doc.line(130, finalY + 22, 190, finalY + 22);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(selectedCommission.recipient_name, 130, finalY + 28);
+      doc.setFont('helvetica', 'bold');
+      doc.text(selectedCommission.recipient_type.toUpperCase(), 130, finalY + 33);
+      doc.setFont('helvetica', 'normal');
+      doc.text('(Signature)', 130, finalY + 38);
+      
+      // Logo in CENTER (rotated 30 degrees)
       const logoImg = new Image();
       logoImg.src = bbBuildersLogo;
       await new Promise((resolve) => { logoImg.onload = resolve; });
       
-      const logoSize = 70;
-      const centerX = 155 + logoSize / 2;
-      const centerY = finalY + 15 + logoSize / 2;
+      const logoSize = 50;
+      const centerX = 105;
+      const centerY = finalY + 25;
       const angle = -30 * Math.PI / 180;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
