@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, BarChart3, Users, Target, FileText, TrendingUp, PenTool, Coins } from "lucide-react";
+import { Building2, BarChart3, Users, Target, FileText, TrendingUp, PenTool, Coins, UserCircle } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -78,10 +78,18 @@ const Home = () => {
               <p className="text-xl text-muted-foreground">Business Management Suite</p>
             </div>
           </div>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
             Your comprehensive platform for managing property sales and customer relationships. 
             Choose the application you need to get started.
           </p>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/auth")}
+            className="gap-2"
+          >
+            <UserCircle className="h-4 w-4" />
+            Employee Login / Sign Up
+          </Button>
         </div>
 
         {/* Applications Grid */}
