@@ -53,6 +53,39 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          attachments: Json | null
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message_type: string
+          receiver_id: string | null
+          sender_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message_type?: string
+          receiver_id?: string | null
+          sender_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message_type?: string
+          receiver_id?: string | null
+          sender_id?: string
+        }
+        Relationships: []
+      }
       commissions: {
         Row: {
           amount_30_percent: number
@@ -727,27 +760,33 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          department: string | null
           email: string
           full_name: string
           id: string
+          position: string | null
           role: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          department?: string | null
           email: string
           full_name: string
           id?: string
+          position?: string | null
           role: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          department?: string | null
           email?: string
           full_name?: string
           id?: string
+          position?: string | null
           role?: string
           updated_at?: string
           user_id?: string | null

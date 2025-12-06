@@ -41,6 +41,8 @@ import Scheduler from "./pages/content/Scheduler";
 import Analytics from "./pages/content/Analytics";
 import Attendance from "./pages/Attendance";
 import { AttendanceLayout } from "./components/layout/AttendanceLayout";
+import Auth from "./pages/Auth";
+import UserDashboard from "./pages/UserDashboard";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +55,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginForm />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/sales/*" element={
             <AuthGuard>
               <AppLayout />
