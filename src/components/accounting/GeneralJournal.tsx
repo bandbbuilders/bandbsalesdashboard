@@ -21,7 +21,7 @@ interface JournalEntry {
   created_at: string;
 }
 
-const accountsList = [
+const defaultAccounts = [
   "Cash", "Accounts Receivable", "Inventory", "Land", "Building", "Equipment",
   "Accounts Payable", "Notes Payable", "Capital", "Sales Revenue", "Cost of Goods Sold",
   "Salaries Expense", "Rent Expense", "Utilities Expense", "Marketing Expense"
@@ -31,6 +31,7 @@ export const GeneralJournal = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [allAccounts, setAllAccounts] = useState<string[]>(defaultAccounts);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -43,7 +44,24 @@ export const GeneralJournal = () => {
 
   useEffect(() => {
     fetchEntries();
+    fetchCustomAccounts();
   }, []);
+
+  const fetchCustomAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_accounts')
+        .select('name');
+
+      if (error) throw error;
+      
+      const customAccountNames = data?.map(acc => acc.name) || [];
+      const combined = [...new Set([...defaultAccounts, ...customAccountNames])];
+      setAllAccounts(combined);
+    } catch (error) {
+      console.error('Error fetching custom accounts:', error);
+    }
+  };
 
   const fetchEntries = async () => {
     try {
@@ -169,7 +187,7 @@ export const GeneralJournal = () => {
                       <SelectValue placeholder="Select account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accountsList.map((account) => (
+                      {allAccounts.map((account) => (
                         <SelectItem key={account} value={account}>
                           {account}
                         </SelectItem>
@@ -185,7 +203,7 @@ export const GeneralJournal = () => {
                       <SelectValue placeholder="Select account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accountsList.map((account) => (
+                      {allAccounts.map((account) => (
                         <SelectItem key={account} value={account}>
                           {account}
                         </SelectItem>
