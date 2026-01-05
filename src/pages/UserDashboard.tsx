@@ -13,10 +13,18 @@ import {
   LogOut, 
   User,
   CalendarDays,
-  ArrowRight
+  ArrowRight,
+  BarChart3,
+  Users,
+  FileText,
+  TrendingUp,
+  PenTool,
+  Target,
+  Coins
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
+import { getAllowedModules, ModuleAccess } from "@/lib/departmentAccess";
 
 interface Profile {
   id: string;
@@ -135,6 +143,33 @@ const UserDashboard = () => {
   const stats = getTaskStats();
   const todayTasks = getTodayTasks();
   const inProgressTasks = getInProgressTasks();
+  const allowedModules = getAllowedModules(profile?.department || null);
+
+  const getModuleIcon = (moduleId: string) => {
+    switch (moduleId) {
+      case 'sales': return BarChart3;
+      case 'crm': return Users;
+      case 'tasks': return FileText;
+      case 'accounting': return TrendingUp;
+      case 'content': return PenTool;
+      case 'attendance': return Target;
+      case 'commission-management': return Coins;
+      default: return FileText;
+    }
+  };
+
+  const getModuleColor = (moduleId: string) => {
+    switch (moduleId) {
+      case 'sales': return 'bg-blue-500';
+      case 'crm': return 'bg-green-500';
+      case 'tasks': return 'bg-purple-500';
+      case 'accounting': return 'bg-orange-500';
+      case 'content': return 'bg-pink-500';
+      case 'attendance': return 'bg-indigo-500';
+      case 'commission-management': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
 
   if (isLoading) {
     return (
@@ -175,6 +210,37 @@ const UserDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Allowed Modules Section */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Your Applications</h2>
+          {allowedModules.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No modules available for your department. Please contact your administrator.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {allowedModules.map((module) => {
+                const Icon = getModuleIcon(module.id);
+                return (
+                  <Card 
+                    key={module.id} 
+                    className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:border-primary/20"
+                    onClick={() => navigate(module.path)}
+                  >
+                    <CardContent className="pt-6 text-center">
+                      <div className={`mx-auto w-12 h-12 rounded-lg ${getModuleColor(module.id)} flex items-center justify-center mb-3`}>
+                        <Icon className="h-6 w-6 text-white" />
+                      </div>
+                      <h3 className="font-medium text-sm">{module.title}</h3>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 
-const DEPARTMENTS = ["Sales", "Marketing", "Operations", "Finance", "HR"];
+const DEPARTMENTS = ["Sales", "Marketing", "Accounting", "Operations", "Finance", "HR"];
 const POSITIONS = ["Manager", "Team Lead", "Executive", "Coordinator", "Intern"];
 
 const Auth = () => {
