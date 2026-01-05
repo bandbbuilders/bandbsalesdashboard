@@ -98,7 +98,7 @@ export const AccountingLayout = () => {
           </div>
 
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")} title="Go to App Selector">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/user-dashboard")} title="Go to Dashboard">
               <Home className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon">
