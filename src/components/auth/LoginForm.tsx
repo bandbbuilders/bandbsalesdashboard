@@ -16,32 +16,32 @@ const DEMO_ACCOUNTS = {
     password: "super2025",
     role: "superadmin",
     name: "Super Administrator",
-    route: "/sales",
-    id: "11111111-1111-1111-1111-111111111111"
+    id: "11111111-1111-1111-1111-111111111111",
+    department: "Accounting" // Full access
   },
   admin: {
     email: "admin",
     password: "admin2025", 
     role: "admin",
     name: "Admin User",
-    route: "/sales",
-    id: "11111111-1111-1111-1111-111111111111"
+    id: "11111111-1111-1111-1111-111111111111",
+    department: "Accounting"
   },
   manager: {
     email: "manager",
     password: "manager2025",
     role: "manager", 
     name: "Manager User",
-    route: "/crm",
-    id: "33333333-3333-3333-3333-333333333333"
+    id: "33333333-3333-3333-3333-333333333333",
+    department: "Marketing"
   },
   agent: {
     email: "agent",
     password: "agent2025",
     role: "agent",
     name: "Sales Agent", 
-    route: "/crm",
-    id: "22222222-2222-2222-2222-222222222222"
+    id: "22222222-2222-2222-2222-222222222222",
+    department: "Sales"
   }
 };
 
@@ -91,7 +91,8 @@ export const LoginForm = () => {
           id: account.id,
           email: demoEmail,
           role: account.role,
-          name: account.name
+          name: account.name,
+          department: account.department
         }));
         localStorage.setItem('demoMode', 'true');
 
