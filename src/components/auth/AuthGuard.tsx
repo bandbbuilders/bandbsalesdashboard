@@ -14,6 +14,7 @@ interface DemoUser {
   email: string;
   role: string;
   name: string;
+  department?: string;
 }
 
 interface UserProfile {
@@ -44,25 +45,20 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       try {
         const user = JSON.parse(currentUser);
         setDemoUser(user);
+        
+        // Check department-based access control for demo users
+        const moduleId = getModuleFromPath(location.pathname);
+        if (moduleId && user.department) {
+          const hasAccess = canAccessModule(user.department, moduleId);
+          if (!hasAccess) {
+            toast.error(`You don't have access to this module`);
+            navigate("/user-dashboard");
+            setLoading(false);
+            return;
+          }
+        }
+        
         setLoading(false);
-        
-        // Check access control for demo users
-        if (location.pathname.startsWith('/sales')) {
-          const canAccessSales = user.role === 'superadmin' || user.role === 'admin';
-          if (!canAccessSales) {
-            navigate("/crm");
-            return;
-          }
-        }
-        
-        if (location.pathname.startsWith('/crm')) {
-          const canAccessCrm = user.role === 'manager' || user.role === 'agent';
-          if (!canAccessCrm && user.role !== 'superadmin') {
-            navigate("/sales");
-            return;
-          }
-        }
-        
         return;
       } catch {
         // Invalid stored user data, clear it
