@@ -2,61 +2,92 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FileText, 
-  LayoutDashboard, 
-  LogOut,
-  Menu,
-  X,
-  Home
-} from "lucide-react";
-import { User } from "@/types";
+import { FileText, LogOut, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
+type LayoutUser = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+};
 
 export const TaskLayout = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LayoutUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      try {
-        setUser(JSON.parse(currentUser));
-      } catch {
-        navigate("/login");
+    const init = async () => {
+      // Demo mode (legacy)
+      const demoMode = localStorage.getItem("demoMode");
+      const currentUser = localStorage.getItem("currentUser");
+      if (demoMode === "true" && currentUser) {
+        try {
+          const parsed = JSON.parse(currentUser);
+          setUser({
+            id: parsed.id,
+            name: parsed.name,
+            email: parsed.email,
+            role: parsed.role,
+          });
+          return;
+        } catch {
+          localStorage.removeItem("demoMode");
+          localStorage.removeItem("currentUser");
+        }
       }
-    } else {
-      navigate("/login");
-    }
+
+      // Supabase auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate("/auth");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name,email,role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      setUser({
+        id: session.user.id,
+        name: profile?.full_name ?? session.user.email ?? "User",
+        email: profile?.email ?? session.user.email ?? "",
+        role: profile?.role ?? "user",
+      });
+    };
+
+    init();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("demoMode");
-    navigate("/login");
+  const handleLogout = async () => {
+    const demoMode = localStorage.getItem("demoMode");
+    if (demoMode === "true") {
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("demoMode");
+      navigate("/auth");
+      return;
+    }
+
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
-  const navigation = [
-    { name: "Task Manager", href: "/tasks", icon: FileText, roles: ["admin", "manager", "agent"] }
-  ];
+  const navigation = [{ name: "Task Manager", href: "/tasks", icon: FileText }];
 
-  const filteredNavigation = navigation.filter(item => 
-    user && item.roles.includes(user.role)
-  );
-
-  const isActive = (href: string) => {
-    return location.pathname === href || location.pathname.startsWith(href + "/");
-  };
+  const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + "/");
 
   if (!user) return null;
 
@@ -126,7 +157,7 @@ export const TaskLayout = () => {
         <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:top-14">
           <div className="flex-1 overflow-y-auto border-r bg-background">
             <nav className="p-4 space-y-2">
-              {filteredNavigation.map((item) => {
+              {navigation.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
@@ -158,7 +189,7 @@ export const TaskLayout = () => {
               <span className="text-lg font-semibold">Task Manager</span>
             </div>
             <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-              {filteredNavigation.map((item) => {
+              {navigation.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
