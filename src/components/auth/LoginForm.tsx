@@ -100,7 +100,7 @@ export const LoginForm = () => {
           description: `Welcome back, ${account.name}!`,
         });
         
-        navigate(account.route);
+        navigate("/user-dashboard");
         return;
       }
 
@@ -120,7 +120,7 @@ export const LoginForm = () => {
           title: "Login successful",
           description: "Welcome back!",
         });
-        navigate("/sales");
+        navigate("/user-dashboard");
         return;
       }
 
