@@ -2,51 +2,82 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { 
-  LayoutDashboard,
-  Calendar,
-  Sparkles,
-  CheckSquare,
-  BarChart3,
-  LogOut,
-  Menu,
-  X,
-  Home
-} from "lucide-react";
-import { User } from "@/types";
+import { LayoutDashboard, Calendar, Sparkles, CheckSquare, BarChart3, LogOut, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
+type LayoutUser = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+};
 
 export const ContentLayout = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LayoutUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      try {
-        setUser(JSON.parse(currentUser));
-      } catch {
-        navigate("/login");
+    const init = async () => {
+      // Demo mode (legacy)
+      const demoMode = localStorage.getItem("demoMode");
+      const currentUser = localStorage.getItem("currentUser");
+      if (demoMode === "true" && currentUser) {
+        try {
+          const parsed = JSON.parse(currentUser);
+          setUser({ id: parsed.id, name: parsed.name, email: parsed.email, role: parsed.role });
+          return;
+        } catch {
+          localStorage.removeItem("demoMode");
+          localStorage.removeItem("currentUser");
+        }
       }
-    } else {
-      navigate("/login");
-    }
+
+      // Supabase auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate("/auth");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name,email,role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      setUser({
+        id: session.user.id,
+        name: profile?.full_name ?? session.user.email ?? "User",
+        email: profile?.email ?? session.user.email ?? "",
+        role: profile?.role ?? "user",
+      });
+    };
+
+    init();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("demoMode");
-    navigate("/login");
+  const handleLogout = async () => {
+    const demoMode = localStorage.getItem("demoMode");
+    if (demoMode === "true") {
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("demoMode");
+      navigate("/auth");
+      return;
+    }
+
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const navigation = [
@@ -54,13 +85,11 @@ export const ContentLayout = () => {
     { name: "Content Board", href: "/content/board", icon: CheckSquare },
     { name: "Scheduler", href: "/content/scheduler", icon: Calendar },
     { name: "AI Generator", href: "/content/generator", icon: Sparkles },
-    { name: "Analytics", href: "/content/analytics", icon: BarChart3 }
+    { name: "Analytics", href: "/content/analytics", icon: BarChart3 },
   ];
 
   const isActive = (href: string) => {
-    if (href === "/content") {
-      return location.pathname === href;
-    }
+    if (href === "/content") return location.pathname === href;
     return location.pathname.startsWith(href);
   };
 
