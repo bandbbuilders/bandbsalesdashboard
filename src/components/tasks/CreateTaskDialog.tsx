@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Department {
   id: string;
   name: string;
-  description: string;
+  description?: string | null;
   color: string;
 }
 
