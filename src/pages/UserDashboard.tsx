@@ -20,11 +20,15 @@ import {
   TrendingUp,
   PenTool,
   Target,
-  Coins
+  Coins,
+  Crown,
+  Shield,
+  Briefcase
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
 import { getAllowedModules, ModuleAccess } from "@/lib/departmentAccess";
+import { useUserRole, AppRole } from "@/hooks/useUserRole";
 
 interface Profile {
   id: string;
@@ -33,6 +37,8 @@ interface Profile {
   email: string;
   position: string | null;
   department: string | null;
+  salary?: number | null;
+  manager_id?: string | null;
 }
 
 interface Task {
@@ -50,6 +56,8 @@ const UserDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const { role, isLoading: roleLoading, isCeoCoo, isManager } = useUserRole(userId || undefined);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -58,6 +66,7 @@ const UserDashboard = () => {
         navigate("/auth");
         return;
       }
+      setUserId(session.user.id);
       fetchData(session.user.id);
     };
 
@@ -145,6 +154,21 @@ const UserDashboard = () => {
   const inProgressTasks = getInProgressTasks();
   const allowedModules = getAllowedModules(profile?.department || null);
 
+  const getRoleBadge = (userRole: AppRole | null) => {
+    switch (userRole) {
+      case 'ceo_coo':
+        return { label: 'CEO/COO', icon: Crown, color: 'bg-amber-500 text-white' };
+      case 'manager':
+        return { label: 'Manager', icon: Shield, color: 'bg-blue-500 text-white' };
+      case 'executive':
+        return { label: 'Executive', icon: Briefcase, color: 'bg-green-500 text-white' };
+      default:
+        return null;
+    }
+  };
+
+  const roleBadge = getRoleBadge(role);
+
   const getModuleIcon = (moduleId: string) => {
     switch (moduleId) {
       case 'sales': return BarChart3;
@@ -195,7 +219,15 @@ const UserDashboard = () => {
               <User className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold">{profile?.full_name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold">{profile?.full_name}</h1>
+                {roleBadge && !roleLoading && (
+                  <Badge className={roleBadge.color}>
+                    <roleBadge.icon className="h-3 w-3 mr-1" />
+                    {roleBadge.label}
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {profile?.position} • {profile?.department}
               </p>
