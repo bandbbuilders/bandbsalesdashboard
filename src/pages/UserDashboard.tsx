@@ -23,12 +23,14 @@ import {
   Coins,
   Crown,
   Shield,
-  Briefcase
+  Briefcase,
+  Plus
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
 import { getAllowedModules, ModuleAccess } from "@/lib/departmentAccess";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
+import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 
 interface Profile {
   id: string;
@@ -51,12 +53,30 @@ interface Task {
   assigned_to: string | null;
 }
 
+interface TeamMember {
+  id: string;
+  full_name: string;
+  email: string;
+  position: string | null;
+  department: string | null;
+}
+
+interface DepartmentData {
+  id: string;
+  name: string;
+  description?: string | null;
+  color: string;
+}
+
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [showCreateTask, setShowCreateTask] = useState(false);
   const { role, isLoading: roleLoading, isCeoCoo, isManager } = useUserRole(userId || undefined);
 
   useEffect(() => {
@@ -102,6 +122,13 @@ const UserDashboard = () => {
 
       if (tasksError) throw tasksError;
       setTasks(tasksData || []);
+
+      // Fetch departments for create task dialog
+      const { data: deptData } = await supabase
+        .from('departments')
+        .select('*');
+      setDepartments(deptData || []);
+
     } catch (error: any) {
       console.error('Error fetching data:', error);
       toast.error("Failed to load dashboard data");
@@ -109,6 +136,29 @@ const UserDashboard = () => {
       setIsLoading(false);
     }
   };
+
+  // Fetch team members for managers
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (!isManager || !profile?.id) return;
+      
+      try {
+        const { data, error } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name, email, position, department')
+          .eq('manager_id', profile.id);
+
+        if (error) throw error;
+        setTeamMembers(data || []);
+      } catch (error: any) {
+        console.error('Error fetching team members:', error);
+      }
+    };
+
+    if (!roleLoading && isManager && profile) {
+      fetchTeamMembers();
+    }
+  }, [isManager, roleLoading, profile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -242,9 +292,17 @@ const UserDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Quick Actions */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Your Applications</h2>
+          <Button onClick={() => setShowCreateTask(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Task
+          </Button>
+        </div>
+
         {/* Allowed Modules Section */}
         <div>
-          <h2 className="text-lg font-semibold mb-4">Your Applications</h2>
           {allowedModules.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -386,7 +444,60 @@ const UserDashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Team Members Section for Managers */}
+        {isManager && teamMembers.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
+              <Users className="h-5 w-5 text-blue-500" />
+              <CardTitle>Your Team Members</CardTitle>
+              <Badge variant="secondary" className="ml-auto">{teamMembers.length} members</Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {teamMembers.map(member => (
+                  <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{member.full_name}</h4>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {member.position} • {member.department}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isManager && teamMembers.length === 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
+              <Users className="h-5 w-5 text-blue-500" />
+              <CardTitle>Your Team Members</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-8">
+                No team members assigned yet. Executives need to be linked to your profile.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </main>
+
+      {/* Create Task Dialog */}
+      <CreateTaskDialog
+        isOpen={showCreateTask}
+        onClose={() => setShowCreateTask(false)}
+        departments={departments}
+        onTaskCreated={() => {
+          setShowCreateTask(false);
+          if (userId) fetchData(userId);
+        }}
+      />
 
       {/* Chat Widget */}
       <ChatWidget />
