@@ -140,7 +140,7 @@ const UserDashboard = () => {
   // Fetch team members for managers (same department)
   useEffect(() => {
     const fetchTeamMembers = async () => {
-      if (!isManager || !profile?.department) return;
+      if (!profile?.department) return;
       
       try {
         // Get all executives in the same department as the manager
@@ -158,7 +158,10 @@ const UserDashboard = () => {
       }
     };
 
-    if (!roleLoading && isManager && profile) {
+    // Fetch for managers (either by role or position)
+    const shouldFetchTeam = (isManager || profile?.position === 'Manager') && profile;
+    
+    if (!roleLoading && shouldFetchTeam) {
       fetchTeamMembers();
     }
   }, [isManager, roleLoading, profile]);
@@ -449,7 +452,7 @@ const UserDashboard = () => {
         </Card>
 
         {/* Team Members Section for Managers */}
-        {isManager && teamMembers.length > 0 && (
+        {(isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />
@@ -476,7 +479,7 @@ const UserDashboard = () => {
           </Card>
         )}
 
-        {isManager && teamMembers.length === 0 && (
+        {(isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />
@@ -484,7 +487,7 @@ const UserDashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground text-center py-8">
-                No team members assigned yet. Executives need to be linked to your profile.
+                No executives in your department yet. Executives will appear here once they sign up.
               </p>
             </CardContent>
           </Card>

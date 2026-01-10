@@ -26,17 +26,16 @@ export const useUserRole = (userId?: string): UserRoleData => {
       }
 
       try {
-        // Query the user_roles table directly using raw SQL via rpc or direct query
+        // Query the user_roles table
         const { data, error: queryError } = await supabase
-          .from('user_roles' as any)
+          .from('user_roles')
           .select('role')
           .eq('user_id', userId)
           .maybeSingle();
 
         if (queryError) throw queryError;
         
-        const roleData = data as unknown as { role: AppRole } | null;
-        setRole(roleData?.role || null);
+        setRole((data?.role as AppRole) || null);
       } catch (err: any) {
         console.error('Error fetching user role:', err);
         setError(err.message);
@@ -63,20 +62,22 @@ export const useUserRole = (userId?: string): UserRoleData => {
 
 // Function to assign a role to a user (typically done by admin/CEO)
 export const assignUserRole = async (userId: string, role: AppRole) => {
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from('user_roles')
-    .upsert({ user_id: userId, role }, { onConflict: 'user_id' });
+    .upsert({ user_id: userId, role } as any, { onConflict: 'user_id' });
 
   if (error) throw error;
   return true;
 };
 
-// Function to get team members for a manager
-export const getTeamMembers = async (managerId: string) => {
-  const { data, error } = await (supabase as any)
+// Function to get team members for a manager (by department)
+export const getTeamMembersByDepartment = async (department: string, excludeProfileId: string) => {
+  const { data, error } = await supabase
     .from('profiles')
-    .select('*')
-    .eq('manager_id', managerId);
+    .select('id, full_name, email, position, department')
+    .eq('department', department)
+    .eq('position', 'Executive')
+    .neq('id', excludeProfileId);
 
   if (error) throw error;
   return data;
