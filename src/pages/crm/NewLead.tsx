@@ -6,14 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const PRESET_TAGS = [
+  "Hot Lead", "Cold Lead", "Warm Lead", "VIP", "Follow Up", 
+  "Interested", "Not Interested", "Budget Confirmed", "Decision Maker",
+  "Referral", "Walk-in", "Online Inquiry", "Priority"
+];
 
 const NewLead = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,12 +34,23 @@ const NewLead = () => {
     notes: ""
   });
 
+  const addTag = (tag: string) => {
+    if (tag && !tags.includes(tag)) {
+      setTags([...tags, tag]);
+    }
+    setNewTag("");
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { data: leadData, error } = await supabase
         .from('leads')
         .insert([{
           name: formData.name,
@@ -41,9 +61,21 @@ const NewLead = () => {
           stage: formData.stage as "new" | "contacted" | "qualified" | "proposal" | "negotiation" | "closed_won" | "closed_lost",
           source: formData.source || null,
           notes: formData.notes || null
-        }]);
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Insert tags if any
+      if (tags.length > 0 && leadData) {
+        const tagInserts = tags.map(tag => ({
+          lead_id: leadData.id,
+          tag: tag
+        }));
+        
+        await supabase.from('lead_tags').insert(tagInserts);
+      }
 
       toast({
         title: "Success",
@@ -164,6 +196,49 @@ const NewLead = () => {
                   onChange={(e) => handleChange('source', e.target.value)}
                   placeholder="e.g., Website, Referral, Advertisement"
                 />
+              </div>
+            </div>
+
+            {/* Tags Section */}
+            <div className="space-y-3">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {tags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="px-2 py-1">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Add custom tag..."
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => addTag(newTag)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-sm text-muted-foreground mr-2">Quick tags:</span>
+                {PRESET_TAGS.filter(t => !tags.includes(t)).slice(0, 6).map(tag => (
+                  <Badge 
+                    key={tag} 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-accent"
+                    onClick={() => addTag(tag)}
+                  >
+                    + {tag}
+                  </Badge>
+                ))}
               </div>
             </div>
 

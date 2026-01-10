@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Phone, Mail, Building, DollarSign, Calendar, Plus } from "lucide-react";
+import { ArrowLeft, Edit, Phone, Mail, Building, DollarSign, Calendar, Plus, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ConversationList } from "@/components/crm/ConversationList";
@@ -26,11 +26,17 @@ interface Lead {
   created_at: string;
 }
 
+interface LeadTag {
+  id: string;
+  tag: string;
+}
+
 const LeadDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [lead, setLead] = useState<Lead | null>(null);
+  const [tags, setTags] = useState<LeadTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddConversation, setShowAddConversation] = useState(false);
   const [showAddReminder, setShowAddReminder] = useState(false);
@@ -38,8 +44,23 @@ const LeadDetails = () => {
   useEffect(() => {
     if (id) {
       fetchLead();
+      fetchTags();
     }
   }, [id]);
+
+  const fetchTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lead_tags')
+        .select('id, tag')
+        .eq('lead_id', id);
+
+      if (error) throw error;
+      setTags(data || []);
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
 
   const fetchLead = async () => {
     try {
@@ -119,6 +140,23 @@ const LeadDetails = () => {
                   {lead.stage.replace('_', ' ')}
                 </Badge>
               </div>
+
+              {/* Tags */}
+              {tags.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Tags</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {tags.map(tag => (
+                      <Badge key={tag.id} variant="outline" className="text-xs">
+                        {tag.tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {lead.email && (
                 <div className="flex items-center gap-2">

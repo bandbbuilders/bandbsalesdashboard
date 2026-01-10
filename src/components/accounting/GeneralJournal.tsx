@@ -22,9 +22,24 @@ interface JournalEntry {
 }
 
 const defaultAccounts = [
-  "Cash", "Accounts Receivable", "Inventory", "Land", "Building", "Equipment",
-  "Accounts Payable", "Notes Payable", "Capital", "Sales Revenue", "Cost of Goods Sold",
-  "Salaries Expense", "Rent Expense", "Utilities Expense", "Marketing Expense"
+  // Assets
+  "Cash", "Petty Cash", "Bank Account", "Accounts Receivable", "Inventory", 
+  "Prepaid Expenses", "Land", "Building", "Equipment", "Furniture & Fixtures",
+  "Vehicles", "Accumulated Depreciation",
+  // Liabilities
+  "Accounts Payable", "Notes Payable", "Accrued Expenses", "Unearned Revenue",
+  "Loans Payable", "Mortgage Payable", "Income Tax Payable", "Sales Tax Payable",
+  // Equity
+  "Capital", "Owner's Equity", "Retained Earnings", "Drawings", "Dividends",
+  // Revenue
+  "Sales Revenue", "Service Revenue", "Interest Income", "Rental Income", 
+  "Commission Income", "Other Income",
+  // Expenses
+  "Cost of Goods Sold", "Salaries Expense", "Wages Expense", "Rent Expense", 
+  "Utilities Expense", "Marketing Expense", "Advertising Expense", "Insurance Expense",
+  "Depreciation Expense", "Office Supplies Expense", "Telephone Expense", 
+  "Internet Expense", "Travel Expense", "Fuel Expense", "Repairs & Maintenance",
+  "Professional Fees", "Bank Charges", "Interest Expense", "Miscellaneous Expense"
 ];
 
 export const GeneralJournal = () => {
