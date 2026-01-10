@@ -137,16 +137,19 @@ const UserDashboard = () => {
     }
   };
 
-  // Fetch team members for managers
+  // Fetch team members for managers (same department)
   useEffect(() => {
     const fetchTeamMembers = async () => {
-      if (!isManager || !profile?.id) return;
+      if (!isManager || !profile?.department) return;
       
       try {
-        const { data, error } = await (supabase as any)
+        // Get all executives in the same department as the manager
+        const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, email, position, department')
-          .eq('manager_id', profile.id);
+          .eq('department', profile.department)
+          .eq('position', 'Executive')
+          .neq('id', profile.id);
 
         if (error) throw error;
         setTeamMembers(data || []);
