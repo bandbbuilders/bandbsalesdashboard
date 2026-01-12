@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,11 @@ interface CreateTaskDialogProps {
   onSuccess: () => void;
 }
 
+interface Profile {
+  id: string;
+  full_name: string;
+}
+
 export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -23,7 +28,25 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
   const [dueTime, setDueTime] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [users, setUsers] = useState<Profile[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .order('full_name');
+      
+      if (!error && data) {
+        setUsers(data);
+      }
+    };
+    
+    if (open) {
+      fetchUsers();
+    }
+  }, [open]);
 
 
   const handleCreate = async () => {
@@ -177,9 +200,11 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess }: CreateTaskDi
                   <SelectValue placeholder="Select team member" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  <SelectItem value="huraira">Huraira</SelectItem>
-                  <SelectItem value="muzamil">Muzamil</SelectItem>
-                  <SelectItem value="hamna">Hamna</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.full_name}>
+                      {user.full_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
