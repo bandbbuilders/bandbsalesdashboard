@@ -23,9 +23,9 @@ interface JournalEntry {
 
 const defaultAccounts = [
   // Assets
-  "Cash", "Petty Cash", "Bank Account", "Accounts Receivable", "Inventory", 
+  "Cash", "Cash/Bank", "Petty Cash", "Bank", "Bank Account", "Accounts Receivable", "Inventory", 
   "Prepaid Expenses", "Land", "Building", "Equipment", "Furniture & Fixtures",
-  "Vehicles", "Accumulated Depreciation",
+  "Vehicles", "Accumulated Depreciation", "IT Equipment", "Office Equipment", "Office Equipments",
   // Liabilities
   "Accounts Payable", "Notes Payable", "Accrued Expenses", "Unearned Revenue",
   "Loans Payable", "Mortgage Payable", "Income Tax Payable", "Sales Tax Payable",
@@ -35,11 +35,20 @@ const defaultAccounts = [
   "Sales Revenue", "Service Revenue", "Interest Income", "Rental Income", 
   "Commission Income", "Other Income",
   // Expenses
-  "Cost of Goods Sold", "Salaries Expense", "Wages Expense", "Rent Expense", 
-  "Utilities Expense", "Marketing Expense", "Advertising Expense", "Insurance Expense",
-  "Depreciation Expense", "Office Supplies Expense", "Telephone Expense", 
-  "Internet Expense", "Travel Expense", "Fuel Expense", "Repairs & Maintenance",
-  "Professional Fees", "Bank Charges", "Interest Expense", "Miscellaneous Expense"
+  "Cost of Goods Sold", "Salaries", "Salaries Expense", "Salary Expense", "Staff Salary", 
+  "Wages Expense", "Rent", "Rent Expense", "Office Rent",
+  "Utilities Expense", "Utility Expense", "Utility Bill",
+  "Marketing Expense", "Advertising Expense", "Insurance Expense",
+  "Depreciation Expense", "Office Supplies Expense", 
+  "Telephone Expense", "Internet Expense", "Communication Expense",
+  "Travel Expense", "Transportation Expense", "Fuel Expense", 
+  "Repairs & Maintenance", "Repair & Maintenance", "Repair & Maintenance Expense",
+  "Professional Fees", "Bank Charges", "Interest Expense", "Miscellaneous Expense",
+  "Entertainment Expense", "Entertainment Exp", "Entertainment Exppense",
+  "Misc Exp", "Misc Expense", "Office Exp (Microwave)",
+  "Commission Expense", "Consulting Expense", "Recruitment Expense",
+  "Printing & Stationary", "Printing & Stationery Expense",
+  "Software Subscription Expense", "Subscription", "Subscription Fee"
 ];
 
 export const GeneralJournal = () => {
