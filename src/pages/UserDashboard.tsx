@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,8 @@ import {
   Crown,
   Shield,
   Briefcase,
-  Plus
+  Plus,
+  Bell
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
@@ -68,6 +69,24 @@ interface DepartmentData {
   color: string;
 }
 
+// Notification sound function
+const playNotificationSound = () => {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.frequency.value = 800;
+  oscillator.type = 'sine';
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.3);
+};
+
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -77,6 +96,7 @@ const UserDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const profileRef = useRef<Profile | null>(null);
   const { role, isLoading: roleLoading, isCeoCoo, isManager } = useUserRole(userId || undefined);
 
   useEffect(() => {
@@ -101,6 +121,43 @@ const UserDashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Real-time subscription for new tasks
+  useEffect(() => {
+    if (!profileRef.current?.full_name) return;
+    
+    const channel = supabase
+      .channel('task-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'tasks'
+        },
+        (payload) => {
+          const newTask = payload.new as Task;
+          if (newTask.assigned_to === profileRef.current?.full_name) {
+            // Play notification sound
+            playNotificationSound();
+            
+            // Show toast notification
+            toast.success(`New task assigned: ${newTask.title}`, {
+              icon: <Bell className="h-4 w-4" />,
+              duration: 5000,
+            });
+            
+            // Add task to list
+            setTasks(prev => [newTask, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.full_name]);
+
   const fetchData = async (userId: string) => {
     try {
       // Fetch profile
@@ -112,8 +169,9 @@ const UserDashboard = () => {
 
       if (profileError) throw profileError;
       setProfile(profileData);
+      profileRef.current = profileData;
 
-      // Fetch tasks assigned to this user
+      // Fetch tasks assigned to this user (use exact name match)
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
@@ -135,6 +193,17 @@ const UserDashboard = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Refetch tasks function
+  const refetchTasks = async () => {
+    if (!profile?.full_name) return;
+    const { data: tasksData } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('assigned_to', profile.full_name)
+      .order('due_date', { ascending: true });
+    setTasks(tasksData || []);
   };
 
   // Fetch team members for managers (same department)
@@ -501,7 +570,7 @@ const UserDashboard = () => {
         departments={departments}
         onTaskCreated={() => {
           setShowCreateTask(false);
-          if (userId) fetchData(userId);
+          refetchTasks();
         }}
       />
 
