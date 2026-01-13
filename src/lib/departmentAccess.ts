@@ -12,7 +12,7 @@ export const DEPARTMENT_MODULES: Record<string, string[]> = {
   "Marketing": ["content", "tasks", "crm"],
   "Accounting": ["accounting", "sales", "commission-management", "attendance"],
   "Finance": ["accounting", "sales", "commission-management", "attendance"],
-  "Sales": ["sales", "hr"],
+  "Sales": ["sales"],
   "Operations": ["tasks", "attendance", "crm"],
   "HR": ["hr", "tasks", "attendance"],
 };
@@ -28,26 +28,51 @@ export const ALL_MODULES: ModuleAccess[] = [
   { id: "commission-management", title: "Commission Management", path: "/commission-management" },
   { id: "hr", title: "HR Management", path: "/hr" },
 ];
+
+// User-specific module overrides (by user_id)
+// These users get access to additional modules beyond their department defaults
+export const USER_MODULE_OVERRIDES: Record<string, string[]> = {
+  // Sara Memon - Sales + HR + CRM + Attendance
+  "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0": ["hr", "crm", "attendance"],
+};
+
 // Get allowed modules for a department
 // If isCeoCoo is true, return all modules
-export const getAllowedModules = (department: string | null, isCeoCoo: boolean = false): ModuleAccess[] => {
+// Also merges user-specific overrides if userId is provided
+export const getAllowedModules = (
+  department: string | null,
+  isCeoCoo: boolean = false,
+  userId?: string
+): ModuleAccess[] => {
   if (isCeoCoo) return ALL_MODULES;
   if (!department) return [];
-  
-  const allowedModuleIds = DEPARTMENT_MODULES[department] || [];
-  return ALL_MODULES.filter(module => allowedModuleIds.includes(module.id));
+
+  const departmentModuleIds = DEPARTMENT_MODULES[department] || [];
+  const userOverrides = userId ? USER_MODULE_OVERRIDES[userId] || [] : [];
+
+  // Combine department modules with user-specific overrides (no duplicates)
+  const allowedModuleIds = [...new Set([...departmentModuleIds, ...userOverrides])];
+
+  return ALL_MODULES.filter((module) => allowedModuleIds.includes(module.id));
 };
 
 // Check if a department can access a specific module
-export const canAccessModule = (department: string | null, moduleId: string): boolean => {
+// Also checks user-specific overrides if userId is provided
+export const canAccessModule = (
+  department: string | null,
+  moduleId: string,
+  userId?: string
+): boolean => {
   if (!department) return false;
-  
-  const allowedModuleIds = DEPARTMENT_MODULES[department] || [];
-  return allowedModuleIds.includes(moduleId);
+
+  const departmentModuleIds = DEPARTMENT_MODULES[department] || [];
+  const userOverrides = userId ? USER_MODULE_OVERRIDES[userId] || [] : [];
+
+  return departmentModuleIds.includes(moduleId) || userOverrides.includes(moduleId);
 };
 
 // Get the default route for a department (first allowed module)
-export const getDefaultRoute = (department: string | null): string => {
-  const allowedModules = getAllowedModules(department);
+export const getDefaultRoute = (department: string | null, userId?: string): string => {
+  const allowedModules = getAllowedModules(department, false, userId);
   return allowedModules.length > 0 ? allowedModules[0].path : "/user-dashboard";
 };
