@@ -21,6 +21,8 @@ interface UserProfile {
   department: string | null;
 }
 
+type AppRole = "ceo_coo" | "manager" | "executive";
+
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
@@ -128,9 +130,18 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
       setUserProfile(profile);
 
-      // Check module access
+      // Check if user is CEO/COO - they have access to all modules
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      const isCeoCoo = roleData?.role === 'ceo_coo';
+
+      // Check module access - CEO/COO bypasses department restrictions
       const moduleId = getModuleFromPath(location.pathname);
-      if (moduleId && profile?.department) {
+      if (moduleId && !isCeoCoo && profile?.department) {
         const hasAccess = canAccessModule(profile.department, moduleId);
         if (!hasAccess) {
           toast.error(`You don't have access to this module`);
@@ -158,26 +169,35 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
         startHeartbeat(session.user.id);
 
-        // Fetch profile on auth change
-        setTimeout(() => {
-          supabase
-            .from('profiles')
-            .select('department')
-            .eq('user_id', session.user.id)
-            .single()
-            .then(({ data: profile }) => {
-              setUserProfile(profile);
+        // Fetch profile and role on auth change
+        setTimeout(async () => {
+          const [profileResult, roleResult] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('department')
+              .eq('user_id', session.user.id)
+              .single(),
+            supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', session.user.id)
+              .single()
+          ]);
 
-              const moduleId = getModuleFromPath(location.pathname);
-              if (moduleId && profile?.department) {
-                const hasAccess = canAccessModule(profile.department, moduleId);
-                if (!hasAccess) {
-                  toast.error(`You don't have access to this module`);
-                  navigate("/user-dashboard");
-                }
-              }
-              setLoading(false);
-            });
+          const profile = profileResult.data;
+          const isCeoCoo = roleResult.data?.role === 'ceo_coo';
+
+          setUserProfile(profile);
+
+          const moduleId = getModuleFromPath(location.pathname);
+          if (moduleId && !isCeoCoo && profile?.department) {
+            const hasAccess = canAccessModule(profile.department, moduleId);
+            if (!hasAccess) {
+              toast.error(`You don't have access to this module`);
+              navigate("/user-dashboard");
+            }
+          }
+          setLoading(false);
         }, 0);
       }
     );
