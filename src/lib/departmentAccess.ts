@@ -12,7 +12,7 @@ export const DEPARTMENT_MODULES: Record<string, string[]> = {
   "Marketing": ["content", "tasks", "crm"],
   "Accounting": ["accounting", "sales", "commission-management", "attendance"],
   "Finance": ["accounting", "sales", "commission-management", "attendance"],
-  "Sales": ["sales"],
+  "Sales": ["sales", "hr"],
   "Operations": ["tasks", "attendance", "crm"],
   "HR": ["hr", "tasks", "attendance"],
 };

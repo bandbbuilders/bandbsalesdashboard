@@ -135,18 +135,30 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         .from('user_roles')
         .select('role')
         .eq('user_id', session.user.id)
-        .single();
-
-      if (roleError) {
-        console.warn('Could not fetch user role:', roleError);
-      }
+        .maybeSingle(); // Use maybeSingle to avoid error when no role exists
 
       const isCeoCoo = roleData?.role === 'ceo_coo';
-      console.log('AuthGuard - User role check:', { role: roleData?.role, isCeoCoo, moduleId: getModuleFromPath(location.pathname) });
+      
+      // Debug logging
+      console.log('AuthGuard - Role check:', { 
+        userId: session.user.id,
+        roleData, 
+        roleError: roleError?.message,
+        isCeoCoo 
+      });
 
-      // Check module access - CEO/COO bypasses department restrictions
+      // Check module access - CEO/COO bypasses ALL department restrictions
       const moduleId = getModuleFromPath(location.pathname);
-      if (moduleId && !isCeoCoo && profile?.department) {
+      
+      if (isCeoCoo) {
+        // CEO/COO has access to everything - skip department check
+        console.log('AuthGuard - CEO/COO detected, granting full access');
+        setLoading(false);
+        return;
+      }
+
+      // For non-CEO/COO users, check department-based access
+      if (moduleId && profile?.department) {
         const hasAccess = canAccessModule(profile.department, moduleId);
         console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, hasAccess });
         if (!hasAccess) {
@@ -187,7 +199,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
               .from('user_roles')
               .select('role')
               .eq('user_id', session.user.id)
-              .single()
+              .maybeSingle() // Use maybeSingle to avoid error when no role exists
           ]);
 
           const profile = profileResult.data;
@@ -195,8 +207,15 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
           setUserProfile(profile);
 
+          // CEO/COO has access to everything
+          if (isCeoCoo) {
+            console.log('AuthGuard (onAuthStateChange) - CEO/COO detected, granting full access');
+            setLoading(false);
+            return;
+          }
+
           const moduleId = getModuleFromPath(location.pathname);
-          if (moduleId && !isCeoCoo && profile?.department) {
+          if (moduleId && profile?.department) {
             const hasAccess = canAccessModule(profile.department, moduleId);
             if (!hasAccess) {
               toast.error(`You don't have access to this module`);
