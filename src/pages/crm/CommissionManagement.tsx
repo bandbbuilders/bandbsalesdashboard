@@ -433,6 +433,40 @@ const CommissionManagement = () => {
         </Card>
       </div>
       
+      {/* COO Commission Stats */}
+      {(() => {
+        const cooData = recipientData['Zain Sarwar'];
+        if (!cooData) return null;
+        const cooOutstanding = cooData.total - cooData.paid;
+        return (
+          <Card className="border-2 border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                COO Commission - Zain Sarwar
+              </CardTitle>
+              <CardDescription>Chief Operating Officer commission overview</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-background border">
+                  <p className="text-sm text-muted-foreground">Total Commission</p>
+                  <p className="text-2xl font-bold">{fmt(cooData.total)}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-green-600">Paid Commission</p>
+                  <p className="text-2xl font-bold text-green-600">{fmt(cooData.paid)}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800">
+                  <p className="text-sm text-orange-600">Outstanding Commission</p>
+                  <p className="text-2xl font-bold text-orange-600">{fmt(cooOutstanding)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+      
       <Card>
         <CardHeader><CardTitle>Agent & Dealer Performance</CardTitle></CardHeader>
         <CardContent>
