@@ -131,18 +131,24 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       setUserProfile(profile);
 
       // Check if user is CEO/COO - they have access to all modules
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', session.user.id)
         .single();
 
+      if (roleError) {
+        console.warn('Could not fetch user role:', roleError);
+      }
+
       const isCeoCoo = roleData?.role === 'ceo_coo';
+      console.log('AuthGuard - User role check:', { role: roleData?.role, isCeoCoo, moduleId: getModuleFromPath(location.pathname) });
 
       // Check module access - CEO/COO bypasses department restrictions
       const moduleId = getModuleFromPath(location.pathname);
       if (moduleId && !isCeoCoo && profile?.department) {
         const hasAccess = canAccessModule(profile.department, moduleId);
+        console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, hasAccess });
         if (!hasAccess) {
           toast.error(`You don't have access to this module`);
           navigate("/user-dashboard");
