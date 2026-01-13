@@ -14,7 +14,7 @@ export const DEPARTMENT_MODULES: Record<string, string[]> = {
   "Finance": ["accounting", "sales", "commission-management", "attendance"],
   "Sales": ["sales"],
   "Operations": ["tasks", "attendance", "crm"],
-  "HR": ["tasks", "attendance"],
+  "HR": ["hr", "tasks", "attendance"],
 };
 
 // All available modules in the system
@@ -26,6 +26,7 @@ export const ALL_MODULES: ModuleAccess[] = [
   { id: "content", title: "Content Production", path: "/content" },
   { id: "attendance", title: "Attendance", path: "/attendance" },
   { id: "commission-management", title: "Commission Management", path: "/commission-management" },
+  { id: "hr", title: "HR Management", path: "/hr" },
 ];
 // Get allowed modules for a department
 // If isCeoCoo is true, return all modules

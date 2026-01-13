@@ -483,6 +483,7 @@ const UserDashboard = () => {
       case 'content': return PenTool;
       case 'attendance': return Target;
       case 'commission-management': return Coins;
+      case 'hr': return User;
       default: return FileText;
     }
   };
@@ -496,6 +497,7 @@ const UserDashboard = () => {
       case 'content': return 'bg-pink-500';
       case 'attendance': return 'bg-indigo-500';
       case 'commission-management': return 'bg-red-500';
+      case 'hr': return 'bg-teal-500';
       default: return 'bg-gray-500';
     }
   };
