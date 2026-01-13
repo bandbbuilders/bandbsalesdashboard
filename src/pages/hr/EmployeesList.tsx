@@ -65,12 +65,20 @@ const EmployeesList = () => {
           .select("*")
           .in("id", profileIds);
 
-        const enrichedEmployees = employeeDetails.map(emp => ({
-          ...emp,
-          profile: profilesData?.find(p => p.id === emp.profile_id) || {}
-        }));
+        const enrichedEmployees: Employee[] = employeeDetails.map(emp => {
+          const profile = profilesData?.find(p => p.id === emp.profile_id);
+          return {
+            ...emp,
+            profile: profile ? {
+              full_name: profile.full_name,
+              email: profile.email,
+              position: profile.position,
+              department: profile.department,
+            } : undefined
+          };
+        });
 
-        setEmployees(enrichedEmployees as Employee[]);
+        setEmployees(enrichedEmployees);
       }
     } catch (error) {
       console.error("Error fetching employees:", error);
