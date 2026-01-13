@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Users, Calendar, DollarSign, TrendingUp, LayoutDashboard, FileText } from "lucide-react";
+import { Users, Calendar, DollarSign, TrendingUp, LayoutDashboard, FileText, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const HrLayout = () => {
   const location = useLocation();
@@ -23,9 +24,18 @@ const HrLayout = () => {
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
         <div className="container mx-auto px-4">
-          <div className="flex items-center gap-2 py-4">
-            <Users className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">HR Management</h1>
+          <div className="flex items-center justify-between gap-2 py-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-bold">HR Management</h1>
+            </div>
+
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/user-dashboard">
+                <Home className="h-4 w-4 mr-2" />
+                Home
+              </Link>
+            </Button>
           </div>
           <nav className="flex gap-1 overflow-x-auto pb-2">
             {navItems.map((item) => (
