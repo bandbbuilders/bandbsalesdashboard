@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,11 +26,14 @@ import {
   Briefcase,
   Plus,
   Bell,
-  MapPin
+  MapPin,
+  DollarSign,
+  Activity,
+  Building2
 } from "lucide-react";
 import { format, isToday, formatDistanceToNow } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
-import { getAllowedModules, ModuleAccess } from "@/lib/departmentAccess";
+import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAccess";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useAutoAttendance } from "@/hooks/useAutoAttendance";
@@ -81,6 +84,15 @@ interface DepartmentData {
   color: string;
 }
 
+interface BusinessStats {
+  totalSales: number;
+  totalSalesValue: number;
+  totalLeads: number;
+  totalTasks: number;
+  totalCommissions: number;
+  todayAttendance: number;
+}
+
 // Notification sound function
 const playNotificationSound = () => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -104,8 +116,10 @@ const UserDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [allUsers, setAllUsers] = useState<TeamMember[]>([]);
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
+  const [businessStats, setBusinessStats] = useState<BusinessStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -236,34 +250,61 @@ const UserDashboard = () => {
     setTasks(tasksData || []);
   };
 
-  // Fetch team members for managers (same department)
+  // Fetch team members for managers (same department) OR all users for CEO/COO
   useEffect(() => {
     const fetchTeamMembers = async () => {
-      if (!profile?.department) return;
+      if (!profile) return;
       
       try {
-        // Get all executives in the same department as the manager
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, position, department, last_seen')
-          .eq('department', profile.department)
-          .eq('position', 'Executive')
-          .neq('id', profile.id);
+        if (isCeoCoo) {
+          // CEO/COO sees ALL users
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, position, department, last_seen')
+            .neq('id', profile.id)
+            .order('department', { ascending: true });
 
-        if (error) throw error;
-        setTeamMembers((data || []) as TeamMember[]);
+          if (error) throw error;
+          setAllUsers((data || []) as TeamMember[]);
+          
+          // Also fetch business stats for COO
+          const [salesData, leadsData, tasksData, commissionsData, attendanceData] = await Promise.all([
+            supabase.from('sales').select('unit_total_price'),
+            supabase.from('leads').select('id'),
+            supabase.from('tasks').select('id, status'),
+            supabase.from('commissions').select('total_amount'),
+            supabase.from('attendance').select('id').eq('date', new Date().toISOString().split('T')[0])
+          ]);
+          
+          setBusinessStats({
+            totalSales: salesData.data?.length || 0,
+            totalSalesValue: salesData.data?.reduce((sum, s) => sum + (s.unit_total_price || 0), 0) || 0,
+            totalLeads: leadsData.data?.length || 0,
+            totalTasks: tasksData.data?.length || 0,
+            totalCommissions: commissionsData.data?.reduce((sum, c) => sum + (c.total_amount || 0), 0) || 0,
+            todayAttendance: attendanceData.data?.length || 0
+          });
+        } else if (isManager || profile?.position === 'Manager') {
+          // Managers see executives in their department
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, position, department, last_seen')
+            .eq('department', profile.department)
+            .eq('position', 'Executive')
+            .neq('id', profile.id);
+
+          if (error) throw error;
+          setTeamMembers((data || []) as TeamMember[]);
+        }
       } catch (error: any) {
         console.error('Error fetching team members:', error);
       }
     };
 
-    // Fetch for managers (either by role or position)
-    const shouldFetchTeam = (isManager || profile?.position === 'Manager') && profile;
-    
-    if (!roleLoading && shouldFetchTeam) {
+    if (!roleLoading && profile) {
       fetchTeamMembers();
     }
-  }, [isManager, roleLoading, profile]);
+  }, [isCeoCoo, isManager, roleLoading, profile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -307,7 +348,28 @@ const UserDashboard = () => {
   const stats = getTaskStats();
   const todayTasks = getTodayTasks();
   const inProgressTasks = getInProgressTasks();
-  const allowedModules = getAllowedModules(profile?.department || null);
+  const allowedModules = getAllowedModules(profile?.department || null, isCeoCoo);
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 10000000) {
+      return `Rs ${(amount / 10000000).toFixed(2)} Cr`;
+    } else if (amount >= 100000) {
+      return `Rs ${(amount / 100000).toFixed(2)} Lac`;
+    }
+    return `Rs ${amount.toLocaleString()}`;
+  };
+
+  const getDepartmentColor = (dept: string | null) => {
+    switch (dept) {
+      case 'Marketing': return 'bg-pink-500';
+      case 'Sales': return 'bg-green-500';
+      case 'Accounting': return 'bg-blue-500';
+      case 'Finance': return 'bg-purple-500';
+      case 'Operations': return 'bg-orange-500';
+      case 'HR': return 'bg-teal-500';
+      default: return 'bg-gray-500';
+    }
+  };
 
   const getRoleBadge = (userRole: AppRole | null) => {
     switch (userRole) {
@@ -397,9 +459,75 @@ const UserDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* COO Business Overview - Only for CEO/COO */}
+        {isCeoCoo && businessStats && (
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Business Overview</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col">
+                    <BarChart3 className="h-8 w-8 text-blue-500 mb-2" />
+                    <p className="text-xs text-muted-foreground">Total Sales</p>
+                    <p className="text-2xl font-bold">{businessStats.totalSales}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col">
+                    <DollarSign className="h-8 w-8 text-green-500 mb-2" />
+                    <p className="text-xs text-muted-foreground">Sales Value</p>
+                    <p className="text-2xl font-bold">{formatCurrency(businessStats.totalSalesValue)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col">
+                    <Users className="h-8 w-8 text-purple-500 mb-2" />
+                    <p className="text-xs text-muted-foreground">Total Leads</p>
+                    <p className="text-2xl font-bold">{businessStats.totalLeads}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col">
+                    <FileText className="h-8 w-8 text-orange-500 mb-2" />
+                    <p className="text-xs text-muted-foreground">Total Tasks</p>
+                    <p className="text-2xl font-bold">{businessStats.totalTasks}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col">
+                    <Coins className="h-8 w-8 text-amber-500 mb-2" />
+                    <p className="text-xs text-muted-foreground">Commissions</p>
+                    <p className="text-2xl font-bold">{formatCurrency(businessStats.totalCommissions)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-teal-500/10 to-teal-600/5 border-teal-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col">
+                    <Activity className="h-8 w-8 text-teal-500 mb-2" />
+                    <p className="text-xs text-muted-foreground">Today Attendance</p>
+                    <p className="text-2xl font-bold">{businessStats.todayAttendance}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
+
         {/* Quick Actions */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Your Applications</h2>
+          <h2 className="text-lg font-semibold">{isCeoCoo ? 'All Modules' : 'Your Applications'}</h2>
           <Button onClick={() => setShowCreateTask(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Task
@@ -576,8 +704,67 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* All Team Members Section for CEO/COO */}
+        {isCeoCoo && allUsers.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-500" />
+              <div>
+                <CardTitle>All Team Members</CardTitle>
+                <CardDescription>Complete organization overview</CardDescription>
+              </div>
+              <Badge variant="secondary" className="ml-auto">{allUsers.length} members</Badge>
+            </CardHeader>
+            <CardContent>
+              {/* Group by department */}
+              {Object.entries(
+                allUsers.reduce((acc, member) => {
+                  const dept = member.department || 'Unassigned';
+                  if (!acc[dept]) acc[dept] = [];
+                  acc[dept].push(member);
+                  return acc;
+                }, {} as Record<string, TeamMember[]>)
+              ).map(([dept, members]) => (
+                <div key={dept} className="mb-6 last:mb-0">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`h-3 w-3 rounded-full ${getDepartmentColor(dept)}`} />
+                    <h3 className="font-semibold text-sm">{dept}</h3>
+                    <Badge variant="outline" className="text-xs">{members.length}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {members.map(member => (
+                      <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
+                          <User className="h-5 w-5 text-primary" />
+                          {member.last_seen && new Date(member.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
+                            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{member.full_name}</h4>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {member.position}
+                          </p>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3" />
+                            {member.last_seen ? (
+                              <span>{formatDistanceToNow(new Date(member.last_seen), { addSuffix: true })}</span>
+                            ) : (
+                              <span>Never logged in</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Team Members Section for Managers */}
-        {(isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
+        {!isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />
@@ -615,7 +802,7 @@ const UserDashboard = () => {
           </Card>
         )}
 
-        {(isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
+        {!isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />

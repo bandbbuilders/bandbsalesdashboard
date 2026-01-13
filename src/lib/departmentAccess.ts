@@ -27,9 +27,10 @@ export const ALL_MODULES: ModuleAccess[] = [
   { id: "attendance", title: "Attendance", path: "/attendance" },
   { id: "commission-management", title: "Commission Management", path: "/commission-management" },
 ];
-
 // Get allowed modules for a department
-export const getAllowedModules = (department: string | null): ModuleAccess[] => {
+// If isCeoCoo is true, return all modules
+export const getAllowedModules = (department: string | null, isCeoCoo: boolean = false): ModuleAccess[] => {
+  if (isCeoCoo) return ALL_MODULES;
   if (!department) return [];
   
   const allowedModuleIds = DEPARTMENT_MODULES[department] || [];
