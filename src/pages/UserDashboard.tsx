@@ -31,7 +31,7 @@ import {
   Activity,
   Building2
 } from "lucide-react";
-import { format, isToday, formatDistanceToNow } from "date-fns";
+import { format, isToday, formatDistanceToNow, differenceInHours, isPast, isTomorrow } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
 import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAccess";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
@@ -66,6 +66,7 @@ interface Task {
   priority: string;
   due_date: string | null;
   assigned_to: string | null;
+  created_at?: string | null;
 }
 
 interface TeamMember {
@@ -207,7 +208,8 @@ const UserDashboard = () => {
       setProfile(profileData);
       profileRef.current = profileData;
 
-      // Fetch tasks assigned to this user (use exact name match)
+      // Fetch tasks - for COO, fetch ALL tasks; for others, fetch only assigned tasks
+      // Note: isCeoCoo is not yet available here, we'll refetch for COO in useEffect
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
@@ -241,13 +243,99 @@ const UserDashboard = () => {
 
   // Refetch tasks function
   const refetchTasks = async () => {
-    if (!profile?.full_name) return;
-    const { data: tasksData } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('assigned_to', profile.full_name)
-      .order('due_date', { ascending: true });
-    setTasks(tasksData || []);
+    if (isCeoCoo) {
+      // COO sees all tasks
+      const { data: tasksData } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('due_date', { ascending: true });
+      setTasks(tasksData || []);
+    } else if (profile?.full_name) {
+      const { data: tasksData } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('assigned_to', profile.full_name)
+        .order('due_date', { ascending: true });
+      setTasks(tasksData || []);
+    }
+  };
+
+  // Fetch all tasks for COO when role is loaded
+  useEffect(() => {
+    const fetchAllTasks = async () => {
+      if (isCeoCoo) {
+        const { data: tasksData } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('due_date', { ascending: true });
+        setTasks(tasksData || []);
+      }
+    };
+    if (!roleLoading && isCeoCoo) {
+      fetchAllTasks();
+    }
+  }, [isCeoCoo, roleLoading]);
+
+  // Mark task as complete
+  const markTaskComplete = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'done' })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      toast.success('Task marked as complete!');
+      refetchTasks();
+    } catch (error: any) {
+      console.error('Error completing task:', error);
+      toast.error('Failed to complete task');
+    }
+  };
+
+  // Get deadline urgency class
+  const getDeadlineClass = (dueDate: string | null) => {
+    if (!dueDate) return '';
+    const due = new Date(dueDate);
+    const now = new Date();
+    const hoursUntilDue = differenceInHours(due, now);
+    
+    if (isPast(due)) {
+      return 'border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20';
+    } else if (hoursUntilDue <= 2) {
+      return 'border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20';
+    } else if (hoursUntilDue <= 24) {
+      return 'border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-950/20';
+    } else if (isTomorrow(due) || hoursUntilDue <= 48) {
+      return 'border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-950/20';
+    }
+    return '';
+  };
+
+  // Format due time display
+  const formatDueTime = (dueDate: string | null) => {
+    if (!dueDate) return null;
+    const due = new Date(dueDate);
+    const now = new Date();
+    
+    if (isPast(due)) {
+      return { text: `Overdue by ${formatDistanceToNow(due)}`, urgent: true };
+    }
+    
+    const hoursLeft = differenceInHours(due, now);
+    if (hoursLeft < 1) {
+      return { text: 'Due in less than an hour!', urgent: true };
+    } else if (hoursLeft <= 2) {
+      return { text: `Due in ${hoursLeft} hour${hoursLeft > 1 ? 's' : ''}`, urgent: true };
+    } else if (hoursLeft <= 24) {
+      return { text: `Due in ${hoursLeft} hours`, urgent: false };
+    } else if (isToday(due)) {
+      return { text: `Today at ${format(due, 'h:mm a')}`, urgent: false };
+    } else if (isTomorrow(due)) {
+      return { text: `Tomorrow at ${format(due, 'h:mm a')}`, urgent: false };
+    }
+    return { text: format(due, 'MMM d, h:mm a'), urgent: false };
   };
 
   // Fetch team members for managers (same department) OR all users for CEO/COO
@@ -642,7 +730,7 @@ const UserDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            <CardTitle>Today's Tasks</CardTitle>
+            <CardTitle>{isCeoCoo ? "All Tasks Due Today" : "Today's Tasks"}</CardTitle>
             <Badge variant="secondary" className="ml-auto">{todayTasks.length} tasks</Badge>
           </CardHeader>
           <CardContent>
@@ -650,20 +738,45 @@ const UserDashboard = () => {
               <p className="text-muted-foreground text-center py-8">No tasks due today</p>
             ) : (
               <div className="space-y-3">
-                {todayTasks.map(task => (
-                  <div key={task.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{task.title}</h4>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
-                      )}
+                {todayTasks.map(task => {
+                  const dueInfo = formatDueTime(task.due_date);
+                  return (
+                    <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{task.title}</h4>
+                          {isCeoCoo && task.assigned_to && (
+                            <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
+                          )}
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
+                        )}
+                        {dueInfo && (
+                          <p className={`text-xs mt-1 ${dueInfo.urgent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            {dueInfo.text}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                        <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
+                        {task.status !== 'done' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="h-8"
+                            onClick={() => markTaskComplete(task.id)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Done
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                      <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -673,7 +786,7 @@ const UserDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2">
             <ArrowRight className="h-5 w-5 text-blue-500" />
-            <CardTitle>Tasks In Progress</CardTitle>
+            <CardTitle>{isCeoCoo ? "All Tasks In Progress" : "Tasks In Progress"}</CardTitle>
             <Badge variant="secondary" className="ml-auto">{inProgressTasks.length} tasks</Badge>
           </CardHeader>
           <CardContent>
@@ -681,28 +794,105 @@ const UserDashboard = () => {
               <p className="text-muted-foreground text-center py-8">No tasks in progress</p>
             ) : (
               <div className="space-y-3">
-                {inProgressTasks.map(task => (
-                  <div key={task.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{task.title}</h4>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
-                      )}
+                {inProgressTasks.map(task => {
+                  const dueInfo = formatDueTime(task.due_date);
+                  return (
+                    <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{task.title}</h4>
+                          {isCeoCoo && task.assigned_to && (
+                            <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
+                          )}
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
+                        )}
+                        {dueInfo && (
+                          <p className={`text-xs mt-1 ${dueInfo.urgent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            {dueInfo.text}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="h-8"
+                          onClick={() => markTaskComplete(task.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Done
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {task.due_date && (
-                        <span className="text-sm text-muted-foreground">
-                          Due: {format(new Date(task.due_date), 'MMM d')}
-                        </span>
-                      )}
-                      <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* All Business Tasks - COO Only */}
+        {isCeoCoo && (
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
+              <FileText className="h-5 w-5 text-purple-500" />
+              <div>
+                <CardTitle>All Business Tasks</CardTitle>
+                <CardDescription>Complete task overview across all departments</CardDescription>
+              </div>
+              <Badge variant="secondary" className="ml-auto">{tasks.filter(t => t.status !== 'done').length} pending</Badge>
+            </CardHeader>
+            <CardContent>
+              {tasks.filter(t => t.status !== 'done').length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">All tasks completed!</p>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {tasks.filter(t => t.status !== 'done').map(task => {
+                    const dueInfo = formatDueTime(task.due_date);
+                    return (
+                      <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-medium">{task.title}</h4>
+                            {task.assigned_to && (
+                              <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
+                            )}
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
+                          )}
+                          {dueInfo && (
+                            <p className={`text-xs mt-1 ${dueInfo.urgent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                              <Clock className="h-3 w-3 inline mr-1" />
+                              {dueInfo.text}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                          <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="h-8"
+                            onClick={() => markTaskComplete(task.id)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Done
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* All Team Members Section for CEO/COO */}
         {isCeoCoo && allUsers.length > 0 && (
