@@ -41,8 +41,15 @@ import Scheduler from "./pages/content/Scheduler";
 import Analytics from "./pages/content/Analytics";
 import Attendance from "./pages/Attendance";
 import { AttendanceLayout } from "./components/layout/AttendanceLayout";
+import HrLayout from "./components/layout/HrLayout";
 import Auth from "./pages/Auth";
 import UserDashboard from "./pages/UserDashboard";
+import HrDashboard from "./pages/hr/HrDashboard";
+import EmployeesList from "./pages/hr/EmployeesList";
+import LeaveManagement from "./pages/hr/LeaveManagement";
+import PayrollManagement from "./pages/hr/PayrollManagement";
+import PerformanceManagement from "./pages/hr/PerformanceManagement";
+import DocumentsManagement from "./pages/hr/DocumentsManagement";
 
 const queryClient = new QueryClient();
 
@@ -127,6 +134,20 @@ const App = () => (
             <Route index element={<Attendance />} />
           </Route>
         
+          {/* HR Management */}
+          <Route path="/hr/*" element={
+            <AuthGuard>
+              <HrLayout />
+            </AuthGuard>
+          }>
+            <Route index element={<HrDashboard />} />
+            <Route path="employees" element={<EmployeesList />} />
+            <Route path="leave" element={<LeaveManagement />} />
+            <Route path="payroll" element={<PayrollManagement />} />
+            <Route path="performance" element={<PerformanceManagement />} />
+            <Route path="documents" element={<DocumentsManagement />} />
+          </Route>
+
           {/* Commission Management - Standalone with password protection */}
           <Route path="/commission-management" element={<CommissionManagement />} />
         </Routes>
