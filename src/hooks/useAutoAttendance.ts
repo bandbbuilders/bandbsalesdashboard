@@ -12,7 +12,8 @@ const OFFICE_COORDINATES = {
 };
 
 const STANDARD_IN_TIME = "10:00";
-const GRACE_PERIOD = 15;
+const GRACE_PERIOD = 15; // minutes - final time is 10:15
+const LATE_FINE_AMOUNT = 500; // Rs 500 fine for late arrival
 
 // Calculate distance between two coordinates using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -30,18 +31,19 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // Distance in meters
 };
 
-const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate: boolean } => {
+const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate: boolean; shouldFine: boolean } => {
   const [hours, minutes] = checkIn.split(':').map(Number);
   const [stdHours, stdMinutes] = STANDARD_IN_TIME.split(':').map(Number);
   
   const checkInMinutes = hours * 60 + minutes;
   const standardTime = stdHours * 60 + stdMinutes;
-  const graceTime = standardTime + GRACE_PERIOD;
+  const graceTime = standardTime + GRACE_PERIOD; // 10:15 AM
 
   if (checkInMinutes <= graceTime) {
-    return { status: "present", isLate: checkInMinutes > standardTime };
+    return { status: "present", isLate: checkInMinutes > standardTime, shouldFine: false };
   } else {
-    return { status: "late", isLate: true };
+    // After 10:15 AM - late with fine
+    return { status: "late", isLate: true, shouldFine: true };
   }
 };
 
@@ -96,19 +98,40 @@ export const useAutoAttendance = (userName: string | null) => {
               // User is at office - mark attendance
               const now = new Date();
               const checkInTime = format(now, 'HH:mm');
-              const { status, isLate } = calculateStatus(checkInTime);
+              const { status, isLate, shouldFine } = calculateStatus(checkInTime);
 
-              const { error } = await supabase.from('attendance').insert({
+              const { data: attendanceData, error } = await supabase.from('attendance').insert({
                 user_name: userName,
                 date: today,
                 check_in: checkInTime,
                 status,
                 is_late: isLate,
-              });
+              }).select().single();
 
               if (error) {
                 console.error('Error marking attendance:', error);
               } else {
+                // If late after grace period, create a fine
+                if (shouldFine && attendanceData) {
+                  const { error: fineError } = await supabase.from('fines').insert({
+                    user_name: userName,
+                    amount: LATE_FINE_AMOUNT,
+                    reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+                    date: today,
+                    attendance_id: attendanceData.id,
+                    status: 'pending',
+                  });
+
+                  if (fineError) {
+                    console.error('Error creating fine:', fineError);
+                  } else {
+                    toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
+                      description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
+                      duration: 8000,
+                    });
+                  }
+                }
+
                 toast.success(`Attendance marked automatically! Check-in: ${checkInTime}`, {
                   description: isLate ? 'You arrived late today' : 'On time! Great job!',
                   duration: 5000,

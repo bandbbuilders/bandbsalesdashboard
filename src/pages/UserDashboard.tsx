@@ -46,6 +46,15 @@ interface Profile {
   manager_id?: string | null;
 }
 
+interface Fine {
+  id: string;
+  user_name: string;
+  amount: number;
+  reason: string;
+  date: string;
+  status: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -96,6 +105,7 @@ const UserDashboard = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
+  const [fines, setFines] = useState<Fine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -198,6 +208,14 @@ const UserDashboard = () => {
         .from('departments')
         .select('*');
       setDepartments(deptData || []);
+
+      // Fetch fines for this user
+      const { data: finesData } = await supabase
+        .from('fines')
+        .select('*')
+        .eq('user_name', profileData.full_name)
+        .order('date', { ascending: false });
+      setFines((finesData || []) as Fine[]);
 
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -465,6 +483,32 @@ const UserDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Fines Alert Section */}
+        {fines.filter(f => f.status === 'pending').length > 0 && (
+          <Card className="border-orange-500/50 bg-orange-500/10">
+            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              <CardTitle className="text-orange-600">Pending Fines</CardTitle>
+              <Badge variant="destructive" className="ml-auto">
+                Rs {fines.filter(f => f.status === 'pending').reduce((sum, f) => sum + f.amount, 0)}
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {fines.filter(f => f.status === 'pending').slice(0, 3).map(fine => (
+                  <div key={fine.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                    <div>
+                      <p className="text-sm font-medium">{fine.reason}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
+                    </div>
+                    <span className="font-bold text-orange-600">Rs {fine.amount}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Today's Tasks */}
         <Card>

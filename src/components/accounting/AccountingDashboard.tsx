@@ -1,10 +1,21 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard, AlertCircle, AlertTriangle } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { formatCurrency } from "@/lib/formatNumber";
+import { format } from "date-fns";
+
+interface Fine {
+  id: string;
+  user_name: string;
+  amount: number;
+  reason: string;
+  date: string;
+  status: string;
+}
 
 interface DashboardStats {
   cashBalance: number;
@@ -13,6 +24,8 @@ interface DashboardStats {
   accountsReceivable: number;
   netIncome: number;
   monthlyTrend: Array<{ month: string; revenue: number; expenses: number }>;
+  totalFines: number;
+  pendingFines: number;
 }
 
 export const AccountingDashboard = () => {
@@ -22,14 +35,42 @@ export const AccountingDashboard = () => {
     totalExpenses: 0,
     accountsReceivable: 0,
     netIncome: 0,
-    monthlyTrend: []
+    monthlyTrend: [],
+    totalFines: 0,
+    pendingFines: 0
   });
+  const [fines, setFines] = useState<Fine[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchFines();
     syncPaidLedgerEntries(); // Sync existing paid entries to journal
   }, []);
+
+  const fetchFines = async () => {
+    const { data, error } = await supabase
+      .from('fines')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching fines:', error);
+    } else {
+      setFines((data || []) as Fine[]);
+      
+      // Calculate totals
+      const total = (data || []).reduce((sum, fine) => sum + fine.amount, 0);
+      const pending = (data || []).filter(f => f.status === 'pending').reduce((sum, fine) => sum + fine.amount, 0);
+      
+      setStats(prev => ({
+        ...prev,
+        totalFines: total,
+        pendingFines: pending
+      }));
+    }
+  };
 
   const syncPaidLedgerEntries = async () => {
     try {
@@ -140,14 +181,15 @@ export const AccountingDashboard = () => {
         .map(([month, data]) => ({ month, ...data }))
         .slice(-6);
 
-      setStats({
-        cashBalance: cashFromJournal, // Use cash from journal entries instead
+      setStats(prev => ({
+        ...prev,
+        cashBalance: cashFromJournal,
         totalRevenue,
         totalExpenses,
         accountsReceivable,
         netIncome,
         monthlyTrend
-      });
+      }));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -320,6 +362,46 @@ export const AccountingDashboard = () => {
             </Card>
           </div>
 
+          {/* Fines Section */}
+          <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                Late Arrival Fines
+              </CardTitle>
+              <Badge variant="destructive">{fines.filter(f => f.status === 'pending').length} Pending</Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="p-3 bg-orange-500/20 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Total Fines</p>
+                  <p className="text-2xl font-bold text-orange-600">Rs {formatCurrency(stats.totalFines)}</p>
+                </div>
+                <div className="p-3 bg-destructive/20 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Pending Collection</p>
+                  <p className="text-2xl font-bold text-destructive">Rs {formatCurrency(stats.pendingFines)}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {fines.slice(0, 10).map((fine) => (
+                  <div key={fine.id} className="flex items-center justify-between p-2 border rounded-lg bg-background/50">
+                    <div>
+                      <p className="font-medium text-sm">{fine.user_name}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-orange-600">Rs {fine.amount}</p>
+                      <Badge variant={fine.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                        {fine.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 md:grid-cols-3">
             {/* Accounts Breakdown */}
             <Card>
@@ -339,9 +421,9 @@ export const AccountingDashboard = () => {
                   <span className="text-sm font-medium">Net Income</span>
                   <span className="text-lg font-bold text-primary">{formatCurrency(stats.netIncome)}</span>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <span className="text-sm font-medium">Working Capital</span>
-                  <span className="text-lg font-bold">{formatCurrency(stats.cashBalance - stats.totalExpenses)}</span>
+                <div className="flex justify-between items-center p-3 bg-orange-500/10 rounded-lg">
+                  <span className="text-sm font-medium">Pending Fines</span>
+                  <span className="text-lg font-bold text-orange-600">{formatCurrency(stats.pendingFines)}</span>
                 </div>
               </CardContent>
             </Card>
