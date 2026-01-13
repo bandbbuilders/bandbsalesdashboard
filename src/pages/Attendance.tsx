@@ -7,8 +7,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format } from "date-fns";
-import { Clock, CheckCircle2, XCircle, Download } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { Clock, Download, User, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,10 +23,26 @@ interface AttendanceRecord {
   notes?: string;
 }
 
+interface ProfileWithLastSeen {
+  full_name: string;
+  last_seen: string | null;
+  position: string | null;
+}
+
+interface Fine {
+  id: string;
+  user_name: string;
+  amount: number;
+  reason: string;
+  date: string;
+  status: string;
+}
+
 const TEAM_MEMBERS = ["Huraira", "Muzamil", "Hamna", "Zia", "Sara"];
 const STANDARD_IN_TIME = "10:00";
 const GRACE_PERIOD = 15; // minutes
 const STANDARD_OUT_TIME = "18:00";
+const LATE_FINE_AMOUNT = 500;
 
 export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -34,11 +50,41 @@ export default function Attendance() {
   const [checkInTime, setCheckInTime] = useState<string>(STANDARD_IN_TIME);
   const [checkOutTime, setCheckOutTime] = useState<string>(STANDARD_OUT_TIME);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [profiles, setProfiles] = useState<ProfileWithLastSeen[]>([]);
+  const [fines, setFines] = useState<Fine[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchAttendance();
+    fetchProfiles();
+    fetchFines();
   }, [selectedDate]);
+
+  const fetchProfiles = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name, last_seen, position');
+
+    if (error) {
+      console.error('Error fetching profiles:', error);
+    } else {
+      setProfiles((data || []) as ProfileWithLastSeen[]);
+    }
+  };
+
+  const fetchFines = async () => {
+    const { data, error } = await supabase
+      .from('fines')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Error fetching fines:', error);
+    } else {
+      setFines((data || []) as Fine[]);
+    }
+  };
 
   const fetchAttendance = async () => {
     const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -59,7 +105,7 @@ export default function Attendance() {
     }
   };
 
-  const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate: boolean } => {
+  const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate: boolean; shouldFine: boolean } => {
     const [hours, minutes] = checkIn.split(':').map(Number);
     const [stdHours, stdMinutes] = STANDARD_IN_TIME.split(':').map(Number);
     
@@ -68,9 +114,9 @@ export default function Attendance() {
     const graceTime = standardTime + GRACE_PERIOD;
 
     if (checkInMinutes <= graceTime) {
-      return { status: "present", isLate: checkInMinutes > standardTime };
+      return { status: "present", isLate: checkInMinutes > standardTime, shouldFine: false };
     } else {
-      return { status: "late", isLate: true };
+      return { status: "late", isLate: true, shouldFine: true };
     }
   };
 
@@ -85,7 +131,7 @@ export default function Attendance() {
     }
 
     const dateStr = format(selectedDate, "yyyy-MM-dd");
-    const { status, isLate } = calculateStatus(checkInTime);
+    const { status, isLate, shouldFine } = calculateStatus(checkInTime);
 
     const attendanceData = {
       user_name: selectedMember,
@@ -96,11 +142,13 @@ export default function Attendance() {
       is_late: isLate,
     };
 
-    const { error } = await supabase
+    const { data: insertedAttendance, error } = await supabase
       .from('attendance')
       .upsert(attendanceData, {
         onConflict: 'user_name,date'
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error('Error marking attendance:', error);
@@ -110,11 +158,35 @@ export default function Attendance() {
         variant: "destructive",
       });
     } else {
+      // Create fine if late after grace period
+      if (shouldFine && insertedAttendance) {
+        // Check if fine already exists for this attendance
+        const { data: existingFine } = await supabase
+          .from('fines')
+          .select('id')
+          .eq('attendance_id', insertedAttendance.id)
+          .maybeSingle();
+
+        if (!existingFine) {
+          await supabase.from('fines').insert({
+            user_name: selectedMember,
+            amount: LATE_FINE_AMOUNT,
+            reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+            date: dateStr,
+            attendance_id: insertedAttendance.id,
+            status: 'pending',
+          });
+        }
+      }
+
       toast({
         title: "Success",
-        description: "Attendance marked successfully",
+        description: shouldFine 
+          ? `Attendance marked. Late fine of Rs ${LATE_FINE_AMOUNT} applied.`
+          : "Attendance marked successfully",
       });
       fetchAttendance();
+      fetchFines();
       setSelectedMember("");
       setCheckInTime(STANDARD_IN_TIME);
       setCheckOutTime(STANDARD_OUT_TIME);
@@ -162,6 +234,7 @@ export default function Attendance() {
   };
 
   const todayAttendance = attendance.filter(r => r.date === format(selectedDate, "yyyy-MM-dd"));
+  const todayFines = fines.filter(f => f.date === format(selectedDate, "yyyy-MM-dd"));
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -175,6 +248,49 @@ export default function Attendance() {
           Generate Report
         </Button>
       </div>
+
+      {/* Login Status Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Team Login Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {profiles.map((profile) => (
+              <div
+                key={profile.full_name}
+                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent/50 transition"
+              >
+                <div className="relative">
+                  <Avatar>
+                    <AvatarFallback className="bg-primary/10">
+                      {profile.full_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  {profile.last_seen && new Date(profile.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
+                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{profile.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{profile.position || 'Team Member'}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <Clock className="h-3 w-3" />
+                    {profile.last_seen ? (
+                      <span>Last seen: {formatDistanceToNow(new Date(profile.last_seen), { addSuffix: true })}</span>
+                    ) : (
+                      <span className="text-orange-500">Never logged in</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
@@ -212,7 +328,10 @@ export default function Attendance() {
                   onChange={(e) => setCheckInTime(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Standard: {STANDARD_IN_TIME} (Grace: {GRACE_PERIOD} min)
+                  Standard: {STANDARD_IN_TIME} (Grace until 10:15 AM)
+                </p>
+                <p className="text-xs text-orange-500 mt-1">
+                  Late after 10:15 AM = Rs {LATE_FINE_AMOUNT} fine
                 </p>
               </div>
 
@@ -288,33 +407,69 @@ export default function Attendance() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-success">
-                {todayAttendance.filter((r) => r.status === "present").length}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Today's Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-success">
+                  {todayAttendance.filter((r) => r.status === "present").length}
+                </div>
+                <div className="text-sm text-muted-foreground">Present</div>
               </div>
-              <div className="text-sm text-muted-foreground">Present</div>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-warning">
-                {todayAttendance.filter((r) => r.status === "late").length}
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-warning">
+                  {todayAttendance.filter((r) => r.status === "late").length}
+                </div>
+                <div className="text-sm text-muted-foreground">Late</div>
               </div>
-              <div className="text-sm text-muted-foreground">Late</div>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-muted-foreground">
-                {TEAM_MEMBERS.length - todayAttendance.length}
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-muted-foreground">
+                  {TEAM_MEMBERS.length - todayAttendance.length}
+                </div>
+                <div className="text-sm text-muted-foreground">Not Marked</div>
               </div>
-              <div className="text-sm text-muted-foreground">Not Marked</div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Fines Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Late Fines - {format(selectedDate, "MMMM dd, yyyy")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {todayFines.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No fines for this date
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {todayFines.map((fine) => (
+                  <div key={fine.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-500/10">
+                    <div>
+                      <p className="font-semibold">{fine.user_name}</p>
+                      <p className="text-xs text-muted-foreground">{fine.reason}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-orange-600">Rs {fine.amount}</p>
+                      <Badge variant={fine.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                        {fine.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

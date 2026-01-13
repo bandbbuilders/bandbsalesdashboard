@@ -445,6 +445,53 @@ export type Database = {
         }
         Relationships: []
       }
+      fines: {
+        Row: {
+          amount: number
+          attendance_id: string | null
+          created_at: string
+          date: string
+          id: string
+          paid_date: string | null
+          reason: string
+          status: string
+          updated_at: string
+          user_name: string
+        }
+        Insert: {
+          amount?: number
+          attendance_id?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          paid_date?: string | null
+          reason: string
+          status?: string
+          updated_at?: string
+          user_name: string
+        }
+        Update: {
+          amount?: number
+          attendance_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          paid_date?: string | null
+          reason?: string
+          status?: string
+          updated_at?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fines_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_scripts: {
         Row: {
           baseline_id: string | null
