@@ -130,11 +130,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           return;
         }
 
-        // For non-CEO/COO users, check department-based access
+        // For non-CEO/COO users, check department-based access (including user overrides)
         const moduleId = getModuleFromPath(location.pathname);
         if (moduleId && profile?.department) {
-          const hasAccess = canAccessModule(profile.department, moduleId);
-          console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, hasAccess });
+          const hasAccess = canAccessModule(profile.department, moduleId, session.user.id);
+          console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, userId: session.user.id, hasAccess });
           if (!hasAccess) {
             toast.error(`You don't have access to this module`);
             navigate('/user-dashboard');
@@ -223,7 +223,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
           const moduleId = getModuleFromPath(location.pathname);
           if (moduleId && profile?.department) {
-            const hasAccess = canAccessModule(profile.department, moduleId);
+            const hasAccess = canAccessModule(profile.department, moduleId, session.user.id);
             if (!hasAccess) {
               toast.error(`You don't have access to this module`);
               navigate("/user-dashboard");
