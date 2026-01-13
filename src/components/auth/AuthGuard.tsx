@@ -157,7 +157,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
           const moduleId = getModuleFromPath(location.pathname);
           if (moduleId && parsed.department) {
-            const hasAccess = canAccessModule(parsed.department, moduleId);
+            // Include user-specific overrides for demo users as well
+            const hasAccess = canAccessModule(parsed.department, moduleId, parsed.id);
             if (!hasAccess) {
               toast.error(`You don't have access to this module`);
               navigate('/user-dashboard');
