@@ -764,6 +764,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          last_seen: string | null
           manager_id: string | null
           position: string | null
           role: string
@@ -777,6 +778,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          last_seen?: string | null
           manager_id?: string | null
           position?: string | null
           role: string
@@ -790,6 +792,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          last_seen?: string | null
           manager_id?: string | null
           position?: string | null
           role?: string

@@ -25,13 +25,15 @@ import {
   Shield,
   Briefcase,
   Plus,
-  Bell
+  Bell,
+  MapPin
 } from "lucide-react";
-import { format, isToday } from "date-fns";
+import { format, isToday, formatDistanceToNow } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
 import { getAllowedModules, ModuleAccess } from "@/lib/departmentAccess";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
+import { useAutoAttendance } from "@/hooks/useAutoAttendance";
 
 interface Profile {
   id: string;
@@ -60,6 +62,7 @@ interface TeamMember {
   email: string;
   position: string | null;
   department: string | null;
+  last_seen: string | null;
 }
 
 interface DepartmentData {
@@ -108,6 +111,12 @@ const UserDashboard = () => {
       }
       setUserId(session.user.id);
       fetchData(session.user.id);
+      
+      // Update last_seen timestamp
+      await supabase
+        .from('profiles')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('user_id', session.user.id);
     };
 
     checkAuth();
@@ -120,6 +129,9 @@ const UserDashboard = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Auto attendance hook
+  const { isChecking: isCheckingAttendance } = useAutoAttendance(profile?.full_name || null);
 
   // Real-time subscription for new tasks
   useEffect(() => {
@@ -215,13 +227,13 @@ const UserDashboard = () => {
         // Get all executives in the same department as the manager
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, email, position, department')
+          .select('id, full_name, email, position, department, last_seen')
           .eq('department', profile.department)
           .eq('position', 'Executive')
           .neq('id', profile.id);
 
         if (error) throw error;
-        setTeamMembers(data || []);
+        setTeamMembers((data || []) as TeamMember[]);
       } catch (error: any) {
         console.error('Error fetching team members:', error);
       }
@@ -532,14 +544,25 @@ const UserDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {teamMembers.map(member => (
                   <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
                       <User className="h-5 w-5 text-primary" />
+                      {member.last_seen && new Date(member.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
+                        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium truncate">{member.full_name}</h4>
                       <p className="text-sm text-muted-foreground truncate">
                         {member.position} • {member.department}
                       </p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock className="h-3 w-3" />
+                        {member.last_seen ? (
+                          <span>Last seen: {formatDistanceToNow(new Date(member.last_seen), { addSuffix: true })}</span>
+                        ) : (
+                          <span>Never logged in</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
