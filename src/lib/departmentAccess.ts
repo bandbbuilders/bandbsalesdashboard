@@ -7,6 +7,13 @@ export interface ModuleAccess {
   path: string;
 }
 
+const normalizeDepartment = (department: string | null): string | null => {
+  if (!department) return null;
+  return department.trim();
+};
+
+const normalizeModuleId = (moduleId: string): string => moduleId.trim().toLowerCase();
+
 // Define allowed modules per department
 export const DEPARTMENT_MODULES: Record<string, string[]> = {
   "Marketing": ["content", "tasks", "crm"],
@@ -45,15 +52,17 @@ export const getAllowedModules = (
   userId?: string
 ): ModuleAccess[] => {
   if (isCeoCoo) return ALL_MODULES;
-  if (!department) return [];
 
-  const departmentModuleIds = DEPARTMENT_MODULES[department] || [];
+  const normalizedDepartment = normalizeDepartment(department);
+  if (!normalizedDepartment) return [];
+
+  const departmentModuleIds = DEPARTMENT_MODULES[normalizedDepartment] || [];
   const userOverrides = userId ? USER_MODULE_OVERRIDES[userId] || [] : [];
 
   // Combine department modules with user-specific overrides (no duplicates)
-  const allowedModuleIds = [...new Set([...departmentModuleIds, ...userOverrides])];
+  const allowedModuleIds = [...new Set([...departmentModuleIds, ...userOverrides])].map(normalizeModuleId);
 
-  return ALL_MODULES.filter((module) => allowedModuleIds.includes(module.id));
+  return ALL_MODULES.filter((module) => allowedModuleIds.includes(normalizeModuleId(module.id)));
 };
 
 // Check if a department can access a specific module
@@ -63,12 +72,15 @@ export const canAccessModule = (
   moduleId: string,
   userId?: string
 ): boolean => {
-  if (!department) return false;
+  const normalizedDepartment = normalizeDepartment(department);
+  if (!normalizedDepartment) return false;
 
-  const departmentModuleIds = DEPARTMENT_MODULES[department] || [];
-  const userOverrides = userId ? USER_MODULE_OVERRIDES[userId] || [] : [];
+  const normalizedModuleId = normalizeModuleId(moduleId);
 
-  return departmentModuleIds.includes(moduleId) || userOverrides.includes(moduleId);
+  const departmentModuleIds = (DEPARTMENT_MODULES[normalizedDepartment] || []).map(normalizeModuleId);
+  const userOverrides = (userId ? USER_MODULE_OVERRIDES[userId] || [] : []).map(normalizeModuleId);
+
+  return departmentModuleIds.includes(normalizedModuleId) || userOverrides.includes(normalizedModuleId);
 };
 
 // Get the default route for a department (first allowed module)
