@@ -39,7 +39,6 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   };
 
   useEffect(() => {
-    // Check for demo mode
     const demoMode = localStorage.getItem('demoMode');
     const currentUser = localStorage.getItem('currentUser');
 
@@ -81,94 +80,102 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
     document.addEventListener('visibilitychange', onVisibilityChange);
 
-    if (demoMode === 'true' && currentUser) {
-      try {
-        const user = JSON.parse(currentUser);
-        setDemoUser(user);
+    // Check Supabase session FIRST; only fall back to demo mode if no session
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        // Check department-based access control for demo users
+      // If there's an active Supabase session, ignore demo mode leftovers
+      if (session?.user) {
+        if (demoMode === 'true') {
+          localStorage.removeItem('demoMode');
+          localStorage.removeItem('currentUser');
+        }
+
+        setDemoUser(null);
+        setUser(session.user);
+        startHeartbeat(session.user.id);
+
+        // Fetch user profile for department-based access
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('department')
+          .eq('user_id', session.user.id)
+          .single();
+
+        setUserProfile(profile);
+
+        // Check if user is CEO/COO - they have access to all modules
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle(); // Use maybeSingle to avoid error when no role exists
+
+        const isCeoCoo = roleData?.role === 'ceo_coo';
+
+        // Debug logging
+        console.log('AuthGuard - Role check:', {
+          userId: session.user.id,
+          roleData,
+          roleError: roleError?.message,
+          isCeoCoo,
+        });
+
+        // CEO/COO has access to everything
+        if (isCeoCoo) {
+          console.log('AuthGuard - CEO/COO detected, granting full access');
+          setLoading(false);
+          return;
+        }
+
+        // For non-CEO/COO users, check department-based access
         const moduleId = getModuleFromPath(location.pathname);
-        if (moduleId && user.department) {
-          const hasAccess = canAccessModule(user.department, moduleId);
+        if (moduleId && profile?.department) {
+          const hasAccess = canAccessModule(profile.department, moduleId);
+          console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, hasAccess });
           if (!hasAccess) {
             toast.error(`You don't have access to this module`);
-            navigate("/user-dashboard");
-            setLoading(false);
+            navigate('/user-dashboard');
             return;
           }
         }
 
         setLoading(false);
         return;
-      } catch {
-        // Invalid stored user data, clear it
-        localStorage.removeItem('demoMode');
-        localStorage.removeItem('currentUser');
-      }
-    }
-
-    // Check Supabase session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-
-      if (!session?.user) {
-        stopHeartbeat();
-        setLoading(false);
-        navigate("/auth");
-        return;
       }
 
-      startHeartbeat(session.user.id);
+      // No Supabase session -> allow demo mode if enabled
+      setUser(null);
+      stopHeartbeat();
 
-      // Fetch user profile for department-based access
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('department')
-        .eq('user_id', session.user.id)
-        .single();
+      if (demoMode === 'true' && currentUser) {
+        try {
+          const parsed = JSON.parse(currentUser);
+          setDemoUser(parsed);
 
-      setUserProfile(profile);
+          const moduleId = getModuleFromPath(location.pathname);
+          if (moduleId && parsed.department) {
+            const hasAccess = canAccessModule(parsed.department, moduleId);
+            if (!hasAccess) {
+              toast.error(`You don't have access to this module`);
+              navigate('/user-dashboard');
+              setLoading(false);
+              return;
+            }
+          }
 
-      // Check if user is CEO/COO - they have access to all modules
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id)
-        .maybeSingle(); // Use maybeSingle to avoid error when no role exists
-
-      const isCeoCoo = roleData?.role === 'ceo_coo';
-      
-      // Debug logging
-      console.log('AuthGuard - Role check:', { 
-        userId: session.user.id,
-        roleData, 
-        roleError: roleError?.message,
-        isCeoCoo 
-      });
-
-      // Check module access - CEO/COO bypasses ALL department restrictions
-      const moduleId = getModuleFromPath(location.pathname);
-      
-      if (isCeoCoo) {
-        // CEO/COO has access to everything - skip department check
-        console.log('AuthGuard - CEO/COO detected, granting full access');
-        setLoading(false);
-        return;
-      }
-
-      // For non-CEO/COO users, check department-based access
-      if (moduleId && profile?.department) {
-        const hasAccess = canAccessModule(profile.department, moduleId);
-        console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, hasAccess });
-        if (!hasAccess) {
-          toast.error(`You don't have access to this module`);
-          navigate("/user-dashboard");
+          setLoading(false);
           return;
+        } catch {
+          localStorage.removeItem('demoMode');
+          localStorage.removeItem('currentUser');
         }
       }
 
       setLoading(false);
+      navigate('/auth');
     };
 
     checkSession();
