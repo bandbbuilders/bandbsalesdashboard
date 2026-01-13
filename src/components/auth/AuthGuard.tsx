@@ -40,12 +40,50 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     // Check for demo mode
     const demoMode = localStorage.getItem('demoMode');
     const currentUser = localStorage.getItem('currentUser');
-    
+
+    const touchLastSeen = async (userId: string) => {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('user_id', userId);
+      } catch (e) {
+        // Don't block navigation if this fails
+        console.warn('Failed to update last_seen', e);
+      }
+    };
+
+    let heartbeatTimer: number | null = null;
+
+    const startHeartbeat = (userId: string) => {
+      if (heartbeatTimer) window.clearInterval(heartbeatTimer);
+      // update immediately + every 60s while user is active in the portal
+      void touchLastSeen(userId);
+      heartbeatTimer = window.setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          void touchLastSeen(userId);
+        }
+      }, 60_000);
+    };
+
+    const stopHeartbeat = () => {
+      if (heartbeatTimer) window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        void touchLastSeen(user.id);
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     if (demoMode === 'true' && currentUser) {
       try {
         const user = JSON.parse(currentUser);
         setDemoUser(user);
-        
+
         // Check department-based access control for demo users
         const moduleId = getModuleFromPath(location.pathname);
         if (moduleId && user.department) {
@@ -57,7 +95,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
             return;
           }
         }
-        
+
         setLoading(false);
         return;
       } catch {
@@ -73,10 +111,13 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       setUser(session?.user ?? null);
 
       if (!session?.user) {
+        stopHeartbeat();
         setLoading(false);
         navigate("/auth");
         return;
       }
+
+      startHeartbeat(session.user.id);
 
       // Fetch user profile for department-based access
       const { data: profile } = await supabase
@@ -86,7 +127,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         .single();
 
       setUserProfile(profile);
-      
+
       // Check module access
       const moduleId = getModuleFromPath(location.pathname);
       if (moduleId && profile?.department) {
@@ -97,7 +138,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           return;
         }
       }
-      
+
       setLoading(false);
     };
 
@@ -109,38 +150,44 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         setUser(session?.user ?? null);
 
         if (!session?.user) {
+          stopHeartbeat();
           setLoading(false);
           navigate("/auth");
           return;
         }
-        
+
+        startHeartbeat(session.user.id);
+
         // Fetch profile on auth change
-        if (session?.user) {
-          setTimeout(() => {
-            supabase
-              .from('profiles')
-              .select('department')
-              .eq('user_id', session.user.id)
-              .single()
-              .then(({ data: profile }) => {
-                setUserProfile(profile);
-                
-                const moduleId = getModuleFromPath(location.pathname);
-                if (moduleId && profile?.department) {
-                  const hasAccess = canAccessModule(profile.department, moduleId);
-                  if (!hasAccess) {
-                    toast.error(`You don't have access to this module`);
-                    navigate("/user-dashboard");
-                  }
+        setTimeout(() => {
+          supabase
+            .from('profiles')
+            .select('department')
+            .eq('user_id', session.user.id)
+            .single()
+            .then(({ data: profile }) => {
+              setUserProfile(profile);
+
+              const moduleId = getModuleFromPath(location.pathname);
+              if (moduleId && profile?.department) {
+                const hasAccess = canAccessModule(profile.department, moduleId);
+                if (!hasAccess) {
+                  toast.error(`You don't have access to this module`);
+                  navigate("/user-dashboard");
                 }
-                setLoading(false);
-              });
-          }, 0);
-        }
+              }
+              setLoading(false);
+            });
+        }, 0);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      stopHeartbeat();
+      subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, location.pathname]);
 
   if (loading) {
