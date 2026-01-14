@@ -42,7 +42,8 @@ interface Fine {
 const ALLOWED_EDITORS = [
   "msara8032@gmail.com",           // Sara Memon
   "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon user_id
-  "zain@example.com",              // COO placeholder
+  "mzainsarwar55@gmail.com",       // COO actual email
+  "fab190bd-3c71-43e8-9381-3ec66044e501", // COO user_id
 ];
 
 const TEAM_MEMBERS = ["Huraira", "Muzamil", "Hamna", "Zia", "Sara"];
@@ -205,30 +206,52 @@ export default function Attendance() {
         variant: "destructive",
       });
     } else {
-      // Create fine if late after grace period
+      // Create fine if late after grace period (unless member is COO)
+      let fineApplied = false;
       if (shouldFine && insertedAttendance) {
-        // Check if fine already exists for this attendance
-        const { data: existingFine } = await supabase
-          .from('fines')
-          .select('id')
-          .eq('attendance_id', insertedAttendance.id)
+        // Check if member is COO (exempt from fines)
+        const { data: memberProfile } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('full_name', selectedMember)
           .maybeSingle();
+        
+        let isCoo = false;
+        if (memberProfile?.user_id) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', memberProfile.user_id)
+            .maybeSingle();
+          isCoo = roleData?.role === 'ceo_coo';
+        }
 
-        if (!existingFine) {
-          await supabase.from('fines').insert({
-            user_name: selectedMember,
-            amount: LATE_FINE_AMOUNT,
-            reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
-            date: dateStr,
-            attendance_id: insertedAttendance.id,
-            status: 'pending',
-          });
+        // Only create fine if not COO
+        if (!isCoo) {
+          // Check if fine already exists for this attendance
+          const { data: existingFine } = await supabase
+            .from('fines')
+            .select('id')
+            .eq('attendance_id', insertedAttendance.id)
+            .maybeSingle();
+
+          if (!existingFine) {
+            await supabase.from('fines').insert({
+              user_name: selectedMember,
+              amount: LATE_FINE_AMOUNT,
+              reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+              date: dateStr,
+              attendance_id: insertedAttendance.id,
+              status: 'pending',
+            });
+            fineApplied = true;
+          }
         }
       }
 
       toast({
         title: "Success",
-        description: shouldFine 
+        description: fineApplied 
           ? `Attendance marked. Late fine of Rs ${LATE_FINE_AMOUNT} applied.`
           : "Attendance marked successfully",
       });

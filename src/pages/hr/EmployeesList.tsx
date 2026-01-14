@@ -21,6 +21,8 @@ interface Employee {
   contract_type: string;
   work_location: string;
   basic_salary: number;
+  phone_number: string | null;
+  address: string | null;
   profile?: {
     full_name: string;
     email: string;
@@ -35,6 +37,8 @@ const EmployeesList = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [selectedProfile, setSelectedProfile] = useState("");
   const [formData, setFormData] = useState({
     cnic: "",
@@ -42,6 +46,8 @@ const EmployeesList = () => {
     contract_type: "permanent",
     work_location: "office",
     basic_salary: "",
+    phone_number: "",
+    address: "",
   });
 
   useEffect(() => {
@@ -112,6 +118,8 @@ const EmployeesList = () => {
           contract_type: formData.contract_type,
           work_location: formData.work_location,
           basic_salary: parseFloat(formData.basic_salary) || 0,
+          phone_number: formData.phone_number || null,
+          address: formData.address || null,
         });
 
       if (error) throw error;
@@ -119,17 +127,67 @@ const EmployeesList = () => {
       toast.success("Employee added successfully");
       setShowAddDialog(false);
       setSelectedProfile("");
-      setFormData({
-        cnic: "",
-        joining_date: "",
-        contract_type: "permanent",
-        work_location: "office",
-        basic_salary: "",
-      });
+      resetFormData();
       fetchEmployees();
     } catch (error: any) {
       console.error("Error adding employee:", error);
       toast.error(error.message || "Failed to add employee");
+    }
+  };
+
+  const resetFormData = () => {
+    setFormData({
+      cnic: "",
+      joining_date: "",
+      contract_type: "permanent",
+      work_location: "office",
+      basic_salary: "",
+      phone_number: "",
+      address: "",
+    });
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setFormData({
+      cnic: employee.cnic || "",
+      joining_date: employee.joining_date || "",
+      contract_type: employee.contract_type || "permanent",
+      work_location: employee.work_location || "office",
+      basic_salary: employee.basic_salary?.toString() || "",
+      phone_number: employee.phone_number || "",
+      address: employee.address || "",
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!editingEmployee) return;
+
+    try {
+      const { error } = await supabase
+        .from("employee_details")
+        .update({
+          cnic: formData.cnic || null,
+          joining_date: formData.joining_date || null,
+          contract_type: formData.contract_type,
+          work_location: formData.work_location,
+          basic_salary: parseFloat(formData.basic_salary) || 0,
+          phone_number: formData.phone_number || null,
+          address: formData.address || null,
+        })
+        .eq("id", editingEmployee.id);
+
+      if (error) throw error;
+
+      toast.success("Employee updated successfully");
+      setShowEditDialog(false);
+      setEditingEmployee(null);
+      resetFormData();
+      fetchEmployees();
+    } catch (error: any) {
+      console.error("Error updating employee:", error);
+      toast.error(error.message || "Failed to update employee");
     }
   };
 
@@ -192,11 +250,27 @@ const EmployeesList = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>Phone Number</Label>
+                <Input
+                  placeholder="+92 300 1234567"
+                  value={formData.phone_number}
+                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>CNIC</Label>
                 <Input
                   placeholder="00000-0000000-0"
                   value={formData.cnic}
                   onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Address</Label>
+                <Input
+                  placeholder="Full address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -319,7 +393,7 @@ const EmployeesList = () => {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button size="sm" variant="ghost">
+                          <Button size="sm" variant="ghost" onClick={() => handleEditEmployee(employee)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                         </div>
@@ -332,6 +406,100 @@ const EmployeesList = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Employee Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Employee Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Phone Number</Label>
+              <Input
+                placeholder="+92 300 1234567"
+                value={formData.phone_number}
+                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>CNIC</Label>
+              <Input
+                placeholder="00000-0000000-0"
+                value={formData.cnic}
+                onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input
+                placeholder="Full address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Joining Date</Label>
+              <Input
+                type="date"
+                value={formData.joining_date}
+                onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Basic Salary (PKR)</Label>
+              <Input
+                type="number"
+                placeholder="50000"
+                value={formData.basic_salary}
+                onChange={(e) => setFormData({ ...formData, basic_salary: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Contract Type</Label>
+                <Select
+                  value={formData.contract_type}
+                  onValueChange={(value) => setFormData({ ...formData, contract_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="permanent">Permanent</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="probation">Probation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Work Location</Label>
+                <Select
+                  value={formData.work_location}
+                  onValueChange={(value) => setFormData({ ...formData, work_location: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="office">Office</SelectItem>
+                    <SelectItem value="site">Site</SelectItem>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateEmployee} className="flex-1">
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
