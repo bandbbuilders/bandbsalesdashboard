@@ -63,11 +63,25 @@ export const AppLayout = () => {
         .eq("user_id", session.user.id)
         .maybeSingle();
 
+      // Fetch role from user_roles table
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      // Map app_role to Sales module role
+      const mapToSalesRole = (appRole: string | null): 'admin' | 'agent' | 'manager' => {
+        if (appRole === 'ceo_coo') return 'admin';
+        if (appRole === 'manager') return 'manager';
+        return 'agent';
+      };
+
       setUser({
         id: session.user.id,
         name: profile?.full_name ?? session.user.email ?? "User",
         email: profile?.email ?? session.user.email ?? "",
-        role: (profile?.role as 'admin' | 'agent' | 'manager') ?? "agent",
+        role: mapToSalesRole(userRole?.role ?? null),
         created_at: new Date().toISOString(),
       });
     };
