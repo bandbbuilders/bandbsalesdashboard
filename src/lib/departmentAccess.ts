@@ -40,8 +40,8 @@ export const ALL_MODULES: ModuleAccess[] = [
 // User-specific module overrides (by user_id)
 // These users get access to additional modules beyond their department defaults
 export const USER_MODULE_OVERRIDES: Record<string, string[]> = {
-  // Sara Memon - Sales + HR + CRM + Attendance
-  "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0": ["hr", "crm", "attendance"],
+  // Sara Memon - Full access: Sales, HR, CRM, Attendance, Tasks
+  "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0": ["hr", "crm", "attendance", "tasks", "sales"],
 };
 
 // Get allowed modules for a department

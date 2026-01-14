@@ -443,7 +443,7 @@ const UserDashboard = () => {
   const stats = getTaskStats();
   const todayTasks = getTodayTasks();
   const inProgressTasks = getInProgressTasks();
-  const allowedModules = getAllowedModules(profile?.department || null, isCeoCoo);
+  const allowedModules = getAllowedModules(profile?.department || null, isCeoCoo, userId || undefined);
 
   const formatCurrency = (amount: number) => {
     if (amount >= 10000000) {
