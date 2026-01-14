@@ -3,12 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-// Office coordinates: P39F+5C Islamabad, Pakistan
-// Converted to lat/lng: approximately 33.6973, 73.0551
+// Office coordinates: Islamabad, Pakistan
 export const OFFICE_COORDINATES = {
-  latitude: 33.6973,
-  longitude: 73.0551,
-  radiusMeters: 500 // Increased from 200m to 500m for better GPS accuracy tolerance
+  latitude: 33.725636,
+  longitude: 73.074649,
+  radiusMeters: 500 // 500m for GPS accuracy tolerance
 };
 
 const STANDARD_IN_TIME = "10:00";
