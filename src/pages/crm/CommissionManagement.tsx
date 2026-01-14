@@ -32,6 +32,28 @@ const CommissionManagement = () => {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [salesCount, setSalesCount] = useState<Record<string, number>>({});
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  // Auto-authenticate COO and Zia Shahid
+  useEffect(() => {
+    const checkAutoAccess = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Allowed user IDs: Zain Sarwar (COO) and Zia Shahid
+        const allowedUserIds = [
+          'fab190bd-3c71-43e8-9385-3ec66044e501', // Zain Sarwar (COO)
+          'e91f0415-009a-4712-97e1-c70d1c29e6f9'  // Zia Shahid
+        ];
+        
+        if (allowedUserIds.includes(session.user.id)) {
+          setIsAuthenticated(true);
+        }
+      }
+      setCheckingAccess(false);
+    };
+    
+    checkAutoAccess();
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) fetchCommissions();
@@ -261,6 +283,15 @@ const CommissionManagement = () => {
     if (paid > 0) return { label: 'Outstanding', color: 'bg-orange-500' }; 
     return { label: 'Pending', color: 'bg-gray-500' }; 
   };
+
+  if (checkingAccess) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Checking access...</p>
+      </div>
+    </div>
+  );
 
   if (!isAuthenticated) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
