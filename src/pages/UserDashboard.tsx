@@ -38,6 +38,7 @@ import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useAutoAttendance } from "@/hooks/useAutoAttendance";
 import { AttendanceStatusCard } from "@/components/dashboard/AttendanceStatusCard";
+import { ApplyLeaveDialog } from "@/components/leave/ApplyLeaveDialog";
 
 interface Profile {
   id: string;
@@ -623,12 +624,15 @@ const UserDashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-lg font-semibold">{isCeoCoo ? 'All Modules' : 'Your Applications'}</h2>
-          <Button onClick={() => setShowCreateTask(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
-          </Button>
+          <div className="flex gap-2">
+            <ApplyLeaveDialog userName={profile?.full_name} userId={userId} />
+            <Button onClick={() => setShowCreateTask(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
+          </div>
         </div>
 
         {/* Allowed Modules Section */}

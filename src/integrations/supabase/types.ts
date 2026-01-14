@@ -447,6 +447,7 @@ export type Database = {
       }
       employee_details: {
         Row: {
+          address: string | null
           bank_account_number: string | null
           bank_branch: string | null
           bank_name: string | null
@@ -462,12 +463,14 @@ export type Database = {
           id: string
           joining_date: string | null
           other_allowances: number | null
+          phone_number: string | null
           profile_id: string
           transport_allowance: number | null
           updated_at: string | null
           work_location: string | null
         }
         Insert: {
+          address?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
           bank_name?: string | null
@@ -483,12 +486,14 @@ export type Database = {
           id?: string
           joining_date?: string | null
           other_allowances?: number | null
+          phone_number?: string | null
           profile_id: string
           transport_allowance?: number | null
           updated_at?: string | null
           work_location?: string | null
         }
         Update: {
+          address?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
           bank_name?: string | null
@@ -504,6 +509,7 @@ export type Database = {
           id?: string
           joining_date?: string | null
           other_allowances?: number | null
+          phone_number?: string | null
           profile_id?: string
           transport_allowance?: number | null
           updated_at?: string | null

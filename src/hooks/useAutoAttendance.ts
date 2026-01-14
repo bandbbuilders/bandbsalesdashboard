@@ -74,6 +74,32 @@ export interface LocationStatus {
   effectiveRadius: number;
 }
 
+// Check if user is COO (exempt from fines)
+const checkIsCoo = async (userName: string): Promise<boolean> => {
+  try {
+    // Get profile by name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('full_name', userName)
+      .maybeSingle();
+    
+    if (!profile?.user_id) return false;
+    
+    // Check user_roles table for ceo_coo role
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', profile.user_id)
+      .maybeSingle();
+    
+    return roleData?.role === 'ceo_coo';
+  } catch (error) {
+    console.error('Error checking COO status:', error);
+    return false;
+  }
+};
+
 export const useAutoAttendance = (userName: string | null) => {
   const [isChecking, setIsChecking] = useState(false);
   const [attendanceMarked, setAttendanceMarked] = useState(false);
@@ -266,22 +292,26 @@ export const useAutoAttendance = (userName: string | null) => {
               return;
             }
 
-            // If late after grace period, create a fine
+            // If late after grace period, create a fine (unless COO)
             if (shouldFine && attendanceData) {
-              const { error: fineError } = await supabase.from('fines').insert({
-                user_name: userName,
-                amount: LATE_FINE_AMOUNT,
-                reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
-                date: today,
-                attendance_id: attendanceData.id,
-                status: 'pending',
-              });
-
-              if (!fineError) {
-                toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
-                  description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
-                  duration: 8000,
+              const isCoo = await checkIsCoo(userName);
+              
+              if (!isCoo) {
+                const { error: fineError } = await supabase.from('fines').insert({
+                  user_name: userName,
+                  amount: LATE_FINE_AMOUNT,
+                  reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+                  date: today,
+                  attendance_id: attendanceData.id,
+                  status: 'pending',
                 });
+
+                if (!fineError) {
+                  toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
+                    description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
+                    duration: 8000,
+                  });
+                }
               }
             }
 
@@ -422,24 +452,28 @@ export const useAutoAttendance = (userName: string | null) => {
               if (error) {
                 console.error('Error marking attendance:', error);
               } else {
-                // If late after grace period, create a fine
+                // If late after grace period, create a fine (unless COO)
                 if (shouldFine && attendanceData) {
-                  const { error: fineError } = await supabase.from('fines').insert({
-                    user_name: userName,
-                    amount: LATE_FINE_AMOUNT,
-                    reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
-                    date: today,
-                    attendance_id: attendanceData.id,
-                    status: 'pending',
-                  });
-
-                  if (fineError) {
-                    console.error('Error creating fine:', fineError);
-                  } else {
-                    toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
-                      description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
-                      duration: 8000,
+                  const isCoo = await checkIsCoo(userName);
+                  
+                  if (!isCoo) {
+                    const { error: fineError } = await supabase.from('fines').insert({
+                      user_name: userName,
+                      amount: LATE_FINE_AMOUNT,
+                      reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+                      date: today,
+                      attendance_id: attendanceData.id,
+                      status: 'pending',
                     });
+
+                    if (fineError) {
+                      console.error('Error creating fine:', fineError);
+                    } else {
+                      toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
+                        description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
+                        duration: 8000,
+                      });
+                    }
                   }
                 }
 
