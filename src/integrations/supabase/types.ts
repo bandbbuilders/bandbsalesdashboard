@@ -1643,6 +1643,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_hr_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "ceo_coo" | "manager" | "executive"
