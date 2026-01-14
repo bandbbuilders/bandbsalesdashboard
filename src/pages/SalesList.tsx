@@ -106,7 +106,11 @@ const SalesList = () => {
   };
 
   const canEdit = (sale: any) => {
-    return user?.role === "admin" || (user?.role === "agent" && sale.agent_id === user.id);
+    // Zia Shahid's user ID
+    const ziaShahidId = "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf";
+    // CEO/COO role or Zia Shahid have full access
+    const isCeoCooOrZia = user?.role === "ceo_coo" || user?.id === ziaShahidId;
+    return user?.role === "admin" || isCeoCooOrZia || (user?.role === "agent" && sale.agent_id === user.id);
   };
 
   const handleDeleteSale = (saleId: string) => {
