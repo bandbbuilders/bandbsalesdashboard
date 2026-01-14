@@ -37,6 +37,7 @@ import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAc
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useAutoAttendance } from "@/hooks/useAutoAttendance";
+import { AttendanceStatusCard } from "@/components/dashboard/AttendanceStatusCard";
 
 interface Profile {
   id: string;
@@ -155,8 +156,14 @@ const UserDashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Auto attendance hook
-  const { isChecking: isCheckingAttendance } = useAutoAttendance(profile?.full_name || null);
+  // Auto attendance hook with enhanced features
+  const { 
+    isChecking: isCheckingAttendance, 
+    attendanceStatus, 
+    locationStatus, 
+    manualCheckIn,
+    refreshLocation 
+  } = useAutoAttendance(profile?.full_name || null);
 
   // Real-time subscription for new tasks
   useEffect(() => {
@@ -700,6 +707,17 @@ const UserDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Attendance Status Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AttendanceStatusCard
+            attendanceStatus={attendanceStatus}
+            locationStatus={locationStatus}
+            isChecking={isCheckingAttendance}
+            onManualCheckIn={manualCheckIn}
+            onRefreshLocation={refreshLocation}
+          />
         </div>
 
         {/* Fines Alert Section */}
