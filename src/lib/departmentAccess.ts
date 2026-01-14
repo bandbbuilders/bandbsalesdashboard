@@ -15,12 +15,13 @@ const normalizeDepartment = (department: string | null): string | null => {
 const normalizeModuleId = (moduleId: string): string => moduleId.trim().toLowerCase();
 
 // Define allowed modules per department
+// Note: 'attendance' and 'hr' are available to ALL users
 export const DEPARTMENT_MODULES: Record<string, string[]> = {
-  "Marketing": ["content", "tasks", "crm"],
-  "Accounting": ["accounting", "sales", "commission-management", "attendance"],
-  "Finance": ["accounting", "sales", "commission-management", "attendance"],
-  "Sales": ["sales"],
-  "Operations": ["tasks", "attendance", "crm"],
+  "Marketing": ["content", "tasks", "crm", "attendance", "hr"],
+  "Accounting": ["accounting", "sales", "commission-management", "attendance", "hr"],
+  "Finance": ["accounting", "sales", "commission-management", "attendance", "hr"],
+  "Sales": ["sales", "attendance", "hr"],
+  "Operations": ["tasks", "attendance", "crm", "hr"],
   "HR": ["hr", "tasks", "attendance"],
 };
 
