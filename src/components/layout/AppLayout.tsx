@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 export const AppLayout = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -34,22 +35,57 @@ export const AppLayout = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      try {
-        setUser(JSON.parse(currentUser));
-      } catch {
-        navigate("/login");
+    const init = async () => {
+      // Demo mode (legacy)
+      const demoMode = localStorage.getItem("demoMode");
+      const currentUser = localStorage.getItem("currentUser");
+      if (demoMode === "true" && currentUser) {
+        try {
+          const parsed = JSON.parse(currentUser);
+          setUser(parsed);
+          return;
+        } catch {
+          localStorage.removeItem("demoMode");
+          localStorage.removeItem("currentUser");
+        }
       }
-    } else {
-      navigate("/login");
-    }
+
+      // Supabase auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate("/auth");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email, department, role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      setUser({
+        id: session.user.id,
+        name: profile?.full_name ?? session.user.email ?? "User",
+        email: profile?.email ?? session.user.email ?? "",
+        role: (profile?.role as 'admin' | 'agent' | 'manager') ?? "agent",
+        created_at: new Date().toISOString(),
+      });
+    };
+
+    init();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("demoMode");
-    navigate("/login");
+  const handleLogout = async () => {
+    const demoMode = localStorage.getItem("demoMode");
+    if (demoMode === "true") {
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("demoMode");
+      navigate("/auth");
+      return;
+    }
+
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const navigation = [

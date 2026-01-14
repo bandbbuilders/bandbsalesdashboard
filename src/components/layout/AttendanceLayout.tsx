@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AttendanceLayout() {
   const location = useLocation();
@@ -17,21 +18,54 @@ export function AttendanceLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('currentUser');
-    if (userStr) {
-      try {
-        setCurrentUser(JSON.parse(userStr));
-      } catch (e) {
-        navigate('/login');
+    const init = async () => {
+      // Demo mode (legacy)
+      const demoMode = localStorage.getItem("demoMode");
+      const currentUserStr = localStorage.getItem("currentUser");
+      if (demoMode === "true" && currentUserStr) {
+        try {
+          setCurrentUser(JSON.parse(currentUserStr));
+          return;
+        } catch {
+          localStorage.removeItem("demoMode");
+          localStorage.removeItem("currentUser");
+        }
       }
-    } else {
-      navigate('/login');
-    }
+
+      // Supabase auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate("/auth");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      setCurrentUser({
+        id: session.user.id,
+        name: profile?.full_name ?? session.user.email ?? "User",
+        email: profile?.email ?? session.user.email ?? ""
+      });
+    };
+
+    init();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('currentUser');
-    navigate('/login');
+  const handleLogout = async () => {
+    const demoMode = localStorage.getItem("demoMode");
+    if (demoMode === "true") {
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("demoMode");
+      navigate("/auth");
+      return;
+    }
+
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const navigation = [
