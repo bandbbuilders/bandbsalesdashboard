@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow } from "date-fns";
-import { Clock, Download, User, AlertTriangle } from "lucide-react";
+import { Clock, Download, User, AlertTriangle, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,6 +38,13 @@ interface Fine {
   status: string;
 }
 
+// Users who can edit attendance: Sara Memon and COO (Zain Sarwar)
+const ALLOWED_EDITORS = [
+  "msara8032@gmail.com",           // Sara Memon
+  "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon user_id
+  "zain@example.com",              // COO placeholder
+];
+
 const TEAM_MEMBERS = ["Huraira", "Muzamil", "Hamna", "Zia", "Sara"];
 const STANDARD_IN_TIME = "10:00";
 const GRACE_PERIOD = 15; // minutes
@@ -52,7 +59,47 @@ export default function Attendance() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [profiles, setProfiles] = useState<ProfileWithLastSeen[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
+  const [canEdit, setCanEdit] = useState(false);
   const { toast } = useToast();
+
+  // Check if current user can edit attendance
+  useEffect(() => {
+    const checkEditPermission = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          const userEmail = user.email?.toLowerCase();
+          const userId = user.id || user.user_id;
+          
+          // Check if user is Sara Memon or COO
+          const isSara = userEmail === "msara8032@gmail.com" || 
+                         userId === "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0";
+          
+          // Check if user has ceo_coo role
+          if (userId) {
+            const { data: roleData } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', userId)
+              .maybeSingle();
+            
+            if (roleData?.role === 'ceo_coo' || isSara) {
+              setCanEdit(true);
+              return;
+            }
+          }
+          
+          setCanEdit(isSara);
+        }
+      } catch (error) {
+        console.error('Error checking edit permission:', error);
+        setCanEdit(false);
+      }
+    };
+    
+    checkEditPermission();
+  }, []);
 
   useEffect(() => {
     fetchAttendance();
@@ -305,52 +352,61 @@ export default function Attendance() {
               className="rounded-md border"
             />
             
-            <div className="mt-6 space-y-4">
-              <div>
-                <Label>Team Member</Label>
-                <Select value={selectedMember} onValueChange={setSelectedMember}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TEAM_MEMBERS.map(member => (
-                      <SelectItem key={member} value={member}>{member}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {canEdit ? (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <Label>Team Member</Label>
+                  <Select value={selectedMember} onValueChange={setSelectedMember}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TEAM_MEMBERS.map(member => (
+                        <SelectItem key={member} value={member}>{member}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label>Check In Time</Label>
-                <Input
-                  type="time"
-                  value={checkInTime}
-                  onChange={(e) => setCheckInTime(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Standard: {STANDARD_IN_TIME} (Grace until 10:15 AM)
-                </p>
-                <p className="text-xs text-orange-500 mt-1">
-                  Late after 10:15 AM = Rs {LATE_FINE_AMOUNT} fine
+                <div>
+                  <Label>Check In Time</Label>
+                  <Input
+                    type="time"
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Standard: {STANDARD_IN_TIME} (Grace until 10:15 AM)
+                  </p>
+                  <p className="text-xs text-orange-500 mt-1">
+                    Late after 10:15 AM = Rs {LATE_FINE_AMOUNT} fine
+                  </p>
+                </div>
+
+                <div>
+                  <Label>Check Out Time</Label>
+                  <Input
+                    type="time"
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Standard: {STANDARD_OUT_TIME}
+                  </p>
+                </div>
+
+                <Button onClick={handleMarkAttendance} className="w-full">
+                  Mark Attendance
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-6 p-4 border rounded-lg bg-muted/50 text-center">
+                <Lock className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Only Sara Memon and COO can edit attendance records.
                 </p>
               </div>
-
-              <div>
-                <Label>Check Out Time</Label>
-                <Input
-                  type="time"
-                  value={checkOutTime}
-                  onChange={(e) => setCheckOutTime(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Standard: {STANDARD_OUT_TIME}
-                </p>
-              </div>
-
-              <Button onClick={handleMarkAttendance} className="w-full">
-                Mark Attendance
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
 
