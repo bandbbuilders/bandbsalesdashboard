@@ -7,12 +7,23 @@ import { format } from 'date-fns';
 export const OFFICE_COORDINATES = {
   latitude: 33.725636,
   longitude: 73.074649,
-  radiusMeters: 500 // 500m for GPS accuracy tolerance
+  radiusMeters: 500, // 500m for mobile GPS accuracy
+  radiusMetersLaptop: 10000 // 10km for laptops (IP/Wi-Fi based location is inaccurate)
 };
 
 const STANDARD_IN_TIME = "10:00";
 const GRACE_PERIOD = 15; // minutes - final time is 10:15
 const LATE_FINE_AMOUNT = 500; // Rs 500 fine for late arrival
+
+// Detect if user is on a mobile device
+export const isMobileDevice = (): boolean => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Get geofence radius based on device type
+export const getGeofenceRadius = (): number => {
+  return isMobileDevice() ? OFFICE_COORDINATES.radiusMeters : OFFICE_COORDINATES.radiusMetersLaptop;
+};
 
 // Calculate distance between two coordinates using Haversine formula
 export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -59,6 +70,8 @@ export interface LocationStatus {
   isWithinGeofence: boolean;
   error: string | null;
   loading: boolean;
+  isMobile: boolean;
+  effectiveRadius: number;
 }
 
 export const useAutoAttendance = (userName: string | null) => {
@@ -75,7 +88,9 @@ export const useAutoAttendance = (userName: string | null) => {
     distance: null,
     isWithinGeofence: false,
     error: null,
-    loading: true
+    loading: true,
+    isMobile: isMobileDevice(),
+    effectiveRadius: getGeofenceRadius()
   });
 
   // Check existing attendance status
@@ -103,13 +118,18 @@ export const useAutoAttendance = (userName: string | null) => {
 
   // Check location status
   const checkLocationStatus = useCallback(() => {
+    const mobile = isMobileDevice();
+    const radius = getGeofenceRadius();
+    
     if (!navigator.geolocation) {
       setLocationStatus({
         permissionGranted: false,
         distance: null,
         isWithinGeofence: false,
         error: 'Geolocation not supported by your browser',
-        loading: false
+        loading: false,
+        isMobile: mobile,
+        effectiveRadius: radius
       });
       return;
     }
@@ -127,9 +147,11 @@ export const useAutoAttendance = (userName: string | null) => {
         setLocationStatus({
           permissionGranted: true,
           distance,
-          isWithinGeofence: distance <= OFFICE_COORDINATES.radiusMeters,
+          isWithinGeofence: distance <= radius,
           error: null,
-          loading: false
+          loading: false,
+          isMobile: mobile,
+          effectiveRadius: radius
         });
       },
       (error) => {
@@ -145,7 +167,9 @@ export const useAutoAttendance = (userName: string | null) => {
           distance: null,
           isWithinGeofence: false,
           error: errorMessage,
-          loading: false
+          loading: false,
+          isMobile: mobile,
+          effectiveRadius: radius
         });
       },
       {
@@ -201,18 +225,20 @@ export const useAutoAttendance = (userName: string | null) => {
               OFFICE_COORDINATES.latitude,
               OFFICE_COORDINATES.longitude
             );
+            
+            const radius = getGeofenceRadius();
 
             setLocationStatus(prev => ({
               ...prev,
               distance,
-              isWithinGeofence: distance <= OFFICE_COORDINATES.radiusMeters,
+              isWithinGeofence: distance <= radius,
               permissionGranted: true,
               loading: false
             }));
 
-            if (distance > OFFICE_COORDINATES.radiusMeters) {
+            if (distance > radius) {
               toast.error(`You are ${Math.round(distance)}m from office`, {
-                description: `Must be within ${OFFICE_COORDINATES.radiusMeters}m to mark attendance`,
+                description: `Must be within ${radius}m to mark attendance`,
                 duration: 5000,
               });
               setIsChecking(false);
@@ -363,18 +389,23 @@ export const useAutoAttendance = (userName: string | null) => {
               OFFICE_COORDINATES.latitude,
               OFFICE_COORDINATES.longitude
             );
+            
+            const mobile = isMobileDevice();
+            const radius = getGeofenceRadius();
 
-            console.log(`Distance from office: ${distance.toFixed(0)} meters`);
+            console.log(`Distance from office: ${distance.toFixed(0)} meters (Device: ${mobile ? 'Mobile' : 'Laptop'}, Radius: ${radius}m)`);
             
             setLocationStatus({
               permissionGranted: true,
               distance,
-              isWithinGeofence: distance <= OFFICE_COORDINATES.radiusMeters,
+              isWithinGeofence: distance <= radius,
               error: null,
-              loading: false
+              loading: false,
+              isMobile: mobile,
+              effectiveRadius: radius
             });
 
-            if (distance <= OFFICE_COORDINATES.radiusMeters) {
+            if (distance <= radius) {
               // User is at office - mark attendance
               const now = new Date();
               const checkInTime = format(now, 'HH:mm');
@@ -453,7 +484,9 @@ export const useAutoAttendance = (userName: string | null) => {
               distance: null,
               isWithinGeofence: false,
               error: message,
-              loading: false
+              loading: false,
+              isMobile: isMobileDevice(),
+              effectiveRadius: getGeofenceRadius()
             });
             setIsChecking(false);
           },

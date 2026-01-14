@@ -8,9 +8,11 @@ import {
   AlertCircle, 
   Loader2, 
   Navigation,
-  RefreshCw
+  RefreshCw,
+  Laptop,
+  Smartphone
 } from "lucide-react";
-import { AttendanceStatus, LocationStatus, OFFICE_COORDINATES } from "@/hooks/useAutoAttendance";
+import { AttendanceStatus, LocationStatus } from "@/hooks/useAutoAttendance";
 
 interface AttendanceStatusCardProps {
   attendanceStatus: AttendanceStatus;
@@ -72,6 +74,33 @@ export const AttendanceStatusCard = ({
           </div>
         ) : (
           <div className="space-y-3">
+            {/* Device Type Indicator */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {locationStatus.isMobile ? (
+                  <>
+                    <Smartphone className="h-4 w-4" />
+                    <span>Mobile Device</span>
+                  </>
+                ) : (
+                  <>
+                    <Laptop className="h-4 w-4" />
+                    <span>Laptop/Desktop</span>
+                  </>
+                )}
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {formatDistance(locationStatus.effectiveRadius)} radius
+              </Badge>
+            </div>
+            
+            {/* Laptop location warning */}
+            {!locationStatus.isMobile && (
+              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
+                <span className="font-medium">Note:</span> Laptop location can be inaccurate. Using extended 10km radius for verification.
+              </div>
+            )}
+
             {/* Location Status */}
             <div className="p-3 rounded-lg bg-background border">
               <div className="flex items-center justify-between mb-2">
@@ -118,7 +147,7 @@ export const AttendanceStatusCard = ({
                       <>
                         <Navigation className="h-4 w-4 text-orange-500" />
                         <span className="text-sm text-orange-600">
-                          Must be within {OFFICE_COORDINATES.radiusMeters}m to check in
+                          Must be within {formatDistance(locationStatus.effectiveRadius)} to check in
                         </span>
                       </>
                     )}
