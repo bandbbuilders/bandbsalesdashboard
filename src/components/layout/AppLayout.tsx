@@ -104,7 +104,7 @@ export const AppLayout = () => {
 
   const navigation = [
     { name: "Dashboard", href: "/sales", icon: LayoutDashboard, roles: ["admin", "agent", "manager"] },
-    { name: "New Sale", href: "/sales/new", icon: Plus, roles: ["admin", "agent"] },
+    { name: "New Sale", href: "/sales/new", icon: Plus, roles: ["admin", "agent", "manager"] },
     { name: "Sales List", href: "/sales/list", icon: FileText, roles: ["admin", "agent", "manager"] },
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
