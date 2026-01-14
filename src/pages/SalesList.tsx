@@ -4,27 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Eye,
+  Edit,
   Calendar,
   DollarSign,
   Plus,
@@ -33,7 +33,7 @@ import {
   Coins
 } from "lucide-react";
 import { CommissionDialog } from "@/components/crm/CommissionDialog";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -46,10 +46,13 @@ import {
 import { User } from "@/types";
 import { format } from "date-fns";
 import { useSales } from "@/hooks/useSales";
+import { supabase } from "@/integrations/supabase/client";
 
 const SalesList = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [appRole, setAppRole] = useState<string | null>(null);
   const { sales, loading, deleteSale } = useSales();
   const [filteredSales, setFilteredSales] = useState(sales);
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,10 +63,27 @@ const SalesList = () => {
   const [selectedSaleForCommission, setSelectedSaleForCommission] = useState<any>(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
+    // Support both legacy key ("user") and demo/auth key ("currentUser")
+    const userData = localStorage.getItem("user") ?? localStorage.getItem("currentUser");
     if (userData) {
       setUser(JSON.parse(userData));
     }
+
+    // If using real Supabase auth, derive permissions from session + user_roles
+    supabase.auth.getSession().then(async ({ data }) => {
+      const sessionUser = data.session?.user;
+      if (!sessionUser) return;
+
+      setAuthUserId(sessionUser.id);
+
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", sessionUser.id)
+        .maybeSingle();
+
+      setAppRole(roleRow?.role ?? null);
+    });
   }, []);
 
   useEffect(() => {
@@ -108,9 +128,16 @@ const SalesList = () => {
   const canEdit = (sale: any) => {
     // Zia Shahid's user ID
     const ziaShahidId = "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf";
-    // CEO/COO role or Zia Shahid have full access
-    const isCeoCooOrZia = user?.role === "ceo_coo" || user?.id === ziaShahidId;
-    return user?.role === "admin" || isCeoCooOrZia || (user?.role === "agent" && sale.agent_id === user.id);
+
+    const currentUserId = user?.id ?? authUserId;
+    const currentRole = user?.role ?? appRole;
+
+    const isAdmin = currentRole === "admin" || currentRole === "superadmin";
+    const isCeoCoo = currentRole === "ceo_coo";
+    const isZia = currentUserId === ziaShahidId;
+    const isAgentOwner = currentRole === "agent" && !!currentUserId && sale.agent_id === currentUserId;
+
+    return isAdmin || isCeoCoo || isZia || isAgentOwner;
   };
 
   const handleDeleteSale = (saleId: string) => {
