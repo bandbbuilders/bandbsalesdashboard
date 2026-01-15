@@ -106,7 +106,7 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
       if (count === 0) {
         toast({
           title: "Permission Denied",
-          description: "You don't have permission to delete this task. Only CEO/COO or Admin can delete tasks.",
+          description: "Only the task creator, HR, or CEO/COO can delete this task.",
           variant: "destructive"
         });
         return;
@@ -211,6 +211,12 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
                             {tag}
                           </Badge>
                         ))}
+                      </div>
+                    )}
+
+                    {task.created_by && (
+                      <div className="text-sm text-muted-foreground">
+                        Created by: <span className="font-medium">{task.created_by}</span>
                       </div>
                     )}
                   </div>
