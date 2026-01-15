@@ -126,15 +126,18 @@ const SalesList = () => {
   };
 
   const canEdit = (sale: any) => {
-    // Zia Shahid's user ID
-    const ziaShahidId = "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf";
+    // Zia Shahid's auth user IDs (legacy + current)
+    const ziaShahidIds = [
+      "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf",
+      "e91f0415-009a-4712-97e1-c70d1c29e6f9",
+    ];
 
     const currentUserId = user?.id ?? authUserId;
     const currentRole = user?.role ?? appRole;
 
     const isAdmin = currentRole === "admin" || currentRole === "superadmin";
     const isCeoCoo = currentRole === "ceo_coo";
-    const isZia = currentUserId === ziaShahidId;
+    const isZia = !!currentUserId && ziaShahidIds.includes(currentUserId);
     const isAgentOwner = currentRole === "agent" && !!currentUserId && sale.agent_id === currentUserId;
 
     return isAdmin || isCeoCoo || isZia || isAgentOwner;
