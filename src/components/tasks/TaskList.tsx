@@ -96,12 +96,21 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
 
   const deleteTask = async (taskId: string) => {
     try {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('tasks')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', taskId);
 
       if (error) throw error;
+
+      if (count === 0) {
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to delete this task. Only CEO/COO or Admin can delete tasks.",
+          variant: "destructive"
+        });
+        return;
+      }
 
       toast({
         title: "Success",
