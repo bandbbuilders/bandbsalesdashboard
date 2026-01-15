@@ -45,10 +45,26 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<Profile[]>([]);
+  const [currentUserName, setCurrentUserName] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
+      // Fetch current user's name
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile) {
+          setCurrentUserName(profile.full_name);
+        }
+      }
+
+      // Fetch all users for assignment dropdown
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name')
@@ -60,7 +76,7 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
     };
     
     if (isOpen) {
-      fetchUsers();
+      fetchData();
     }
   }, [isOpen]);
 
@@ -116,7 +132,7 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
           due_date: dueDatetime,
           estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
           tags: tags.length > 0 ? tags : null,
-          created_by: assignedTo || null,
+          created_by: currentUserName || null,
           assigned_to: assignedTo || null
         });
 
