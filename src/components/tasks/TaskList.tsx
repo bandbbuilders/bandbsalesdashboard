@@ -6,6 +6,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Clock, Edit, Trash2, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { EditTaskDialog } from "./EditTaskDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Department {
   id: string;
@@ -54,6 +65,8 @@ const statusColors = {
 };
 
 export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) => {
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const markTaskComplete = async (taskId: string) => {
@@ -103,6 +116,8 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
         description: "Failed to delete task",
         variant: "destructive"
       });
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -125,105 +140,146 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
   };
 
   return (
-    <div className="space-y-4">
-      {tasks.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-muted-foreground">No tasks found</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        tasks.map((task) => (
-          <Card key={task.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-1 h-16 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: getDepartmentColor(task.department_id) }}
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{task.title}</h3>
-                      {task.description && (
-                        <p className="text-muted-foreground mt-1">{task.description}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge>{getDepartmentName(task.department_id)}</Badge>
-                    <Badge className={statusColors[task.status]} variant="secondary">
-                      {task.status.replace('_', ' ')}
-                    </Badge>
-                    <Badge className={priorityColors[task.priority]} variant="secondary">
-                      {task.priority}
-                    </Badge>
-                    
-                    {task.due_date && (
-                      <div className={`flex items-center gap-1 text-sm ${
-                        isOverdue(task.due_date) ? 'text-red-600' : 'text-muted-foreground'
-                      }`}>
-                        <Calendar className="h-4 w-4" />
-                        Due: {formatDate(task.due_date)}
-                      </div>
-                    )}
-
-                    {task.estimated_hours && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        {task.estimated_hours}h estimated
-                      </div>
-                    )}
-                  </div>
-
-                  {task.tags && task.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {task.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 ml-4">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-sm">
-                      {task.assigned_to ? 'U' : '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex gap-1">
-                    {task.status !== 'done' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => markTaskComplete(task.id)}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteTask(task.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+    <>
+      <div className="space-y-4">
+        {tasks.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-muted-foreground">No tasks found</p>
               </div>
             </CardContent>
           </Card>
-        ))
+        ) : (
+          tasks.map((task) => (
+            <Card key={task.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-1 h-16 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getDepartmentColor(task.department_id) }}
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{task.title}</h3>
+                        {task.description && (
+                          <p className="text-muted-foreground mt-1">{task.description}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge>{getDepartmentName(task.department_id)}</Badge>
+                      <Badge className={statusColors[task.status]} variant="secondary">
+                        {task.status.replace('_', ' ')}
+                      </Badge>
+                      <Badge className={priorityColors[task.priority]} variant="secondary">
+                        {task.priority}
+                      </Badge>
+                      
+                      {task.due_date && (
+                        <div className={`flex items-center gap-1 text-sm ${
+                          isOverdue(task.due_date) ? 'text-red-600' : 'text-muted-foreground'
+                        }`}>
+                          <Calendar className="h-4 w-4" />
+                          Due: {formatDate(task.due_date)}
+                        </div>
+                      )}
+
+                      {task.estimated_hours && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          {task.estimated_hours}h estimated
+                        </div>
+                      )}
+                    </div>
+
+                    {task.tags && task.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {task.tags.map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 ml-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-sm">
+                        {task.assigned_to ? task.assigned_to[0]?.toUpperCase() : '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex gap-1">
+                      {task.status !== 'done' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => markTaskComplete(task.id)}
+                          title="Mark as complete"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setEditingTask(task)}
+                        title="Edit task"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeletingTaskId(task.id)}
+                        title="Delete task"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Edit Task Dialog */}
+      {editingTask && (
+        <EditTaskDialog
+          isOpen={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          task={editingTask}
+          departments={departments}
+          onTaskUpdated={onTaskUpdate}
+        />
       )}
-    </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingTaskId} onOpenChange={() => setDeletingTaskId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingTaskId && deleteTask(deletingTaskId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
