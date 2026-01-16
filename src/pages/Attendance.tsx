@@ -48,7 +48,7 @@ const ALLOWED_EDITORS = [
 
 const TEAM_MEMBERS = ["Huraira", "Muzamil", "Hamna", "Zia", "Sara"];
 const STANDARD_IN_TIME = "10:00";
-const GRACE_PERIOD = 15; // minutes
+const GRACE_PERIOD = 20; // minutes - grace until 10:20 AM
 const STANDARD_OUT_TIME = "18:00";
 const LATE_FINE_AMOUNT = 500;
 
@@ -236,10 +236,10 @@ export default function Attendance() {
             .maybeSingle();
 
           if (!existingFine) {
-            await supabase.from('fines').insert({
+              await supabase.from('fines').insert({
               user_name: selectedMember,
               amount: LATE_FINE_AMOUNT,
-              reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+              reason: `Late arrival - Check-in at ${checkInTime} (after 10:20 AM grace period)`,
               date: dateStr,
               attendance_id: insertedAttendance.id,
               status: 'pending',
@@ -399,10 +399,10 @@ export default function Attendance() {
                     onChange={(e) => setCheckInTime(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Standard: {STANDARD_IN_TIME} (Grace until 10:15 AM)
+                    Standard: {STANDARD_IN_TIME} (Grace until 10:20 AM)
                   </p>
                   <p className="text-xs text-orange-500 mt-1">
-                    Late after 10:15 AM = Rs {LATE_FINE_AMOUNT} fine
+                    Late after 10:20 AM = Rs {LATE_FINE_AMOUNT} fine
                   </p>
                 </div>
 

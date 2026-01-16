@@ -623,6 +623,8 @@ export type Database = {
       fines: {
         Row: {
           amount: number
+          approved_at: string | null
+          approved_by: string | null
           attendance_id: string | null
           created_at: string
           date: string
@@ -635,6 +637,8 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
           attendance_id?: string | null
           created_at?: string
           date: string
@@ -647,6 +651,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
           attendance_id?: string | null
           created_at?: string
           date?: string
