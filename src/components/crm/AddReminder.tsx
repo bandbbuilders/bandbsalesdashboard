@@ -31,13 +31,27 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
       // Combine date and time
       const dueDateTime = new Date(`${formData.due_date}T${formData.due_time}`);
       
-      // Get current user from localStorage
-      const userData = localStorage.getItem("user");
-      if (!userData) {
-        throw new Error("User not found");
+      // Get current user - prioritize Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let userId: string | null = null;
+      
+      if (session?.user) {
+        userId = session.user.id;
+      } else {
+        // Fallback to localStorage for demo mode
+        const userData = localStorage.getItem("currentUser");
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          userId = parsed.id || parsed.user_id;
+        }
       }
-      const user = JSON.parse(userData);
-      const userId = user.id;
+      
+      if (!userId) {
+        throw new Error("User not authenticated. Please login again.");
+      }
+
+      console.log('Creating reminder with user_id:', userId, 'lead_id:', leadId);
 
       const { error } = await supabase
         .from('reminders')

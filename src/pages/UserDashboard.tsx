@@ -60,6 +60,17 @@ interface Fine {
   status: string;
 }
 
+interface Reminder {
+  id: string;
+  lead_id: string | null;
+  user_id: string;
+  title: string;
+  description: string | null;
+  due_date: string;
+  completed: boolean;
+  reminder_type: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -122,6 +133,7 @@ const UserDashboard = () => {
   const [allUsers, setAllUsers] = useState<TeamMember[]>([]);
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [businessStats, setBusinessStats] = useState<BusinessStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -196,12 +208,39 @@ const UserDashboard = () => {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tasks'
+        },
+        (payload) => {
+          const updatedTask = payload.new as Task;
+          const oldTask = payload.old as Task;
+          
+          // Notify managers about task status changes
+          if (isManager || isCeoCoo) {
+            if (oldTask.status !== updatedTask.status) {
+              const statusLabel = updatedTask.status.replace('_', ' ');
+              toast.info(`Task "${updatedTask.title}" is now ${statusLabel}`, {
+                icon: <Bell className="h-4 w-4" />,
+                duration: 4000,
+              });
+              playNotificationSound();
+            }
+          }
+          
+          // Update the task in local state
+          setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.full_name]);
+  }, [profile?.full_name, isManager, isCeoCoo]);
 
   const fetchData = async (userId: string) => {
     try {
@@ -240,6 +279,15 @@ const UserDashboard = () => {
         .eq('user_name', profileData.full_name)
         .order('date', { ascending: false });
       setFines((finesData || []) as Fine[]);
+
+      // Fetch reminders for this user
+      const { data: remindersData } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('completed', false)
+        .order('due_date', { ascending: true });
+      setReminders((remindersData || []) as Reminder[]);
 
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -745,6 +793,52 @@ const UserDashboard = () => {
                     <span className="font-bold text-orange-600">Rs {fine.amount}</span>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Upcoming Reminders Section */}
+        {reminders.length > 0 && (
+          <Card className="border-blue-500/50 bg-blue-500/10">
+            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+              <Bell className="h-5 w-5 text-blue-500" />
+              <CardTitle className="text-blue-600">Your Reminders</CardTitle>
+              <Badge variant="secondary" className="ml-auto">
+                {reminders.length} upcoming
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {reminders.slice(0, 5).map(reminder => {
+                  const dueDate = new Date(reminder.due_date);
+                  const isOverdue = dueDate < new Date();
+                  const isDueSoon = !isOverdue && differenceInHours(dueDate, new Date()) <= 24;
+                  
+                  return (
+                    <div 
+                      key={reminder.id} 
+                      className={`flex items-center justify-between p-3 rounded-lg border bg-background ${
+                        isOverdue ? 'border-red-500/50' : isDueSoon ? 'border-orange-500/50' : ''
+                      }`}
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{reminder.title}</p>
+                        {reminder.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{reminder.description}</p>
+                        )}
+                        <p className={`text-xs mt-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                          <Clock className="h-3 w-3 inline mr-1" />
+                          {isOverdue ? 'Overdue: ' : 'Due: '}
+                          {format(dueDate, 'MMM dd, h:mm a')}
+                        </p>
+                      </div>
+                      <Badge variant={isOverdue ? 'destructive' : isDueSoon ? 'default' : 'secondary'}>
+                        {reminder.reminder_type.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
