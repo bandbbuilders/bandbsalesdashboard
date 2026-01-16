@@ -31,9 +31,29 @@ export default function RemindersPage() {
 
   const fetchReminders = async () => {
     try {
-      // Fetch reminders and set dummy user_id for demo mode
-      const currentUser = localStorage.getItem('currentUser');
-      const userId = currentUser ? JSON.parse(currentUser).id : '11111111-1111-1111-1111-111111111111';
+      // Prioritize Supabase session for user ID
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let userId: string | null = null;
+      
+      if (session?.user) {
+        userId = session.user.id;
+      } else {
+        // Fallback to localStorage for demo mode
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+          const parsed = JSON.parse(currentUser);
+          userId = parsed.id || parsed.user_id;
+        }
+      }
+      
+      if (!userId) {
+        console.log('No user ID found for reminders');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching reminders for user:', userId);
       
       const { data, error } = await supabase
         .from('reminders')
