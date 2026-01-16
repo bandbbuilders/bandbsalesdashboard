@@ -64,7 +64,10 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
           reminder_type: 'follow_up'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(error.message || 'Failed to create reminder');
+      }
 
       toast({
         title: "Success",
@@ -77,11 +80,11 @@ export const AddReminder = ({ leadId, open, onOpenChange }: AddReminderProps) =>
       if (window.location.pathname.includes('/crm/leads/')) {
         window.location.reload();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding reminder:', error);
       toast({
         title: "Error",
-        description: "Failed to create reminder",
+        description: error?.message || "Failed to create reminder",
         variant: "destructive"
       });
     } finally {

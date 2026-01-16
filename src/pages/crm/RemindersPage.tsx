@@ -9,10 +9,10 @@ import { AddReminder } from "@/components/crm/AddReminder";
 
 interface Reminder {
   id: string;
-  lead_id: string;
+  lead_id: string | null;
   user_id: string;
   title: string;
-  description: string;
+  description: string | null;
   due_date: string;
   completed: boolean;
   reminder_type: string;
