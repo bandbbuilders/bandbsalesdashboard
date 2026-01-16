@@ -23,6 +23,12 @@ interface Lead {
   assigned_to: string;
 }
 
+interface LeadTag {
+  id: string;
+  lead_id: string;
+  tag: string;
+}
+
 interface Stage {
   id: string;
   name: string;
@@ -30,9 +36,37 @@ interface Stage {
   order_position: number;
 }
 
+// Tag color palette (15 colors)
+const TAG_COLORS = [
+  'bg-red-100 text-red-800',
+  'bg-blue-100 text-blue-800',
+  'bg-green-100 text-green-800',
+  'bg-yellow-100 text-yellow-800',
+  'bg-purple-100 text-purple-800',
+  'bg-pink-100 text-pink-800',
+  'bg-indigo-100 text-indigo-800',
+  'bg-orange-100 text-orange-800',
+  'bg-teal-100 text-teal-800',
+  'bg-cyan-100 text-cyan-800',
+  'bg-lime-100 text-lime-800',
+  'bg-amber-100 text-amber-800',
+  'bg-emerald-100 text-emerald-800',
+  'bg-rose-100 text-rose-800',
+  'bg-violet-100 text-violet-800',
+];
+
+const getTagColor = (tag: string) => {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
+};
+
 const LeadsList = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [leadTags, setLeadTags] = useState<LeadTag[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,6 +77,7 @@ const LeadsList = () => {
   useEffect(() => {
     fetchLeads();
     fetchStages();
+    fetchLeadTags();
   }, []);
 
   useEffect(() => {
@@ -77,6 +112,23 @@ const LeadsList = () => {
     } catch (error) {
       console.error('Error fetching stages:', error);
     }
+  };
+
+  const fetchLeadTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lead_tags')
+        .select('*');
+
+      if (error) throw error;
+      setLeadTags(data || []);
+    } catch (error) {
+      console.error('Error fetching lead tags:', error);
+    }
+  };
+
+  const getLeadTags = (leadId: string) => {
+    return leadTags.filter(tag => tag.lead_id === leadId);
   };
 
   const filterLeads = () => {
@@ -189,6 +241,17 @@ const LeadsList = () => {
                     <p className="text-sm">
                       <span className="font-medium">Source:</span> {lead.source || 'N/A'}
                     </p>
+                    
+                    {/* Lead Tags */}
+                    {getLeadTags(lead.id).length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-2">
+                        {getLeadTags(lead.id).map((tag) => (
+                          <Badge key={tag.id} className={`text-xs ${getTagColor(tag.tag)}`}>
+                            {tag.tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex gap-2 mt-4">

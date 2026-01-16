@@ -167,19 +167,33 @@ const NewSale = () => {
         return;
       }
       
-      // Get current user from localStorage
-      const userData = localStorage.getItem("currentUser");
-      if (!userData) {
+      // Get current user - prioritize Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let agentId: string | null = null;
+      
+      if (session?.user) {
+        agentId = session.user.id;
+      } else {
+        // Fallback to localStorage for demo mode
+        const userData = localStorage.getItem("currentUser");
+        if (userData) {
+          const user = JSON.parse(userData);
+          agentId = user.id || user.user_id;
+        }
+      }
+      
+      if (!agentId) {
         toast({
           title: "Authentication Error",
           description: "Please login first",
           variant: "destructive",
         });
-        navigate("/login");
+        navigate("/auth");
         return;
       }
       
-      const user = JSON.parse(userData);
+      console.log('Creating sale with agent_id:', agentId);
       
       // Create customer first
       const { data: customerData, error: customerError } = await supabase
@@ -198,12 +212,12 @@ const NewSale = () => {
         throw customerError;
       }
 
-      // Create sale - use user.id directly (it's already a UUID from LoginForm)
+      // Create sale - use agentId from session
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
           customer_id: customerData.id,
-          agent_id: user.id,
+          agent_id: agentId,
           unit_number: unitNumber.trim(),
           unit_total_price: parseFloat(unitTotalPrice),
           status: 'active',
