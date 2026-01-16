@@ -12,7 +12,7 @@ export const OFFICE_COORDINATES = {
 };
 
 const STANDARD_IN_TIME = "10:00";
-const GRACE_PERIOD = 15; // minutes - final time is 10:15
+const GRACE_PERIOD = 20; // minutes - grace until 10:20 AM
 const LATE_FINE_AMOUNT = 500; // Rs 500 fine for late arrival
 
 // Detect if user is on a mobile device
@@ -52,7 +52,7 @@ const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate:
   if (checkInMinutes <= graceTime) {
     return { status: "present", isLate: checkInMinutes > standardTime, shouldFine: false };
   } else {
-    // After 10:15 AM - late with fine
+    // After 10:20 AM - late with fine
     return { status: "late", isLate: true, shouldFine: true };
   }
 };
@@ -300,7 +300,7 @@ export const useAutoAttendance = (userName: string | null) => {
                 const { error: fineError } = await supabase.from('fines').insert({
                   user_name: userName,
                   amount: LATE_FINE_AMOUNT,
-                  reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+                  reason: `Late arrival - Check-in at ${checkInTime} (after 10:20 AM grace period)`,
                   date: today,
                   attendance_id: attendanceData.id,
                   status: 'pending',
@@ -308,7 +308,7 @@ export const useAutoAttendance = (userName: string | null) => {
 
                 if (!fineError) {
                   toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
-                    description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
+                    description: `You checked in at ${checkInTime}, after the 10:20 AM grace period.`,
                     duration: 8000,
                   });
                 }
@@ -460,7 +460,7 @@ export const useAutoAttendance = (userName: string | null) => {
                     const { error: fineError } = await supabase.from('fines').insert({
                       user_name: userName,
                       amount: LATE_FINE_AMOUNT,
-                      reason: `Late arrival - Check-in at ${checkInTime} (after 10:15 AM grace period)`,
+                      reason: `Late arrival - Check-in at ${checkInTime} (after 10:20 AM grace period)`,
                       date: today,
                       attendance_id: attendanceData.id,
                       status: 'pending',
@@ -470,7 +470,7 @@ export const useAutoAttendance = (userName: string | null) => {
                       console.error('Error creating fine:', fineError);
                     } else {
                       toast.error(`Late Fine Applied: Rs ${LATE_FINE_AMOUNT}`, {
-                        description: `You checked in at ${checkInTime}, after the 10:15 AM grace period.`,
+                        description: `You checked in at ${checkInTime}, after the 10:20 AM grace period.`,
                         duration: 8000,
                       });
                     }
