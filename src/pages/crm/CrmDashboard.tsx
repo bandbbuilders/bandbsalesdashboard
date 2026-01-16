@@ -30,6 +30,10 @@ const CrmDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
       // Fetch recent leads
       const { data: leadsData } = await supabase
         .from('leads')
@@ -37,13 +41,19 @@ const CrmDashboard = () => {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // Fetch upcoming reminders
-      const { data: remindersData } = await supabase
+      // Fetch upcoming reminders for current user only
+      let remindersQuery = supabase
         .from('reminders')
         .select('id, title, due_date, completed')
         .eq('completed', false)
         .order('due_date', { ascending: true })
         .limit(5);
+      
+      if (userId) {
+        remindersQuery = remindersQuery.eq('user_id', userId);
+      }
+      
+      const { data: remindersData } = await remindersQuery;
 
       setLeads(leadsData || []);
       setReminders(remindersData || []);
