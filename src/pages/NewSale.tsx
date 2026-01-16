@@ -209,7 +209,7 @@ const NewSale = () => {
 
       if (customerError) {
         console.error("Customer creation error:", customerError);
-        throw customerError;
+        throw new Error(customerError.message || 'Failed to create customer');
       }
 
       // Create sale - use agentId from session
@@ -227,7 +227,7 @@ const NewSale = () => {
 
       if (saleError) {
         console.error("Sale creation error:", saleError);
-        throw saleError;
+        throw new Error(saleError.message || 'Failed to create sale');
       }
       
       console.log("Sale created successfully:", saleData);
@@ -249,7 +249,7 @@ const NewSale = () => {
 
         if (paymentPlanError) {
           console.error("Payment plan creation error:", paymentPlanError);
-          throw paymentPlanError;
+          throw new Error(paymentPlanError.message || 'Failed to create payment plan');
         }
         
         console.log("Payment plan created successfully");
@@ -273,7 +273,7 @@ const NewSale = () => {
 
         if (ledgerError) {
           console.error("Ledger entries creation error:", ledgerError);
-          throw ledgerError;
+          throw new Error(ledgerError.message || 'Failed to create ledger entries');
         }
         
         console.log("Ledger entries created successfully");
@@ -285,12 +285,12 @@ const NewSale = () => {
       });
       
       navigate("/sales");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating sale:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
       toast({
         title: "Error",
-        description: "Failed to create sale record. Please try again.",
+        description: error?.message || "Failed to create sale record. Please try again.",
         variant: "destructive",
       });
     }
