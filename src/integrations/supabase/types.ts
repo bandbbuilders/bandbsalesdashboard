@@ -1359,7 +1359,7 @@ export type Database = {
           description: string | null
           due_date: string
           id: string
-          lead_id: string
+          lead_id: string | null
           reminder_type: Database["public"]["Enums"]["reminder_type"]
           title: string
           updated_at: string
@@ -1371,7 +1371,7 @@ export type Database = {
           description?: string | null
           due_date: string
           id?: string
-          lead_id: string
+          lead_id?: string | null
           reminder_type?: Database["public"]["Enums"]["reminder_type"]
           title: string
           updated_at?: string
@@ -1383,7 +1383,7 @@ export type Database = {
           description?: string | null
           due_date?: string
           id?: string
-          lead_id?: string
+          lead_id?: string | null
           reminder_type?: Database["public"]["Enums"]["reminder_type"]
           title?: string
           updated_at?: string
