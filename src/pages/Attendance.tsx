@@ -7,8 +7,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { format, formatDistanceToNow } from "date-fns";
-import { Clock, Download, User, AlertTriangle, Lock } from "lucide-react";
+import { Clock, Download, User, AlertTriangle, Lock, Pencil, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,37 +63,72 @@ export default function Attendance() {
   const [profiles, setProfiles] = useState<ProfileWithLastSeen[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
   const [canEdit, setCanEdit] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
+  const [editReason, setEditReason] = useState("");
   const { toast } = useToast();
 
   // Check if current user can edit attendance
   useEffect(() => {
     const checkEditPermission = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          const userEmail = user.email?.toLowerCase();
-          const userId = user.id || user.user_id;
+        // First check Supabase session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const userEmail = session.user.email?.toLowerCase();
+          const userId = session.user.id;
           
-          // Check if user is Sara Memon or COO
+          console.log('Checking edit permission for:', userEmail, userId);
+          
+          // Check if user is Sara Memon
           const isSara = userEmail === "msara8032@gmail.com" || 
                          userId === "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0";
           
           // Check if user has ceo_coo role
-          if (userId) {
-            const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', userId)
-              .maybeSingle();
-            
-            if (roleData?.role === 'ceo_coo' || isSara) {
-              setCanEdit(true);
-              return;
-            }
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          console.log('User role:', roleData?.role, 'Is Sara:', isSara);
+          
+          if (roleData?.role === 'ceo_coo' || isSara) {
+            console.log('Edit permission granted');
+            setCanEdit(true);
+            return;
           }
           
           setCanEdit(isSara);
+        } else {
+          // Fallback to localStorage for demo mode
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            const userEmail = user.email?.toLowerCase();
+            const userId = user.id || user.user_id;
+            
+            const isSara = userEmail === "msara8032@gmail.com" || 
+                           userId === "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0";
+            
+            if (userId) {
+              const { data: roleData } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', userId)
+                .maybeSingle();
+              
+              if (roleData?.role === 'ceo_coo' || isSara) {
+                setCanEdit(true);
+                return;
+              }
+            }
+            
+            setCanEdit(isSara);
+          }
         }
       } catch (error) {
         console.error('Error checking edit permission:', error);
@@ -478,6 +515,16 @@ export default function Attendance() {
                       {record.status}
                       {record.is_late && " (Late)"}
                     </Badge>
+                    {canEdit && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleOpenEditDialog(record)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -549,6 +596,103 @@ export default function Attendance() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Attendance Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Attendance - {editingRecord?.user_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Check In Time</Label>
+              <Input
+                type="time"
+                value={editCheckIn}
+                onChange={(e) => setEditCheckIn(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Check Out Time</Label>
+              <Input
+                type="time"
+                value={editCheckOut}
+                onChange={(e) => setEditCheckOut(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Reason for Change *</Label>
+              <Textarea
+                placeholder="Enter reason for modifying attendance..."
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This reason will be saved in the attendance notes.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={!editReason.trim()}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
+  function handleOpenEditDialog(record: AttendanceRecord) {
+    setEditingRecord(record);
+    setEditCheckIn(record.check_in || STANDARD_IN_TIME);
+    setEditCheckOut(record.check_out || STANDARD_OUT_TIME);
+    setEditReason("");
+    setEditDialogOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingRecord || !editReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for the change",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { status, isLate } = calculateStatus(editCheckIn);
+    const updatedNotes = `${editingRecord.notes || ''}\n[${format(new Date(), "yyyy-MM-dd HH:mm")}] Edit: ${editReason}`.trim();
+
+    const { error } = await supabase
+      .from('attendance')
+      .update({
+        check_in: editCheckIn,
+        check_out: editCheckOut || null,
+        status,
+        is_late: isLate,
+        notes: updatedNotes,
+      })
+      .eq('id', editingRecord.id);
+
+    if (error) {
+      console.error('Error updating attendance:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update attendance",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Attendance updated successfully",
+      });
+      setEditDialogOpen(false);
+      fetchAttendance();
+    }
+  }
 }
