@@ -1442,8 +1442,8 @@ export type Database = {
             foreignKeyName: "sales_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "sales_customer_id_fkey"

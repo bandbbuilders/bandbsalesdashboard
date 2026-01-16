@@ -16,7 +16,7 @@ export const useSales = () => {
         .select(`
           *,
           customer:customers(*),
-          agent:users(*),
+          agent:profiles!sales_agent_id_fkey(user_id, full_name, email, role),
           payment_plan:payment_plans(*)
         `)
         .order('created_at', { ascending: false });
@@ -28,7 +28,14 @@ export const useSales = () => {
         customer_id: sale.customer_id,
         customer: sale.customer as Customer,
         agent_id: sale.agent_id,
-        agent: sale.agent as User,
+        agent: sale.agent ? {
+          id: (sale.agent as any).user_id,
+          name: (sale.agent as any).full_name,
+          email: (sale.agent as any).email,
+          role: (sale.agent as any).role || 'user',
+          created_at: '',
+          updated_at: ''
+        } as User : undefined as unknown as User,
         unit_number: sale.unit_number,
         unit_total_price: parseFloat(sale.unit_total_price.toString()),
         status: sale.status as "active" | "completed" | "defaulted",

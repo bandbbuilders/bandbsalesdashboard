@@ -53,7 +53,7 @@ const EditSale = () => {
           .select(`
             *,
             customer:customers(*),
-            agent:users(*),
+            agent:profiles!sales_agent_id_fkey(user_id, full_name, email, role),
             payment_plan:payment_plans(*)
           `)
           .eq('id', id)
@@ -67,7 +67,14 @@ const EditSale = () => {
             customer_id: saleData.customer_id,
             customer: saleData.customer as Customer,
             agent_id: saleData.agent_id,
-            agent: saleData.agent as User,
+            agent: saleData.agent ? {
+              id: (saleData.agent as any).user_id,
+              name: (saleData.agent as any).full_name,
+              email: (saleData.agent as any).email,
+              role: (saleData.agent as any).role || 'user',
+              created_at: '',
+              updated_at: ''
+            } as User : undefined as unknown as User,
             unit_number: saleData.unit_number,
             unit_total_price: parseFloat(saleData.unit_total_price.toString()),
             status: saleData.status as "active" | "completed" | "defaulted",
