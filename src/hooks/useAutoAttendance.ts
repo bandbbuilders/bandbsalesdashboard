@@ -47,12 +47,15 @@ const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate:
   
   const checkInMinutes = hours * 60 + minutes;
   const standardTime = stdHours * 60 + stdMinutes;
-  const graceTime = standardTime + GRACE_PERIOD; // 10:15 AM
+  const graceTime = standardTime + GRACE_PERIOD; // 10:20 AM
 
+  // On-time: check-in at or before 10:20 (graceTime = 620 minutes = 10:20)
+  // Late: check-in AFTER 10:20 (621 minutes = 10:21 or later)
   if (checkInMinutes <= graceTime) {
-    return { status: "present", isLate: checkInMinutes > standardTime, shouldFine: false };
+    // Check-in at 10:20 or earlier = present (on-time)
+    return { status: "present", isLate: false, shouldFine: false };
   } else {
-    // After 10:20 AM - late with fine
+    // Check-in after 10:20 (10:21+) = late with fine
     return { status: "late", isLate: true, shouldFine: true };
   }
 };

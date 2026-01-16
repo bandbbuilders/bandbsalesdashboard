@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format, formatDistanceToNow } from "date-fns";
-import { Clock, Download, User, AlertTriangle, Lock, Pencil, CheckCircle } from "lucide-react";
+import { Clock, Download, User, AlertTriangle, Lock, Pencil, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,6 +38,8 @@ interface Fine {
   reason: string;
   date: string;
   status: string;
+  approved_by?: string | null;
+  approved_at?: string | null;
 }
 
 // Users who can edit attendance: Sara Memon and COO (Zain Sarwar)
@@ -196,12 +198,67 @@ export default function Attendance() {
     
     const checkInMinutes = hours * 60 + minutes;
     const standardTime = stdHours * 60 + stdMinutes;
-    const graceTime = standardTime + GRACE_PERIOD;
+    const graceTime = standardTime + GRACE_PERIOD; // 10:20 AM
 
+    // On-time: check-in at or before 10:20 (graceTime = 620 minutes)
+    // Late: check-in AFTER 10:20 (10:21 or later)
     if (checkInMinutes <= graceTime) {
-      return { status: "present", isLate: checkInMinutes > standardTime, shouldFine: false };
+      return { status: "present", isLate: false, shouldFine: false };
     } else {
       return { status: "late", isLate: true, shouldFine: true };
+    }
+  };
+
+  // Handle fine approval (Accept)
+  const handleAcceptFine = async (fine: Fine) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const approverName = session?.user?.email || 'HR Admin';
+    
+    const { error } = await supabase
+      .from('fines')
+      .update({
+        status: 'approved',
+        approved_by: approverName,
+        approved_at: new Date().toISOString(),
+      })
+      .eq('id', fine.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to approve fine",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Fine Approved",
+        description: `Rs ${fine.amount} fine for ${fine.user_name} has been approved and will reflect in Accounting.`,
+      });
+      fetchFines();
+    }
+  };
+
+  // Handle fine rejection
+  const handleRejectFine = async (fine: Fine) => {
+    const { error } = await supabase
+      .from('fines')
+      .update({
+        status: 'rejected',
+      })
+      .eq('id', fine.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reject fine",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Fine Rejected",
+        description: `Fine for ${fine.user_name} has been rejected.`,
+      });
+      fetchFines();
     }
   };
 
@@ -579,15 +636,46 @@ export default function Attendance() {
               <div className="space-y-3">
                 {todayFines.map((fine) => (
                   <div key={fine.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-500/10">
-                    <div>
+                    <div className="flex-1">
                       <p className="font-semibold">{fine.user_name}</p>
                       <p className="text-xs text-muted-foreground">{fine.reason}</p>
+                      {fine.approved_by && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Approved by: {fine.approved_by}
+                        </p>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-orange-600">Rs {fine.amount}</p>
-                      <Badge variant={fine.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
-                        {fine.status}
-                      </Badge>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="font-bold text-orange-600">Rs {fine.amount}</p>
+                        <Badge 
+                          variant={fine.status === 'approved' ? 'default' : fine.status === 'rejected' ? 'secondary' : 'destructive'} 
+                          className="text-xs"
+                        >
+                          {fine.status}
+                        </Badge>
+                      </div>
+                      {canEdit && fine.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleAcceptFine(fine)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleRejectFine(fine)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
