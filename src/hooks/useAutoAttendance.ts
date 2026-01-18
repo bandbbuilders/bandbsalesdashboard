@@ -165,13 +165,15 @@ export const useAutoAttendance = (userName: string | null) => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
         const distance = calculateDistance(
           latitude,
           longitude,
           OFFICE_COORDINATES.latitude,
           OFFICE_COORDINATES.longitude
         );
+        
+        console.log(`Location obtained - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m`);
         
         setLocationStatus({
           permissionGranted: true,
@@ -184,11 +186,14 @@ export const useAutoAttendance = (userName: string | null) => {
         });
       },
       (error) => {
+        console.error('Geolocation error:', error.code, error.message);
         let errorMessage = 'Location access denied';
         if (error.code === error.TIMEOUT) {
-          errorMessage = 'Location request timed out';
+          errorMessage = 'Location request timed out. Please enable GPS and try again.';
         } else if (error.code === error.POSITION_UNAVAILABLE) {
-          errorMessage = 'Location unavailable';
+          errorMessage = 'Location unavailable. Please enable GPS/Location services.';
+        } else if (error.code === error.PERMISSION_DENIED) {
+          errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
         }
         
         setLocationStatus({
@@ -202,9 +207,9 @@ export const useAutoAttendance = (userName: string | null) => {
         });
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: mobile, // High accuracy only for mobile (GPS)
+        timeout: mobile ? 30000 : 15000, // Longer timeout for mobile GPS
+        maximumAge: 60000 // Allow cached position up to 1 minute old
       }
     );
   }, []);
@@ -247,7 +252,7 @@ export const useAutoAttendance = (userName: string | null) => {
 
         navigator.geolocation.getCurrentPosition(
           async (position) => {
-            const { latitude, longitude } = position.coords;
+            const { latitude, longitude, accuracy } = position.coords;
             const distance = calculateDistance(
               latitude,
               longitude,
@@ -256,6 +261,8 @@ export const useAutoAttendance = (userName: string | null) => {
             );
             
             const radius = getGeofenceRadius();
+            
+            console.log(`Manual check-in - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m, Radius: ${radius}m`);
 
             setLocationStatus(prev => ({
               ...prev,
@@ -267,7 +274,7 @@ export const useAutoAttendance = (userName: string | null) => {
 
             if (distance > radius) {
               toast.error(`You are ${Math.round(distance)}m from office`, {
-                description: `Must be within ${radius}m to mark attendance`,
+                description: `Must be within ${radius}m to mark attendance. ${accuracy ? `GPS accuracy: ${Math.round(accuracy)}m` : ''}`,
                 duration: 5000,
               });
               setIsChecking(false);
@@ -334,16 +341,17 @@ export const useAutoAttendance = (userName: string | null) => {
             resolve(true);
           },
           (error) => {
-            let message = 'Location access denied';
+            console.error('Manual check-in geolocation error:', error.code, error.message);
+            let message = 'Location access denied. Please allow location access in browser settings.';
             if (error.code === error.TIMEOUT) {
-              message = 'Location request timed out. Please try again.';
+              message = 'Location request timed out. Please ensure GPS is enabled and try again.';
             } else if (error.code === error.POSITION_UNAVAILABLE) {
-              message = 'Location unavailable. Please check your device settings.';
+              message = 'Location unavailable. Please enable GPS/Location services on your device.';
             }
             
             toast.error('Cannot verify location', {
               description: message,
-              duration: 5000,
+              duration: 6000,
             });
             setLocationStatus(prev => ({
               ...prev,
@@ -355,9 +363,9 @@ export const useAutoAttendance = (userName: string | null) => {
             resolve(false);
           },
           {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
+            enableHighAccuracy: isMobileDevice(), // High accuracy for mobile GPS
+            timeout: isMobileDevice() ? 30000 : 15000, // 30s timeout for mobile GPS acquisition
+            maximumAge: 60000 // Allow 1-minute cached position
           }
         );
       });
@@ -412,9 +420,12 @@ export const useAutoAttendance = (userName: string | null) => {
         }
 
         // Get current position
+        const mobile = isMobileDevice();
+        const radius = getGeofenceRadius();
+        
         navigator.geolocation.getCurrentPosition(
           async (position) => {
-            const { latitude, longitude } = position.coords;
+            const { latitude, longitude, accuracy } = position.coords;
             
             const distance = calculateDistance(
               latitude,
@@ -422,11 +433,8 @@ export const useAutoAttendance = (userName: string | null) => {
               OFFICE_COORDINATES.latitude,
               OFFICE_COORDINATES.longitude
             );
-            
-            const mobile = isMobileDevice();
-            const radius = getGeofenceRadius();
 
-            console.log(`Distance from office: ${distance.toFixed(0)} meters (Device: ${mobile ? 'Mobile' : 'Laptop'}, Radius: ${radius}m)`);
+            console.log(`Auto-attendance - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance.toFixed(0)}m (Device: ${mobile ? 'Mobile' : 'Laptop'}, Radius: ${radius}m)`);
             
             setLocationStatus({
               permissionGranted: true,
@@ -503,12 +511,14 @@ export const useAutoAttendance = (userName: string | null) => {
             setIsChecking(false);
           },
           (error) => {
-            console.log('Geolocation error:', error.message);
+            console.log('Auto-attendance geolocation error:', error.code, error.message);
             let message = 'Please enable location for auto attendance';
             if (error.code === error.TIMEOUT) {
-              message = 'Location request timed out';
+              message = 'Location request timed out. Please ensure GPS is enabled.';
             } else if (error.code === error.POSITION_UNAVAILABLE) {
-              message = 'Location unavailable';
+              message = 'Location unavailable. Enable GPS/Location services.';
+            } else if (error.code === error.PERMISSION_DENIED) {
+              message = 'Location permission denied. Allow location in browser.';
             }
             
             toast.info('Location access needed', {
@@ -522,15 +532,15 @@ export const useAutoAttendance = (userName: string | null) => {
               isWithinGeofence: false,
               error: message,
               loading: false,
-              isMobile: isMobileDevice(),
-              effectiveRadius: getGeofenceRadius()
+              isMobile: mobile,
+              effectiveRadius: radius
             });
             setIsChecking(false);
           },
           {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+            enableHighAccuracy: mobile, // High accuracy for mobile GPS, lower for desktop
+            timeout: mobile ? 30000 : 15000, // 30s for mobile GPS, 15s for desktop
+            maximumAge: 60000 // Allow 1-minute cached position
           }
         );
       } catch (error) {

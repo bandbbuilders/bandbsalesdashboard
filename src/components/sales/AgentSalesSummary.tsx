@@ -28,14 +28,15 @@ interface AgentStats {
 export const AgentSalesSummary = ({ sales }: AgentSalesSummaryProps) => {
   // Aggregate sales by agent
   const agentStats = sales.reduce((acc: Record<string, AgentStats>, sale) => {
-    if (!sale.agent?.id) return acc;
+    // Handle cases where agent might be missing or have different ID field
+    const agentId = sale.agent?.id || sale.agent_id;
+    if (!agentId) return acc;
     
-    const agentId = sale.agent.id;
     if (!acc[agentId]) {
       acc[agentId] = {
         id: agentId,
-        name: sale.agent.name || "Unknown",
-        email: sale.agent.email || "",
+        name: sale.agent?.name || "Unknown Agent",
+        email: sale.agent?.email || "",
         salesCount: 0,
         totalValue: 0,
       };
@@ -56,8 +57,23 @@ export const AgentSalesSummary = ({ sales }: AgentSalesSummaryProps) => {
     return `Rs ${amount.toLocaleString()}`;
   };
 
+  // Always show the card, even if empty - show a message instead
   if (agentList.length === 0) {
-    return null;
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Sales by Agent
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No sales data available
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
