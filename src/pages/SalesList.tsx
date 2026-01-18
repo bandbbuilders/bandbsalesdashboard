@@ -33,6 +33,7 @@ import {
   Coins
 } from "lucide-react";
 import { CommissionDialog } from "@/components/crm/CommissionDialog";
+import { AgentSalesSummary } from "@/components/sales/AgentSalesSummary";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -266,6 +267,9 @@ const SalesList = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Agent Sales Summary */}
+      <AgentSalesSummary sales={sales} />
 
       {/* Sales Table */}
       <Card>

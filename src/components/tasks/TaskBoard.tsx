@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Clock, MessageSquare, Paperclip, Edit, Trash2 } from "lucide-react";
+import { Calendar, Clock, MessageSquare, Paperclip, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./EditTaskDialog";
+import { TaskFineDialog } from "./TaskFineDialog";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,7 +70,16 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
   const [isDragging, setIsDragging] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [finingTask, setFiningTask] = useState<Task | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { isManager, isCeoCoo } = useUserRole(userId || undefined);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user?.id || null);
+    });
+  }, []);
 
   const updateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled') => {
     try {
@@ -215,6 +226,20 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
                             className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: getDepartmentColor(task.department_id) }}
                           />
+                          {(isManager || isCeoCoo) && task.assigned_to && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-orange-500 hover:text-orange-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFiningTask(task);
+                              }}
+                              title="Issue Fine"
+                            >
+                              <AlertTriangle className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             size="icon"
                             variant="ghost"
@@ -322,6 +347,15 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
           task={editingTask}
           departments={departments}
           onTaskUpdated={onTaskUpdate}
+        />
+      )}
+
+      {/* Fine Dialog */}
+      {finingTask && (
+        <TaskFineDialog
+          isOpen={!!finingTask}
+          onClose={() => setFiningTask(null)}
+          task={finingTask}
         />
       )}
 
