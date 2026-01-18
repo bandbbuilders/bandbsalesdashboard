@@ -632,6 +632,7 @@ export type Database = {
           paid_date: string | null
           reason: string
           status: string
+          task_id: string | null
           updated_at: string
           user_name: string
         }
@@ -646,6 +647,7 @@ export type Database = {
           paid_date?: string | null
           reason: string
           status?: string
+          task_id?: string | null
           updated_at?: string
           user_name: string
         }
@@ -660,6 +662,7 @@ export type Database = {
           paid_date?: string | null
           reason?: string
           status?: string
+          task_id?: string | null
           updated_at?: string
           user_name?: string
         }
@@ -669,6 +672,13 @@ export type Database = {
             columns: ["attendance_id"]
             isOneToOne: false
             referencedRelation: "attendance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fines_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
