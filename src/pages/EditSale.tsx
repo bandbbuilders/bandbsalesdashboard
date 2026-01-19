@@ -11,6 +11,12 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sale, Customer, User } from "@/types";
 
+interface Profile {
+  user_id: string;
+  full_name: string;
+  email: string;
+}
+
 const EditSale = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -19,6 +25,8 @@ const EditSale = () => {
   const [saving, setSaving] = useState(false);
   const [sale, setSale] = useState<Sale | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [agents, setAgents] = useState<Profile[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
 
   // Form data
   const [unitNumber, setUnitNumber] = useState("");
@@ -40,6 +48,16 @@ const EditSale = () => {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+
+    // Fetch agents (profiles) for the agent dropdown
+    const fetchAgents = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .order("full_name", { ascending: true });
+      setAgents((data || []) as Profile[]);
+    };
+    fetchAgents();
   }, []);
 
   useEffect(() => {
@@ -91,7 +109,10 @@ const EditSale = () => {
           };
 
           setSale(formattedSale);
-          
+
+          // Pre-select agent
+          setSelectedAgentId(formattedSale.agent_id || "");
+
           // Populate form fields
           setUnitNumber(formattedSale.unit_number);
           setUnitTotalPrice(formattedSale.unit_total_price.toString());
@@ -150,15 +171,19 @@ const EditSale = () => {
 
       if (customerError) throw customerError;
 
-      // Update sale
+      // Update sale (including agent_id if changed)
+      const salePayload: Record<string, unknown> = {
+        unit_number: unitNumber,
+        unit_total_price: parseFloat(unitTotalPrice),
+        status: status,
+      };
+      if (selectedAgentId) {
+        salePayload.agent_id = selectedAgentId;
+      }
       const { error: saleError } = await supabase
-        .from('sales')
-        .update({
-          unit_number: unitNumber,
-          unit_total_price: parseFloat(unitTotalPrice),
-          status: status
-        })
-        .eq('id', sale.id);
+        .from("sales")
+        .update(salePayload)
+        .eq("id", sale.id);
 
       if (saleError) throw saleError;
 
@@ -330,6 +355,23 @@ const EditSale = () => {
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="defaulted">Defaulted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Agent Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="agent">Sale Agent</Label>
+              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.user_id} value={agent.user_id}>
+                      {agent.full_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
