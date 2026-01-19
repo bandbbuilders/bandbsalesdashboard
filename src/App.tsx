@@ -50,6 +50,7 @@ import LeaveManagement from "./pages/hr/LeaveManagement";
 import PayrollManagement from "./pages/hr/PayrollManagement";
 import PerformanceManagement from "./pages/hr/PerformanceManagement";
 import DocumentsManagement from "./pages/hr/DocumentsManagement";
+import HrFines from "./pages/hr/Fines";
 
 const queryClient = new QueryClient();
 
