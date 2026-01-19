@@ -272,11 +272,12 @@ const UserDashboard = () => {
         .select('*');
       setDepartments(deptData || []);
 
-      // Fetch fines for this user
+      // Fetch fines for this user (only once HR approves; paid stays visible)
       const { data: finesData } = await supabase
         .from('fines')
         .select('*')
         .eq('user_name', profileData.full_name)
+        .in('status', ['approved', 'paid'])
         .order('date', { ascending: false });
       setFines((finesData || []) as Fine[]);
 
@@ -773,18 +774,18 @@ const UserDashboard = () => {
         </div>
 
         {/* Fines Alert Section */}
-        {fines.filter(f => f.status === 'pending').length > 0 && (
+        {fines.filter(f => f.status === 'approved').length > 0 && (
           <Card className="border-orange-500/50 bg-orange-500/10">
             <CardHeader className="flex flex-row items-center gap-2 pb-2">
               <AlertCircle className="h-5 w-5 text-orange-500" />
-              <CardTitle className="text-orange-600">Pending Fines</CardTitle>
+              <CardTitle className="text-orange-600">Unpaid Fines</CardTitle>
               <Badge variant="destructive" className="ml-auto">
-                Rs {fines.filter(f => f.status === 'pending').reduce((sum, f) => sum + f.amount, 0)}
+                Rs {fines.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0)}
               </Badge>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {fines.filter(f => f.status === 'pending').slice(0, 3).map(fine => (
+                {fines.filter(f => f.status === 'approved').slice(0, 3).map(fine => (
                   <div key={fine.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
                     <div>
                       <p className="text-sm font-medium">{fine.reason}</p>

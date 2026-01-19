@@ -3,34 +3,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  PieChart, 
-  Pie, 
-  Cell, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
   ResponsiveContainer,
   LineChart,
-  Line
+  Line,
 } from "recharts";
-import { 
-  DollarSign, 
-  TrendingUp, 
-  Clock, 
-  AlertTriangle, 
-  Users, 
+import {
+  DollarSign,
+  TrendingUp,
+  Clock,
+  AlertTriangle,
+  Users,
   FileText,
   Calendar,
-  Target
+  Target,
 } from "lucide-react";
 import { DashboardStats, User } from "@/types";
 import { useSales } from "@/hooks/useSales";
 import { useLedgerEntries } from "@/hooks/useLedgerEntries";
 import { MonthlyInstallmentChart } from "@/components/dashboard/MonthlyInstallmentChart";
+import { AgentSalesSummary } from "@/components/sales/AgentSalesSummary";
 import { format, parseISO } from "date-fns";
 
 const Dashboard = () => {
@@ -265,6 +266,9 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Sales by Agent */}
+      <AgentSalesSummary sales={sales} />
+
       {/* Sales Target Progress */}
       <Card>
         <CardHeader>
@@ -283,7 +287,7 @@ const Dashboard = () => {
               </span>
             </div>
             <Progress value={(sales.length / 59) * 100} className="h-3" />
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
               <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="text-2xl font-bold text-primary">{sales.length}</div>
@@ -294,9 +298,7 @@ const Dashboard = () => {
                 <div className="text-xs text-muted-foreground">Remaining</div>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-bold text-success">
-                  {Math.ceil((59 - sales.length) / 8)}
-                </div>
+                <div className="text-2xl font-bold text-success">{Math.ceil((59 - sales.length) / 8)}</div>
                 <div className="text-xs text-muted-foreground">Units/Month Needed</div>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-lg">
@@ -304,7 +306,7 @@ const Dashboard = () => {
                 <div className="text-xs text-muted-foreground">Months Left</div>
               </div>
             </div>
-            
+
             {sales.length >= 59 && (
               <div className="text-center p-4 bg-success/10 text-success rounded-lg">
                 🎉 Target Achieved! Congratulations on reaching the 50% sales target!

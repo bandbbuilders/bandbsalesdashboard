@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard, AlertCircle, AlertTriangle } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
@@ -37,9 +38,10 @@ export const AccountingDashboard = () => {
     netIncome: 0,
     monthlyTrend: [],
     totalFines: 0,
-    pendingFines: 0
+    pendingFines: 0,
   });
   const [fines, setFines] = useState<Fine[]>([]);
+  const [fineView, setFineView] = useState<"unpaid" | "paid">("unpaid");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,27 +51,33 @@ export const AccountingDashboard = () => {
   }, []);
 
   const fetchFines = async () => {
+    // Accounting should only show fines that are approved (unpaid) or paid.
+    // Pending = waiting for HR approval.
     const { data, error } = await supabase
       .from('fines')
       .select('*')
+      .in('status', ['approved', 'paid'])
       .order('date', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) {
       console.error('Error fetching fines:', error);
-    } else {
-      setFines((data || []) as Fine[]);
-      
-      // Calculate totals
-      const total = (data || []).reduce((sum, fine) => sum + fine.amount, 0);
-      const pending = (data || []).filter(f => f.status === 'pending').reduce((sum, fine) => sum + fine.amount, 0);
-      
-      setStats(prev => ({
-        ...prev,
-        totalFines: total,
-        pendingFines: pending
-      }));
+      return;
     }
+
+    const fineRows = (data || []) as Fine[];
+    setFines(fineRows);
+
+    const total = fineRows.reduce((sum, fine) => sum + fine.amount, 0);
+    const unpaid = fineRows
+      .filter((f) => f.status === 'approved')
+      .reduce((sum, fine) => sum + fine.amount, 0);
+
+    setStats((prev) => ({
+      ...prev,
+      totalFines: total,
+      pendingFines: unpaid,
+    }));
   };
 
   const syncPaidLedgerEntries = async () => {
@@ -367,37 +375,55 @@ export const AccountingDashboard = () => {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
-                Late Arrival Fines
+                Fines
               </CardTitle>
-              <Badge variant="destructive">{fines.filter(f => f.status === 'pending').length} Pending</Badge>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={fineView === "unpaid" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFineView("unpaid")}
+                >
+                  Unpaid
+                </Button>
+                <Button
+                  variant={fineView === "paid" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFineView("paid")}
+                >
+                  Paid
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="p-3 bg-orange-500/20 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Fines</p>
+                  <p className="text-sm text-muted-foreground">Total Approved + Paid</p>
                   <p className="text-2xl font-bold text-orange-600">Rs {formatCurrency(stats.totalFines)}</p>
                 </div>
                 <div className="p-3 bg-destructive/20 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Pending Collection</p>
+                  <p className="text-sm text-muted-foreground">Unpaid (Approved)</p>
                   <p className="text-2xl font-bold text-destructive">Rs {formatCurrency(stats.pendingFines)}</p>
                 </div>
               </div>
-              
+
               <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {fines.slice(0, 10).map((fine) => (
-                  <div key={fine.id} className="flex items-center justify-between p-2 border rounded-lg bg-background/50">
-                    <div>
-                      <p className="font-medium text-sm">{fine.user_name}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
+                {fines
+                  .filter((f) => (fineView === "paid" ? f.status === "paid" : f.status === "approved"))
+                  .slice(0, 10)
+                  .map((fine) => (
+                    <div key={fine.id} className="flex items-center justify-between p-2 border rounded-lg bg-background/50">
+                      <div>
+                        <p className="font-medium text-sm">{fine.user_name}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-orange-600">Rs {fine.amount}</p>
+                        <Badge variant={fine.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                          {fine.status === 'paid' ? 'paid' : 'unpaid'}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-orange-600">Rs {fine.amount}</p>
-                      <Badge variant={fine.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
-                        {fine.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>

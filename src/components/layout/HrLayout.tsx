@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Users, Calendar, DollarSign, TrendingUp, LayoutDashboard, FileText, Home } from "lucide-react";
+import { Users, Calendar, DollarSign, TrendingUp, LayoutDashboard, FileText, Home, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ const HrLayout = () => {
     { to: "/hr/payroll", icon: DollarSign, label: "Payroll" },
     { to: "/hr/performance", icon: TrendingUp, label: "Performance" },
     { to: "/hr/documents", icon: FileText, label: "Documents" },
+    { to: "/hr/fines", icon: AlertTriangle, label: "Fines" },
   ];
 
   const isActive = (path: string, exact: boolean = false) => {
