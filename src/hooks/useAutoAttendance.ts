@@ -77,9 +77,17 @@ export interface LocationStatus {
   effectiveRadius: number;
 }
 
-// Check if user is COO (exempt from fines)
-const checkIsCoo = async (userName: string): Promise<boolean> => {
+// Zain Sarwar (COO) user ID - exempt from all fines
+const ZAIN_SARWAR_USER_ID = 'fab190bd-59c4-4cd2-9d53-3fc0e7b5af95';
+
+// Check if user is COO/CEO (exempt from fines)
+const checkIsExemptFromFines = async (userName: string): Promise<boolean> => {
   try {
+    // Check if name is exactly Zain Sarwar (case insensitive)
+    if (userName.toLowerCase().trim() === 'zain sarwar') {
+      return true;
+    }
+    
     // Get profile by name
     const { data: profile } = await supabase
       .from('profiles')
@@ -88,6 +96,11 @@ const checkIsCoo = async (userName: string): Promise<boolean> => {
       .maybeSingle();
     
     if (!profile?.user_id) return false;
+    
+    // Check if this is Zain Sarwar's user_id
+    if (profile.user_id === ZAIN_SARWAR_USER_ID) {
+      return true;
+    }
     
     // Check user_roles table for ceo_coo role
     const { data: roleData } = await supabase
@@ -98,7 +111,7 @@ const checkIsCoo = async (userName: string): Promise<boolean> => {
     
     return roleData?.role === 'ceo_coo';
   } catch (error) {
-    console.error('Error checking COO status:', error);
+    console.error('Error checking fine exemption status:', error);
     return false;
   }
 };
@@ -302,11 +315,11 @@ export const useAutoAttendance = (userName: string | null) => {
               return;
             }
 
-            // If late after grace period, create a fine (unless COO)
+            // If late after grace period, create a fine (unless exempt - COO/CEO)
             if (shouldFine && attendanceData) {
-              const isCoo = await checkIsCoo(userName);
+              const isExempt = await checkIsExemptFromFines(userName);
               
-              if (!isCoo) {
+              if (!isExempt) {
                 const { error: fineError } = await supabase.from('fines').insert({
                   user_name: userName,
                   amount: LATE_FINE_AMOUNT,
@@ -463,11 +476,11 @@ export const useAutoAttendance = (userName: string | null) => {
               if (error) {
                 console.error('Error marking attendance:', error);
               } else {
-                // If late after grace period, create a fine (unless COO)
+              // If late after grace period, create a fine (unless exempt - COO/CEO)
                 if (shouldFine && attendanceData) {
-                  const isCoo = await checkIsCoo(userName);
+                  const isExempt = await checkIsExemptFromFines(userName);
                   
-                  if (!isCoo) {
+                  if (!isExempt) {
                     const { error: fineError } = await supabase.from('fines').insert({
                       user_name: userName,
                       amount: LATE_FINE_AMOUNT,
