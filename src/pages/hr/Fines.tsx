@@ -25,10 +25,11 @@ const HrFines = () => {
 
   const fetchFines = async () => {
     setLoading(true);
+    // Fetch ALL fines (including pending ones from attendance and tasks)
     const { data, error } = await supabase
       .from("fines")
       .select("*")
-      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(200);
 
     if (error) {
@@ -38,6 +39,7 @@ const HrFines = () => {
       return;
     }
 
+    console.log("HR Fines fetched:", data?.length, data);
     setFines((data || []) as Fine[]);
     setLoading(false);
   };

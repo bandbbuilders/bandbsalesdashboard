@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldAlert } from "lucide-react";
+
+// Zain Sarwar (COO) - exempt from all fines
+const ZAIN_SARWAR_NAME = "zain sarwar";
 
 interface Task {
   id: string;
@@ -24,7 +27,47 @@ export const TaskFineDialog = ({ isOpen, onClose, task }: TaskFineDialogProps) =
   const [amount, setAmount] = useState<number>(500);
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExempt, setIsExempt] = useState(false);
   const { toast } = useToast();
+
+  // Check if assigned person is exempt from fines (COO/CEO)
+  useEffect(() => {
+    const checkExemption = async () => {
+      if (!task.assigned_to) {
+        setIsExempt(false);
+        return;
+      }
+      
+      // Check if name is Zain Sarwar
+      if (task.assigned_to.toLowerCase().trim() === ZAIN_SARWAR_NAME) {
+        setIsExempt(true);
+        return;
+      }
+      
+      // Check if user has ceo_coo role
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("full_name", task.assigned_to)
+        .maybeSingle();
+      
+      if (profile?.user_id) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", profile.user_id)
+          .maybeSingle();
+        
+        setIsExempt(roleData?.role === "ceo_coo");
+      } else {
+        setIsExempt(false);
+      }
+    };
+    
+    if (isOpen) {
+      checkExemption();
+    }
+  }, [task.assigned_to, isOpen]);
 
   const handleSubmit = async () => {
     if (!task.assigned_to) {
@@ -98,61 +141,76 @@ export const TaskFineDialog = ({ isOpen, onClose, task }: TaskFineDialogProps) =
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Task</Label>
-            <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-              {task.title}
+        {isExempt ? (
+          <div className="py-6 text-center space-y-3">
+            <ShieldAlert className="h-12 w-12 text-primary mx-auto" />
+            <p className="font-medium text-lg">Cannot Fine This Person</p>
+            <p className="text-sm text-muted-foreground">
+              {task.assigned_to} is a CEO/COO and is exempt from fines.
             </p>
+            <Button variant="outline" onClick={onClose} className="mt-4">
+              Close
+            </Button>
           </div>
+        ) : (
+          <>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Task</Label>
+                <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                  {task.title}
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label>Executive</Label>
-            <p className="text-sm font-medium bg-muted p-2 rounded">
-              {task.assigned_to || "No one assigned"}
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label>Executive</Label>
+                <p className="text-sm font-medium bg-muted p-2 rounded">
+                  {task.assigned_to || "No one assigned"}
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Fine Amount (Rs)</Label>
-            <Input
-              id="amount"
-              type="number"
-              min={1}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              placeholder="500"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Fine Amount (Rs)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  min={1}
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  placeholder="500"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason for Fine</Label>
-            <Textarea
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g., Missed deadline, Poor quality work..."
-              rows={3}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="reason">Reason for Fine</Label>
+                <Textarea
+                  id="reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g., Missed deadline, Poor quality work..."
+                  rows={3}
+                />
+              </div>
 
-          <p className="text-xs text-muted-foreground">
-            This fine will be sent to HR for approval before being applied.
-          </p>
-        </div>
+              <p className="text-xs text-muted-foreground">
+                This fine will be sent to HR for approval before being applied.
+              </p>
+            </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isSubmitting || !task.assigned_to}
-            className="bg-orange-500 hover:bg-orange-600"
-          >
-            {isSubmitting ? "Creating..." : "Create Fine"}
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isSubmitting || !task.assigned_to}
+                className="bg-orange-500 hover:bg-orange-600"
+              >
+                {isSubmitting ? "Creating..." : "Create Fine"}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

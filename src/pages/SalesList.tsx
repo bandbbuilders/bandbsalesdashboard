@@ -132,6 +132,9 @@ const SalesList = () => {
       "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf",
       "e91f0415-009a-4712-97e1-c70d1c29e6f9",
     ];
+    
+    // Zain Sarwar (COO) user ID
+    const zainSarwarId = "fab190bd-59c4-4cd2-9d53-3fc0e7b5af95";
 
     const currentUserId = user?.id ?? authUserId;
     const currentRole = user?.role ?? appRole;
@@ -139,9 +142,10 @@ const SalesList = () => {
     const isAdmin = currentRole === "admin" || currentRole === "superadmin";
     const isCeoCoo = currentRole === "ceo_coo";
     const isZia = !!currentUserId && ziaShahidIds.includes(currentUserId);
+    const isZain = currentUserId === zainSarwarId;
     const isAgentOwner = currentRole === "agent" && !!currentUserId && sale.agent_id === currentUserId;
 
-    return isAdmin || isCeoCoo || isZia || isAgentOwner;
+    return isAdmin || isCeoCoo || isZia || isZain || isAgentOwner;
   };
 
   const handleDeleteSale = (saleId: string) => {
