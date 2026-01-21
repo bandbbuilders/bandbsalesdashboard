@@ -147,6 +147,7 @@ const App = () => (
             <Route path="payroll" element={<PayrollManagement />} />
             <Route path="performance" element={<PerformanceManagement />} />
             <Route path="documents" element={<DocumentsManagement />} />
+            <Route path="fines" element={<HrFines />} />
           </Route>
 
           {/* Commission Management - Standalone with password protection */}
