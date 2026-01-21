@@ -27,6 +27,8 @@ const EditSale = () => {
   const [user, setUser] = useState<User | null>(null);
   const [agents, setAgents] = useState<Profile[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [appRole, setAppRole] = useState<string | null>(null);
 
   // Form data
   const [unitNumber, setUnitNumber] = useState("");
@@ -48,6 +50,22 @@ const EditSale = () => {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+
+    // Fetch Supabase session and user role
+    supabase.auth.getSession().then(async ({ data }) => {
+      const sessionUser = data.session?.user;
+      if (!sessionUser) return;
+      
+      setAuthUserId(sessionUser.id);
+      
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", sessionUser.id)
+        .maybeSingle();
+      
+      setAppRole(roleRow?.role ?? null);
+    });
 
     // Fetch agents (profiles) for the agent dropdown
     const fetchAgents = async () => {
@@ -148,8 +166,27 @@ const EditSale = () => {
   }, [id, toast, navigate]);
 
   const canEdit = () => {
-    if (!sale || !user) return false;
-    return user.role === "admin" || (user.role === "agent" && sale.agent_id === user.id);
+    if (!sale) return false;
+    
+    // Zia Shahid's user IDs (legacy + current)
+    const ziaShahidIds = [
+      "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf",
+      "e91f0415-009a-4712-97e1-c70d1c29e6f9",
+    ];
+    
+    // Zain Sarwar (COO) user ID
+    const zainSarwarId = "fab190bd-59c4-4cd2-9d53-3fc0e7b5af95";
+    
+    const currentUserId = user?.id ?? authUserId;
+    const currentRole = user?.role ?? appRole;
+    
+    const isAdmin = currentRole === "admin" || currentRole === "superadmin";
+    const isCeoCoo = appRole === "ceo_coo";
+    const isZia = !!currentUserId && ziaShahidIds.includes(currentUserId);
+    const isZain = currentUserId === zainSarwarId;
+    const isAgentOwner = currentRole === "agent" && !!currentUserId && sale.agent_id === currentUserId;
+    
+    return isAdmin || isCeoCoo || isZia || isZain || isAgentOwner;
   };
 
   const handleSave = async () => {
