@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sale, Customer, User } from "@/types";
+import { AddAgentDialog } from "@/components/sales/AddAgentDialog";
 
 interface Profile {
   user_id: string;
@@ -29,6 +30,7 @@ const EditSale = () => {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [appRole, setAppRole] = useState<string | null>(null);
+  const [showAddAgentDialog, setShowAddAgentDialog] = useState(false);
 
   // Form data
   const [unitNumber, setUnitNumber] = useState("");
@@ -399,18 +401,29 @@ const EditSale = () => {
             {/* Agent Selection */}
             <div className="space-y-2">
               <Label htmlFor="agent">Sale Agent</Label>
-              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent.user_id} value={agent.user_id}>
-                      {agent.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.user_id} value={agent.user_id}>
+                        {agent.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowAddAgentDialog(true)}
+                  title="Add new sales agent"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -510,6 +523,16 @@ const EditSale = () => {
           Cancel
         </Button>
       </div>
+
+      {/* Add Agent Dialog */}
+      <AddAgentDialog
+        open={showAddAgentDialog}
+        onOpenChange={setShowAddAgentDialog}
+        onAgentAdded={(newAgent) => {
+          setAgents((prev) => [...prev, newAgent].sort((a, b) => a.full_name.localeCompare(b.full_name)));
+          setSelectedAgentId(newAgent.user_id);
+        }}
+      />
     </div>
   );
 };
