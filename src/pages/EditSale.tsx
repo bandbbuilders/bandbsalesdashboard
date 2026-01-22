@@ -18,6 +18,12 @@ interface Profile {
   email: string;
 }
 
+interface SalesAgent {
+  id: string;
+  full_name: string;
+  email: string | null;
+}
+
 const EditSale = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -26,7 +32,7 @@ const EditSale = () => {
   const [saving, setSaving] = useState(false);
   const [sale, setSale] = useState<Sale | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [agents, setAgents] = useState<Profile[]>([]);
+  const [agents, setAgents] = useState<{ id: string; full_name: string; email: string | null; source: 'profile' | 'sales_agent' }[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [appRole, setAppRole] = useState<string | null>(null);
@@ -69,13 +75,46 @@ const EditSale = () => {
       setAppRole(roleRow?.role ?? null);
     });
 
-    // Fetch agents (profiles) for the agent dropdown
+    // Fetch agents from both profiles and sales_agents tables
     const fetchAgents = async () => {
-      const { data } = await supabase
+      // Fetch from profiles
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
         .order("full_name", { ascending: true });
-      setAgents((data || []) as Profile[]);
+      
+      // Fetch from sales_agents
+      const { data: salesAgentData } = await supabase
+        .from("sales_agents")
+        .select("id, full_name, email")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true });
+      
+      const combinedAgents: { id: string; full_name: string; email: string | null; source: 'profile' | 'sales_agent' }[] = [];
+      
+      // Add profiles
+      (profileData || []).forEach((p) => {
+        combinedAgents.push({
+          id: p.user_id,
+          full_name: p.full_name,
+          email: p.email,
+          source: 'profile'
+        });
+      });
+      
+      // Add sales agents
+      (salesAgentData || []).forEach((a) => {
+        combinedAgents.push({
+          id: a.id,
+          full_name: a.full_name,
+          email: a.email,
+          source: 'sales_agent'
+        });
+      });
+      
+      // Sort combined list
+      combinedAgents.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      setAgents(combinedAgents);
     };
     fetchAgents();
   }, []);
@@ -408,7 +447,7 @@ const EditSale = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {agents.map((agent) => (
-                      <SelectItem key={agent.user_id} value={agent.user_id}>
+                      <SelectItem key={agent.id} value={agent.id}>
                         {agent.full_name}
                       </SelectItem>
                     ))}
@@ -529,8 +568,8 @@ const EditSale = () => {
         open={showAddAgentDialog}
         onOpenChange={setShowAddAgentDialog}
         onAgentAdded={(newAgent) => {
-          setAgents((prev) => [...prev, newAgent].sort((a, b) => a.full_name.localeCompare(b.full_name)));
-          setSelectedAgentId(newAgent.user_id);
+          setAgents((prev) => [...prev, { ...newAgent, email: newAgent.email, source: 'sales_agent' as const }].sort((a, b) => a.full_name.localeCompare(b.full_name)));
+          setSelectedAgentId(newAgent.id);
         }}
       />
     </div>
