@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 interface AddAgentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAgentAdded: (agent: { user_id: string; full_name: string; email: string }) => void;
+  onAgentAdded: (agent: { id: string; full_name: string; email: string | null }) => void;
 }
 
 export const AddAgentDialog = ({ open, onOpenChange, onAgentAdded }: AddAgentDialogProps) => {
@@ -24,14 +24,15 @@ export const AddAgentDialog = ({ open, onOpenChange, onAgentAdded }: AddAgentDia
   const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fullName.trim() || !email.trim()) {
+    if (!fullName.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please enter the agent's name",
         variant: "destructive",
       });
       return;
@@ -39,18 +40,14 @@ export const AddAgentDialog = ({ open, onOpenChange, onAgentAdded }: AddAgentDia
 
     setSaving(true);
     try {
-      // Generate a temporary UUID for the profile
-      const tempUserId = crypto.randomUUID();
-
       const { data, error } = await supabase
-        .from("profiles")
+        .from("sales_agents")
         .insert({
-          user_id: tempUserId,
           full_name: fullName.trim(),
-          email: email.trim(),
-          role: "employee",
+          email: email.trim() || null,
+          phone: phone.trim() || null,
         })
-        .select("user_id, full_name, email")
+        .select("id, full_name, email")
         .single();
 
       if (error) throw error;
@@ -66,6 +63,7 @@ export const AddAgentDialog = ({ open, onOpenChange, onAgentAdded }: AddAgentDia
       // Reset form
       setFullName("");
       setEmail("");
+      setPhone("");
     } catch (error: any) {
       console.error("Error adding agent:", error);
       toast({
@@ -100,14 +98,23 @@ export const AddAgentDialog = ({ open, onOpenChange, onAgentAdded }: AddAgentDia
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="agentEmail">Email *</Label>
+              <Label htmlFor="agentEmail">Email</Label>
               <Input
                 id="agentEmail"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter agent's email"
-                required
+                placeholder="Enter agent's email (optional)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="agentPhone">Phone</Label>
+              <Input
+                id="agentPhone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Enter agent's phone (optional)"
               />
             </div>
           </div>
