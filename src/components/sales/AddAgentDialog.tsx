@@ -48,7 +48,7 @@ export const AddAgentDialog = ({ open, onOpenChange, onAgentAdded }: AddAgentDia
           user_id: tempUserId,
           full_name: fullName.trim(),
           email: email.trim(),
-          role: "agent",
+          role: "employee",
         })
         .select("user_id, full_name, email")
         .single();
