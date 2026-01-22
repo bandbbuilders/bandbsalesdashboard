@@ -18,6 +18,12 @@ interface CommissionEntry {
   notes?: string;
 }
 
+interface AgentOption {
+  id: string;
+  name: string;
+  source: 'profile' | 'sales_agent';
+}
+
 interface CommissionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,13 +34,55 @@ interface CommissionDialogProps {
 export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: CommissionDialogProps) => {
   const { toast } = useToast();
   const [commissions, setCommissions] = useState<CommissionEntry[]>([]);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open && saleId) {
       fetchCommissions();
+      fetchAgents();
     }
   }, [open, saleId]);
+
+  const fetchAgents = async () => {
+    try {
+      // Fetch from profiles (system users)
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .order('full_name');
+
+      // Fetch from sales_agents (external agents)
+      const { data: salesAgentsData } = await supabase
+        .from('sales_agents')
+        .select('id, full_name')
+        .eq('is_active', true)
+        .order('full_name');
+
+      const combined: AgentOption[] = [];
+
+      if (profilesData) {
+        profilesData.forEach(p => {
+          combined.push({ id: p.id, name: p.full_name, source: 'profile' });
+        });
+      }
+
+      if (salesAgentsData) {
+        salesAgentsData.forEach(a => {
+          // Avoid duplicates by name
+          if (!combined.some(c => c.name.toLowerCase() === a.full_name.toLowerCase())) {
+            combined.push({ id: a.id, name: a.full_name, source: 'sales_agent' });
+          }
+        });
+      }
+
+      // Sort alphabetically
+      combined.sort((a, b) => a.name.localeCompare(b.name));
+      setAgents(combined);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+    }
+  };
 
   const fetchCommissions = async () => {
     try {
@@ -190,11 +238,21 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Recipient Name *</Label>
-                  <Input
+                  <Select
                     value={commission.recipient_name}
-                    onChange={(e) => updateCommission(commission.id, 'recipient_name', e.target.value)}
-                    placeholder="Enter name"
-                  />
+                    onValueChange={(value) => updateCommission(commission.id, 'recipient_name', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select recipient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.name}>
+                          {agent.name} {agent.source === 'sales_agent' ? '(External)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
