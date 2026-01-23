@@ -48,6 +48,7 @@ const SaleDetails = () => {
             *,
             customer:customers(*),
             agent:profiles!sales_agent_id_fkey(user_id, full_name, email, role),
+            external_agent:sales_agents!sales_external_agent_id_fkey(id, full_name, email),
             payment_plan:payment_plans(*)
           `)
           .eq('id', id)
@@ -56,19 +57,38 @@ const SaleDetails = () => {
         if (error) throw error;
 
         if (saleData) {
+          // Determine agent from either internal profile or external sales_agent
+          const internalAgent = saleData.agent as any;
+          const externalAgent = saleData.external_agent as any;
+          
+          let agentData: UserType | undefined;
+          
+          if (internalAgent) {
+            agentData = {
+              id: internalAgent.user_id,
+              name: internalAgent.full_name,
+              email: internalAgent.email,
+              role: internalAgent.role || 'user',
+              created_at: '',
+              updated_at: ''
+            } as UserType;
+          } else if (externalAgent) {
+            agentData = {
+              id: externalAgent.id,
+              name: externalAgent.full_name,
+              email: externalAgent.email || '',
+              role: 'agent',
+              created_at: '',
+              updated_at: ''
+            } as UserType;
+          }
+
           const formattedSale: Sale = {
             id: saleData.id,
             customer_id: saleData.customer_id,
             customer: saleData.customer as Customer,
             agent_id: saleData.agent_id,
-            agent: saleData.agent ? {
-              id: (saleData.agent as any).user_id,
-              name: (saleData.agent as any).full_name,
-              email: (saleData.agent as any).email,
-              role: (saleData.agent as any).role || 'user',
-              created_at: '',
-              updated_at: ''
-            } as UserType : undefined as unknown as UserType,
+            agent: agentData as UserType,
             unit_number: saleData.unit_number,
             unit_total_price: parseFloat(saleData.unit_total_price.toString()),
             status: saleData.status as "active" | "completed" | "defaulted",
@@ -266,7 +286,7 @@ const SaleDetails = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Agent</p>
-                <p className="font-medium">{sale.agent.name}</p>
+                <p className="font-medium">{sale.agent?.name || 'N/A'}</p>
               </div>
             </div>
             

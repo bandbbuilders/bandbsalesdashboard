@@ -1418,9 +1418,10 @@ export type Database = {
       }
       sales: {
         Row: {
-          agent_id: string
+          agent_id: string | null
           created_at: string
           customer_id: string
+          external_agent_id: string | null
           id: string
           status: string
           unit_number: string
@@ -1428,9 +1429,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agent_id: string
+          agent_id?: string | null
           created_at?: string
           customer_id: string
+          external_agent_id?: string | null
           id?: string
           status?: string
           unit_number: string
@@ -1438,9 +1440,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agent_id?: string
+          agent_id?: string | null
           created_at?: string
           customer_id?: string
+          external_agent_id?: string | null
           id?: string
           status?: string
           unit_number?: string
@@ -1460,6 +1463,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_external_agent_id_fkey"
+            columns: ["external_agent_id"]
+            isOneToOne: false
+            referencedRelation: "sales_agents"
             referencedColumns: ["id"]
           },
         ]

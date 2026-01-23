@@ -131,6 +131,7 @@ const EditSale = () => {
             *,
             customer:customers(*),
             agent:profiles!sales_agent_id_fkey(user_id, full_name, email, role),
+            external_agent:sales_agents!sales_external_agent_id_fkey(id, full_name, email),
             payment_plan:payment_plans(*)
           `)
           .eq('id', id)
@@ -139,19 +140,41 @@ const EditSale = () => {
         if (error) throw error;
 
         if (saleData) {
+          // Determine agent from either internal profile or external sales_agent
+          const internalAgent = saleData.agent as any;
+          const externalAgent = saleData.external_agent as any;
+          
+          let agentData: User | undefined;
+          let effectiveAgentId = "";
+          
+          if (internalAgent) {
+            agentData = {
+              id: internalAgent.user_id,
+              name: internalAgent.full_name,
+              email: internalAgent.email,
+              role: internalAgent.role || 'user',
+              created_at: '',
+              updated_at: ''
+            } as User;
+            effectiveAgentId = internalAgent.user_id;
+          } else if (externalAgent) {
+            agentData = {
+              id: externalAgent.id,
+              name: externalAgent.full_name,
+              email: externalAgent.email || '',
+              role: 'agent',
+              created_at: '',
+              updated_at: ''
+            } as User;
+            effectiveAgentId = externalAgent.id;
+          }
+
           const formattedSale: Sale = {
             id: saleData.id,
             customer_id: saleData.customer_id,
             customer: saleData.customer as Customer,
             agent_id: saleData.agent_id,
-            agent: saleData.agent ? {
-              id: (saleData.agent as any).user_id,
-              name: (saleData.agent as any).full_name,
-              email: (saleData.agent as any).email,
-              role: (saleData.agent as any).role || 'user',
-              created_at: '',
-              updated_at: ''
-            } as User : undefined as unknown as User,
+            agent: agentData as User,
             unit_number: saleData.unit_number,
             unit_total_price: parseFloat(saleData.unit_total_price.toString()),
             status: saleData.status as "active" | "completed" | "defaulted",
@@ -169,8 +192,8 @@ const EditSale = () => {
 
           setSale(formattedSale);
 
-          // Pre-select agent
-          setSelectedAgentId(formattedSale.agent_id || "");
+          // Pre-select agent (could be from profiles or sales_agents)
+          setSelectedAgentId(effectiveAgentId);
 
           // Populate form fields
           setUnitNumber(formattedSale.unit_number);
@@ -249,15 +272,26 @@ const EditSale = () => {
 
       if (customerError) throw customerError;
 
-      // Update sale (including agent_id if changed)
+      // Update sale (including agent if changed)
+      // Determine if the selected agent is from profiles or sales_agents
+      const selectedAgent = agents.find(a => a.id === selectedAgentId);
+      
       const salePayload: Record<string, unknown> = {
         unit_number: unitNumber,
         unit_total_price: parseFloat(unitTotalPrice),
         status: status,
       };
-      if (selectedAgentId) {
-        salePayload.agent_id = selectedAgentId;
+      
+      if (selectedAgentId && selectedAgent) {
+        if (selectedAgent.source === 'profile') {
+          salePayload.agent_id = selectedAgentId;
+          salePayload.external_agent_id = null;
+        } else {
+          salePayload.agent_id = null;
+          salePayload.external_agent_id = selectedAgentId;
+        }
       }
+      
       const { error: saleError } = await supabase
         .from("sales")
         .update(salePayload)
