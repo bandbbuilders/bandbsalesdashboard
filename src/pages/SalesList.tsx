@@ -314,7 +314,7 @@ const SalesList = () => {
                     <TableCell className="font-medium">
                       {formatCurrency(sale.unit_total_price)}
                     </TableCell>
-                    <TableCell>{sale.agent.name}</TableCell>
+                    <TableCell>{sale.agent?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(sale.status)} variant="outline">
                         {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
