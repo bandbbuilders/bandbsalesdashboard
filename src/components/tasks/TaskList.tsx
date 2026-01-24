@@ -84,7 +84,10 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ status: 'done' })
+        .update({ 
+          status: 'done',
+          completed_at: new Date().toISOString()
+        })
         .eq('id', taskId);
 
       if (error) throw error;
@@ -155,7 +158,9 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
     return new Date(dateString).toLocaleDateString();
   };
 
-  const isOverdue = (dueDate: string) => {
+  const isOverdue = (dueDate: string, status: string) => {
+    // Don't show overdue for completed tasks
+    if (status === 'done') return false;
     return new Date(dueDate) < new Date();
   };
 
@@ -200,7 +205,7 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
                       
                       {task.due_date && (
                         <div className={`flex items-center gap-1 text-sm ${
-                          isOverdue(task.due_date) ? 'text-red-600' : 'text-muted-foreground'
+                          isOverdue(task.due_date, task.status) ? 'text-red-600' : 'text-muted-foreground'
                         }`}>
                           <Calendar className="h-4 w-4" />
                           Due: {formatDate(task.due_date)}

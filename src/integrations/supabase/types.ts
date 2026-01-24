@@ -1578,6 +1578,7 @@ export type Database = {
           actual_hours: number | null
           assigned_to: string | null
           attachments: Json | null
+          completed_at: string | null
           created_at: string | null
           created_by: string | null
           department_id: string | null
@@ -1595,6 +1596,7 @@ export type Database = {
           actual_hours?: number | null
           assigned_to?: string | null
           attachments?: Json | null
+          completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
           department_id?: string | null
@@ -1612,6 +1614,7 @@ export type Database = {
           actual_hours?: number | null
           assigned_to?: string | null
           attachments?: Json | null
+          completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
           department_id?: string | null
