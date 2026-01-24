@@ -358,7 +358,6 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
-                min={format(new Date(), "yyyy-MM-dd")}
               />
             </div>
             {!isHalfDay && (
@@ -368,7 +367,7 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || format(new Date(), "yyyy-MM-dd")}
+                  min={startDate}
                 />
               </div>
             )}
