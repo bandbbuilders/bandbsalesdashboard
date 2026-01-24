@@ -69,9 +69,9 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
       .select("*")
       .order("name");
     
-    // Filter out Official Duty if not needed
+    // Filter to show only relevant leave types
     const filteredTypes = (data || []).filter(lt => 
-      ["Annual Leave", "Casual Leave", "Sick Leave", "Unpaid Leave", "Half Day"].includes(lt.name)
+      ["Annual Leave", "Casual Leave", "Sick Leave", "Unpaid Leave", "Half Day", "Early Leave"].includes(lt.name)
     );
     setLeaveTypes(filteredTypes);
   };
