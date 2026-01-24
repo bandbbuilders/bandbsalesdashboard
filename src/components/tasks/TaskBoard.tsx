@@ -83,16 +83,28 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
 
   const updateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled') => {
     try {
+      const updateData: { 
+        status: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled'; 
+        completed_at?: string | null 
+      } = { status: newStatus };
+      
+      // Set completed_at when task is marked as done, clear it otherwise
+      if (newStatus === 'done') {
+        updateData.completed_at = new Date().toISOString();
+      } else {
+        updateData.completed_at = null;
+      }
+
       const { error } = await supabase
         .from('tasks')
-        .update({ status: newStatus })
+        .update(updateData)
         .eq('id', taskId);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Task status updated successfully"
+        description: newStatus === 'done' ? "Task marked as complete" : "Task status updated successfully"
       });
 
       onTaskUpdate();
@@ -180,7 +192,9 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
     return new Date(dateString).toLocaleDateString();
   };
 
-  const isOverdue = (dueDate: string) => {
+  const isOverdue = (dueDate: string, status: string) => {
+    // Don't show overdue for completed tasks
+    if (status === 'done') return false;
     return new Date(dueDate) < new Date();
   };
 
@@ -278,7 +292,7 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
                         </Badge>
                         {task.due_date && (
                           <div className={`flex items-center gap-1 text-xs ${
-                            isOverdue(task.due_date) ? 'text-red-600' : 'text-muted-foreground'
+                            isOverdue(task.due_date, task.status) ? 'text-red-600' : 'text-muted-foreground'
                           }`}>
                             <Calendar className="h-3 w-3" />
                             {formatDate(task.due_date)}
