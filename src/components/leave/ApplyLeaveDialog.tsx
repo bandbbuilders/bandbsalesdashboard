@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Calendar, AlertTriangle, DollarSign, CalendarDays } from "lucide-react";
+import { Calendar as CalendarIcon, AlertTriangle, CalendarDays } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface LeaveType {
   id: string;
@@ -48,8 +50,8 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
   const [selectedLeaveType, setSelectedLeaveType] = useState("");
   const [reason, setReason] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [showDeductionWarning, setShowDeductionWarning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -139,9 +141,7 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
   const calculateTotalDays = () => {
     if (isHalfDay) return 0.5;
     if (!startDate || !endDate) return 0;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    return Math.max(1, differenceInDays(end, start) + 1);
+    return Math.max(1, differenceInDays(endDate, startDate) + 1);
   };
 
   const totalDays = calculateTotalDays();
@@ -175,7 +175,7 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
     const leaveType = leaveTypes.find(lt => lt.id === value);
     
     // Reset dates when changing leave type
-    if (leaveType?.name === "Half Day") {
+    if (leaveType?.name === "Half Day" && startDate) {
       setEndDate(startDate);
     }
     
@@ -187,10 +187,14 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
     }
   };
 
-  const handleStartDateChange = (value: string) => {
-    setStartDate(value);
-    if (isHalfDay) {
-      setEndDate(value);
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date);
+    if (isHalfDay && date) {
+      setEndDate(date);
+    }
+    // Clear end date if it's before the new start date
+    if (date && endDate && endDate < date) {
+      setEndDate(undefined);
     }
   };
 
@@ -234,8 +238,8 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
       const { error } = await supabase.from("leave_applications").insert({
         employee_id: employeeDetails.id,
         leave_type_id: selectedLeaveType,
-        start_date: startDate,
-        end_date: isHalfDay ? startDate : endDate,
+        start_date: format(startDate, "yyyy-MM-dd"),
+        end_date: format(isHalfDay ? startDate : endDate!, "yyyy-MM-dd"),
         total_days: totalDays,
         reason: reason.trim(),
         status: "pending",
@@ -264,8 +268,8 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
       setOpen(false);
       setSelectedLeaveType("");
       setReason("");
-      setStartDate("");
-      setEndDate("");
+      setStartDate(undefined);
+      setEndDate(undefined);
       setShowDeductionWarning(false);
     } catch (error: any) {
       console.error("Error submitting leave:", error);
@@ -290,7 +294,7 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+            <CalendarIcon className="h-5 w-5" />
             Apply for Leave
           </DialogTitle>
           <DialogDescription>
@@ -354,21 +358,57 @@ export const ApplyLeaveDialog = ({ trigger, userName, userId }: ApplyLeaveDialog
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{isHalfDay ? "Date *" : "Start Date *"}</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => handleStartDateChange(e.target.value)}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={handleStartDateChange}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             {!isHalfDay && (
               <div className="space-y-2">
                 <Label>End Date *</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => startDate ? date < startDate : false}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
           </div>
