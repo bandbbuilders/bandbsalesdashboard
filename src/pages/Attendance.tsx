@@ -13,6 +13,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { Clock, Download, User, AlertTriangle, Lock, Pencil, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { UserAttendancePerformance } from "@/components/attendance/UserAttendancePerformance";
 
 interface AttendanceRecord {
   id?: string;
@@ -412,6 +413,9 @@ export default function Attendance() {
           Generate Report
         </Button>
       </div>
+
+      {/* User Attendance Performance */}
+      <UserAttendancePerformance />
 
       {/* Login Status Section */}
       <Card>
