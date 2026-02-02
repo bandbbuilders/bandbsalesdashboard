@@ -178,7 +178,14 @@ const UserDashboard = () => {
     refreshLocation 
   } = useAutoAttendance(profile?.full_name || null);
 
-  // Real-time subscription for new tasks
+  // Helper to check if user is assigned to a task (supports comma-separated multiple assignees)
+  const isUserAssigned = (assignedTo: string | null, userName: string): boolean => {
+    if (!assignedTo || !userName) return false;
+    const assignees = assignedTo.split(',').map(a => a.trim().toLowerCase());
+    return assignees.includes(userName.toLowerCase());
+  };
+
+  // Real-time subscription for new and updated tasks
   useEffect(() => {
     if (!profileRef.current?.full_name) return;
     
@@ -193,17 +200,15 @@ const UserDashboard = () => {
         },
         (payload) => {
           const newTask = payload.new as Task;
-          if (newTask.assigned_to === profileRef.current?.full_name) {
-            // Play notification sound
+          const userName = profileRef.current?.full_name || '';
+          
+          // Check if current user is among the assignees (supports multiple)
+          if (isUserAssigned(newTask.assigned_to, userName)) {
             playNotificationSound();
-            
-            // Show toast notification
             toast.success(`New task assigned: ${newTask.title}`, {
               icon: <Bell className="h-4 w-4" />,
               duration: 5000,
             });
-            
-            // Add task to list
             setTasks(prev => [newTask, ...prev]);
           }
         }
@@ -218,8 +223,13 @@ const UserDashboard = () => {
         (payload) => {
           const updatedTask = payload.new as Task;
           const oldTask = payload.old as Task;
+          const userName = profileRef.current?.full_name || '';
           
-          // Notify managers about task status changes
+          // Check if user is assigned to this task
+          const isAssigned = isUserAssigned(updatedTask.assigned_to, userName);
+          const wasAssigned = isUserAssigned(oldTask.assigned_to, userName);
+          
+          // Notify managers about any task changes
           if (isManager || isCeoCoo) {
             if (oldTask.status !== updatedTask.status) {
               const statusLabel = updatedTask.status.replace('_', ' ');
@@ -228,6 +238,35 @@ const UserDashboard = () => {
                 duration: 4000,
               });
               playNotificationSound();
+            } else if (oldTask.assigned_to !== updatedTask.assigned_to) {
+              toast.info(`Task "${updatedTask.title}" assignees updated`, {
+                icon: <Bell className="h-4 w-4" />,
+                duration: 4000,
+              });
+              playNotificationSound();
+            }
+          }
+          
+          // Notify assigned users about task updates
+          if (isAssigned) {
+            // User was just added to the task
+            if (!wasAssigned) {
+              playNotificationSound();
+              toast.success(`You've been assigned to: ${updatedTask.title}`, {
+                icon: <Bell className="h-4 w-4" />,
+                duration: 5000,
+              });
+            }
+            // Task details changed (not just status)
+            else if (oldTask.title !== updatedTask.title || 
+                     oldTask.description !== updatedTask.description ||
+                     oldTask.priority !== updatedTask.priority ||
+                     oldTask.due_date !== updatedTask.due_date) {
+              playNotificationSound();
+              toast.info(`Task updated: ${updatedTask.title}`, {
+                icon: <Bell className="h-4 w-4" />,
+                duration: 4000,
+              });
             }
           }
           
@@ -255,12 +294,12 @@ const UserDashboard = () => {
       setProfile(profileData);
       profileRef.current = profileData;
 
-      // Fetch tasks - for COO, fetch ALL tasks; for others, fetch only assigned tasks
-      // Note: isCeoCoo is not yet available here, we'll refetch for COO in useEffect
+      // Fetch tasks - for COO, fetch ALL tasks; for others, fetch tasks where user is assigned
+      // Using ilike to support comma-separated multiple assignees
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
-        .eq('assigned_to', profileData.full_name)
+        .ilike('assigned_to', `%${profileData.full_name}%`)
         .order('due_date', { ascending: true });
 
       if (tasksError) throw tasksError;
@@ -308,10 +347,11 @@ const UserDashboard = () => {
         .order('due_date', { ascending: true });
       setTasks(tasksData || []);
     } else if (profile?.full_name) {
+      // Use ilike for comma-separated multiple assignees
       const { data: tasksData } = await supabase
         .from('tasks')
         .select('*')
-        .eq('assigned_to', profile.full_name)
+        .ilike('assigned_to', `%${profile.full_name}%`)
         .order('due_date', { ascending: true });
       setTasks(tasksData || []);
     }
