@@ -339,11 +339,26 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
                           </div>
                         </div>
                         
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">
-                            {task.assigned_to ? task.assigned_to[0]?.toUpperCase() : '?'}
-                          </AvatarFallback>
-                        </Avatar>
+                        {/* Multiple Assignees Display */}
+                        <div className="flex items-center gap-1">
+                          {task.assigned_to?.split(',').slice(0, 2).map((assignee, idx) => (
+                            <Avatar key={idx} className="h-6 w-6 border-2 border-background -ml-2 first:ml-0">
+                              <AvatarFallback className="text-xs">
+                                {assignee.trim()[0]?.toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {task.assigned_to && task.assigned_to.split(',').length > 2 && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              +{task.assigned_to.split(',').length - 2}
+                            </span>
+                          )}
+                          {!task.assigned_to && (
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback className="text-xs">?</AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
