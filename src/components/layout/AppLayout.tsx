@@ -16,7 +16,6 @@ import {
   Plus, 
   FileText, 
   Users, 
-  Bell, 
   LogOut,
   Menu,
   X,
@@ -27,6 +26,7 @@ import {
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export const AppLayout = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -154,9 +154,7 @@ export const AppLayout = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/user-dashboard")} title="Go to Dashboard">
               <Home className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-4 w-4" />
-            </Button>
+            <NotificationBell userName={user?.name} userId={user?.id} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

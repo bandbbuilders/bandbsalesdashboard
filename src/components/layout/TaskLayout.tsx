@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, LogOut, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 type LayoutUser = {
   id: string;
@@ -122,6 +123,7 @@ export const TaskLayout = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/user-dashboard")} title="Go to Dashboard">
               <Home className="h-4 w-4" />
             </Button>
+            <NotificationBell userName={user?.name} userId={user?.id} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -28,11 +28,13 @@ export const UserAttendancePerformance = () => {
     fetchPerformanceData();
   }, [selectedMonth]);
 
+  // Total working days per month: 26 (including Saturdays as half-days until 3pm)
+  // This is a fixed value as per company policy
+  const TOTAL_WORKING_DAYS = 26;
+
   const getWorkingDays = (year: number, month: number): number => {
-    const start = startOfMonth(new Date(year, month));
-    const end = endOfMonth(new Date(year, month));
-    const days = eachDayOfInterval({ start, end });
-    return days.filter(day => !isWeekend(day)).length;
+    // Company policy: 26 working days per month (Mon-Fri full days + Saturdays half-day until 3pm)
+    return TOTAL_WORKING_DAYS;
   };
 
   const fetchPerformanceData = async () => {
