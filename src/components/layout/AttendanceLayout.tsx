@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function AttendanceLayout() {
   const location = useLocation();
@@ -96,6 +97,7 @@ export function AttendanceLayout() {
             <Button variant="ghost" size="icon" onClick={() => navigate("/user-dashboard")} title="Go to Dashboard">
               <Home className="h-4 w-4" />
             </Button>
+            <NotificationBell userName={currentUser?.name} userId={currentUser?.id} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">

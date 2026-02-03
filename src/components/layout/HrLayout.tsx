@@ -1,10 +1,34 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Users, Calendar, DollarSign, TrendingUp, LayoutDashboard, FileText, Home, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const HrLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<{ name: string; id: string } | null>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        
+        setCurrentUser({
+          id: session.user.id,
+          name: profile?.full_name ?? session.user.email ?? "User"
+        });
+      }
+    };
+    init();
+  }, []);
 
   const navItems = [
     { to: "/hr", icon: LayoutDashboard, label: "Dashboard", exact: true },
@@ -31,12 +55,15 @@ const HrLayout = () => {
               <h1 className="text-xl font-bold">HR Management</h1>
             </div>
 
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/user-dashboard">
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationBell userName={currentUser?.name} userId={currentUser?.id} />
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/user-dashboard">
+                  <Home className="h-4 w-4 mr-2" />
+                  Home
+                </Link>
+              </Button>
+            </div>
           </div>
           <nav className="flex gap-1 overflow-x-auto pb-2">
             {navItems.map((item) => (

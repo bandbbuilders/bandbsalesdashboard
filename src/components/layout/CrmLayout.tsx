@@ -10,9 +10,10 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Users, LayoutDashboard, Plus, Clock, Bell, LogOut, Menu, X, Home } from "lucide-react";
+import { Users, LayoutDashboard, Plus, Clock, LogOut, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 type LayoutUser = {
   id: string;
@@ -125,9 +126,7 @@ export const CrmLayout = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/user-dashboard")} title="Go to Dashboard">
               <Home className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-4 w-4" />
-            </Button>
+            <NotificationBell userName={user?.name} userId={user?.id} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
