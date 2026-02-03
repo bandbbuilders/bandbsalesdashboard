@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 interface Notification {
   id: string;
-  type: "task_assigned" | "task_updated" | "task_removed" | "reminder" | "fine";
+  type: "task_assigned" | "task_updated" | "task_removed" | "reminder" | "fine" | "department_task";
   title: string;
   message: string;
   read: boolean;
@@ -30,10 +30,31 @@ interface NotificationBellProps {
 export const NotificationBell = ({ userName, userId }: NotificationBellProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [userDepartment, setUserDepartment] = useState<string | null>(null);
   const { playNotificationSound } = useNotificationSound();
-  const processedTaskIds = useState(new Set<string>())[0];
+  const processedTaskIds = useRef(new Set<string>());
+  const processedUpdateKeys = useRef(new Set<string>());
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Fetch user department on mount
+  useEffect(() => {
+    const fetchUserDepartment = async () => {
+      if (!userId) return;
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("department")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      if (profile?.department) {
+        setUserDepartment(profile.department.toLowerCase().trim());
+      }
+    };
+    
+    fetchUserDepartment();
+  }, [userId]);
 
   // Helper to check if user is assigned to a task (supports comma-separated multiple assignees)
   const isUserAssigned = useCallback((assignedTo: string | null, name: string): boolean => {
@@ -68,19 +89,41 @@ export const NotificationBell = ({ userName, userId }: NotificationBellProps) =>
           schema: 'public',
           table: 'tasks'
         },
-        (payload) => {
+        async (payload) => {
           const newTask = payload.new as any;
           
           // Check if current user is among the assignees
           if (isUserAssigned(newTask.assigned_to, userName)) {
-            if (!processedTaskIds.has(newTask.id)) {
-              processedTaskIds.add(newTask.id);
+            if (!processedTaskIds.current.has(newTask.id)) {
+              processedTaskIds.current.add(newTask.id);
               addNotification({
                 type: "task_assigned",
                 title: "New Task Assigned",
                 message: `You've been assigned to: ${newTask.title}`,
                 task_id: newTask.id,
               });
+            }
+          }
+          
+          // Check if task is for user's department
+          if (newTask.department_id && userDepartment) {
+            const { data: dept } = await supabase
+              .from("departments")
+              .select("name")
+              .eq("id", newTask.department_id)
+              .maybeSingle();
+            
+            if (dept?.name?.toLowerCase().trim() === userDepartment) {
+              const uniqueKey = `insert-${newTask.id}`;
+              if (!processedTaskIds.current.has(uniqueKey)) {
+                processedTaskIds.current.add(uniqueKey);
+                addNotification({
+                  type: "department_task",
+                  title: "New Department Task",
+                  message: `New task in your department: ${newTask.title}`,
+                  task_id: newTask.id,
+                });
+              }
             }
           }
         }
@@ -92,47 +135,113 @@ export const NotificationBell = ({ userName, userId }: NotificationBellProps) =>
           schema: 'public',
           table: 'tasks'
         },
-        (payload) => {
+        async (payload) => {
           const updatedTask = payload.new as any;
           const oldTask = payload.old as any;
           
           const isAssigned = isUserAssigned(updatedTask.assigned_to, userName);
           const wasAssigned = isUserAssigned(oldTask.assigned_to, userName);
           
+          // Create unique key for this update event to prevent duplicates
+          const updateKey = `${updatedTask.id}-${updatedTask.updated_at}`;
+          
           // User was just added to the task
           if (isAssigned && !wasAssigned) {
-            addNotification({
-              type: "task_assigned",
-              title: "Task Assigned",
-              message: `You've been added to: ${updatedTask.title}`,
-              task_id: updatedTask.id,
-            });
+            if (!processedUpdateKeys.current.has(`assign-${updateKey}`)) {
+              processedUpdateKeys.current.add(`assign-${updateKey}`);
+              addNotification({
+                type: "task_assigned",
+                title: "Task Assigned",
+                message: `You've been added to: ${updatedTask.title}`,
+                task_id: updatedTask.id,
+              });
+            }
           }
           // User was removed from the task
           else if (!isAssigned && wasAssigned) {
-            addNotification({
-              type: "task_removed",
-              title: "Task Unassigned",
-              message: `You've been removed from: ${updatedTask.title}`,
-              task_id: updatedTask.id,
-            });
+            if (!processedUpdateKeys.current.has(`remove-${updateKey}`)) {
+              processedUpdateKeys.current.add(`remove-${updateKey}`);
+              addNotification({
+                type: "task_removed",
+                title: "Task Unassigned",
+                message: `You've been removed from: ${updatedTask.title}`,
+                task_id: updatedTask.id,
+              });
+            }
           }
           // Task was updated while user is assigned
           else if (isAssigned) {
             if (oldTask.status !== updatedTask.status) {
-              addNotification({
-                type: "task_updated",
-                title: "Task Status Changed",
-                message: `"${updatedTask.title}" is now ${updatedTask.status.replace('_', ' ')}`,
-                task_id: updatedTask.id,
-              });
+              if (!processedUpdateKeys.current.has(`status-${updateKey}`)) {
+                processedUpdateKeys.current.add(`status-${updateKey}`);
+                addNotification({
+                  type: "task_updated",
+                  title: "Task Status Changed",
+                  message: `"${updatedTask.title}" is now ${updatedTask.status.replace('_', ' ')}`,
+                  task_id: updatedTask.id,
+                });
+              }
             } else if (oldTask.priority !== updatedTask.priority) {
-              addNotification({
-                type: "task_updated",
-                title: "Task Priority Changed",
-                message: `"${updatedTask.title}" priority changed to ${updatedTask.priority}`,
-                task_id: updatedTask.id,
-              });
+              if (!processedUpdateKeys.current.has(`priority-${updateKey}`)) {
+                processedUpdateKeys.current.add(`priority-${updateKey}`);
+                addNotification({
+                  type: "task_updated",
+                  title: "Task Priority Changed",
+                  message: `"${updatedTask.title}" priority changed to ${updatedTask.priority}`,
+                  task_id: updatedTask.id,
+                });
+              }
+            }
+          }
+          
+          // Department-based notification for task updates
+          if (updatedTask.department_id && userDepartment) {
+            const { data: dept } = await supabase
+              .from("departments")
+              .select("name")
+              .eq("id", updatedTask.department_id)
+              .maybeSingle();
+            
+            if (dept?.name?.toLowerCase().trim() === userDepartment) {
+              // Notify department members about status changes
+              if (oldTask.status !== updatedTask.status) {
+                const deptUpdateKey = `dept-status-${updateKey}`;
+                if (!processedUpdateKeys.current.has(deptUpdateKey)) {
+                  processedUpdateKeys.current.add(deptUpdateKey);
+                  addNotification({
+                    type: "department_task",
+                    title: "Department Task Updated",
+                    message: `"${updatedTask.title}" is now ${updatedTask.status.replace('_', ' ')}`,
+                    task_id: updatedTask.id,
+                  });
+                }
+              }
+              // Notify about priority changes
+              else if (oldTask.priority !== updatedTask.priority) {
+                const deptPriorityKey = `dept-priority-${updateKey}`;
+                if (!processedUpdateKeys.current.has(deptPriorityKey)) {
+                  processedUpdateKeys.current.add(deptPriorityKey);
+                  addNotification({
+                    type: "department_task",
+                    title: "Department Task Priority Changed",
+                    message: `"${updatedTask.title}" priority is now ${updatedTask.priority}`,
+                    task_id: updatedTask.id,
+                  });
+                }
+              }
+              // Notify about assignee changes
+              else if (oldTask.assigned_to !== updatedTask.assigned_to) {
+                const deptAssignKey = `dept-assign-${updateKey}`;
+                if (!processedUpdateKeys.current.has(deptAssignKey)) {
+                  processedUpdateKeys.current.add(deptAssignKey);
+                  addNotification({
+                    type: "department_task",
+                    title: "Department Task Reassigned",
+                    message: `"${updatedTask.title}" assigned to ${updatedTask.assigned_to || 'Unassigned'}`,
+                    task_id: updatedTask.id,
+                  });
+                }
+              }
             }
           }
         }
@@ -185,12 +294,20 @@ export const NotificationBell = ({ userName, userId }: NotificationBellProps) =>
       )
       .subscribe();
 
+    // Cleanup old processed keys periodically (prevent memory leak)
+    const cleanupInterval = setInterval(() => {
+      if (processedUpdateKeys.current.size > 500) {
+        processedUpdateKeys.current.clear();
+      }
+    }, 60000);
+
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(finesChannel);
       supabase.removeChannel(remindersChannel);
+      clearInterval(cleanupInterval);
     };
-  }, [userName, userId, isUserAssigned, addNotification, processedTaskIds]);
+  }, [userName, userId, userDepartment, isUserAssigned, addNotification]);
 
   // Mark all as read when opening
   const handleOpenChange = (isOpen: boolean) => {
@@ -212,6 +329,8 @@ export const NotificationBell = ({ userName, userId }: NotificationBellProps) =>
         return "⏰";
       case "fine":
         return "💰";
+      case "department_task":
+        return "👥";
       default:
         return "📌";
     }
