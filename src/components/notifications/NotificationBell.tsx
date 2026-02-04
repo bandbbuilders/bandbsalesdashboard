@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,12 @@ import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 interface Notification {
   id: string;
-  type: "task_assigned" | "task_updated" | "task_removed" | "reminder" | "fine" | "department_task";
+  type: string;
   title: string;
   message: string;
   read: boolean;
-  created_at: Date;
-  task_id?: string;
+  created_at: string;
+  task_id?: string | null;
 }
 
 interface NotificationBellProps {
@@ -27,316 +27,112 @@ interface NotificationBellProps {
   userId?: string;
 }
 
-export const NotificationBell = ({ userName, userId }: NotificationBellProps) => {
+export const NotificationBell = ({ userId }: NotificationBellProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
-  const [userDepartment, setUserDepartment] = useState<string | null>(null);
   const { playNotificationSound } = useNotificationSound();
-  const processedTaskIds = useRef(new Set<string>());
-  const processedUpdateKeys = useRef(new Set<string>());
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Fetch user department on mount
-  useEffect(() => {
-    const fetchUserDepartment = async () => {
-      if (!userId) return;
-      
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("department")
-        .eq("user_id", userId)
-        .maybeSingle();
-      
-      if (profile?.department) {
-        setUserDepartment(profile.department.toLowerCase().trim());
-      }
-    };
-    
-    fetchUserDepartment();
+  // Fetch notifications from database on mount
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("Error fetching notifications:", error);
+      return;
+    }
+
+    setNotifications(data || []);
   }, [userId]);
 
-  // Helper to check if user is assigned to a task (supports comma-separated multiple assignees)
-  const isUserAssigned = useCallback((assignedTo: string | null, name: string): boolean => {
-    if (!assignedTo || !name) return false;
-    const assignees = assignedTo.split(',').map(a => a.trim().toLowerCase());
-    return assignees.includes(name.toLowerCase());
-  }, []);
-
-  // Add notification
-  const addNotification = useCallback((notification: Omit<Notification, "id" | "created_at" | "read">) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: `${Date.now()}-${Math.random()}`,
-      created_at: new Date(),
-      read: false,
-    };
-    
-    setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep last 50
-    playNotificationSound();
-  }, [playNotificationSound]);
-
-  // Subscribe to task changes
   useEffect(() => {
-    if (!userName) return;
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // Subscribe to new notifications via realtime
+  useEffect(() => {
+    if (!userId) return;
 
     const channel = supabase
-      .channel('notification-bell-tasks')
+      .channel(`notifications-${userId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'tasks'
-        },
-        async (payload) => {
-          const newTask = payload.new as any;
-          
-          // Check if current user is among the assignees
-          if (isUserAssigned(newTask.assigned_to, userName)) {
-            if (!processedTaskIds.current.has(newTask.id)) {
-              processedTaskIds.current.add(newTask.id);
-              addNotification({
-                type: "task_assigned",
-                title: "New Task Assigned",
-                message: `You've been assigned to: ${newTask.title}`,
-                task_id: newTask.id,
-              });
-            }
-          }
-          
-          // Check if task is for user's department
-          if (newTask.department_id && userDepartment) {
-            const { data: dept } = await supabase
-              .from("departments")
-              .select("name")
-              .eq("id", newTask.department_id)
-              .maybeSingle();
-            
-            if (dept?.name?.toLowerCase().trim() === userDepartment) {
-              const uniqueKey = `insert-${newTask.id}`;
-              if (!processedTaskIds.current.has(uniqueKey)) {
-                processedTaskIds.current.add(uniqueKey);
-                addNotification({
-                  type: "department_task",
-                  title: "New Department Task",
-                  message: `New task in your department: ${newTask.title}`,
-                  task_id: newTask.id,
-                });
-              }
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'tasks'
-        },
-        async (payload) => {
-          const updatedTask = payload.new as any;
-          const oldTask = payload.old as any;
-          
-          const isAssigned = isUserAssigned(updatedTask.assigned_to, userName);
-          const wasAssigned = isUserAssigned(oldTask.assigned_to, userName);
-          
-          // Create unique key for this update event to prevent duplicates
-          const updateKey = `${updatedTask.id}-${updatedTask.updated_at}`;
-          
-          // User was just added to the task
-          if (isAssigned && !wasAssigned) {
-            if (!processedUpdateKeys.current.has(`assign-${updateKey}`)) {
-              processedUpdateKeys.current.add(`assign-${updateKey}`);
-              addNotification({
-                type: "task_assigned",
-                title: "Task Assigned",
-                message: `You've been added to: ${updatedTask.title}`,
-                task_id: updatedTask.id,
-              });
-            }
-          }
-          // User was removed from the task
-          else if (!isAssigned && wasAssigned) {
-            if (!processedUpdateKeys.current.has(`remove-${updateKey}`)) {
-              processedUpdateKeys.current.add(`remove-${updateKey}`);
-              addNotification({
-                type: "task_removed",
-                title: "Task Unassigned",
-                message: `You've been removed from: ${updatedTask.title}`,
-                task_id: updatedTask.id,
-              });
-            }
-          }
-          // Task was updated while user is assigned
-          else if (isAssigned) {
-            if (oldTask.status !== updatedTask.status) {
-              if (!processedUpdateKeys.current.has(`status-${updateKey}`)) {
-                processedUpdateKeys.current.add(`status-${updateKey}`);
-                addNotification({
-                  type: "task_updated",
-                  title: "Task Status Changed",
-                  message: `"${updatedTask.title}" is now ${updatedTask.status.replace('_', ' ')}`,
-                  task_id: updatedTask.id,
-                });
-              }
-            } else if (oldTask.priority !== updatedTask.priority) {
-              if (!processedUpdateKeys.current.has(`priority-${updateKey}`)) {
-                processedUpdateKeys.current.add(`priority-${updateKey}`);
-                addNotification({
-                  type: "task_updated",
-                  title: "Task Priority Changed",
-                  message: `"${updatedTask.title}" priority changed to ${updatedTask.priority}`,
-                  task_id: updatedTask.id,
-                });
-              }
-            }
-          }
-          
-          // Department-based notification for task updates
-          if (updatedTask.department_id && userDepartment) {
-            const { data: dept } = await supabase
-              .from("departments")
-              .select("name")
-              .eq("id", updatedTask.department_id)
-              .maybeSingle();
-            
-            if (dept?.name?.toLowerCase().trim() === userDepartment) {
-              // Notify department members about status changes
-              if (oldTask.status !== updatedTask.status) {
-                const deptUpdateKey = `dept-status-${updateKey}`;
-                if (!processedUpdateKeys.current.has(deptUpdateKey)) {
-                  processedUpdateKeys.current.add(deptUpdateKey);
-                  addNotification({
-                    type: "department_task",
-                    title: "Department Task Updated",
-                    message: `"${updatedTask.title}" is now ${updatedTask.status.replace('_', ' ')}`,
-                    task_id: updatedTask.id,
-                  });
-                }
-              }
-              // Notify about priority changes
-              else if (oldTask.priority !== updatedTask.priority) {
-                const deptPriorityKey = `dept-priority-${updateKey}`;
-                if (!processedUpdateKeys.current.has(deptPriorityKey)) {
-                  processedUpdateKeys.current.add(deptPriorityKey);
-                  addNotification({
-                    type: "department_task",
-                    title: "Department Task Priority Changed",
-                    message: `"${updatedTask.title}" priority is now ${updatedTask.priority}`,
-                    task_id: updatedTask.id,
-                  });
-                }
-              }
-              // Notify about assignee changes
-              else if (oldTask.assigned_to !== updatedTask.assigned_to) {
-                const deptAssignKey = `dept-assign-${updateKey}`;
-                if (!processedUpdateKeys.current.has(deptAssignKey)) {
-                  processedUpdateKeys.current.add(deptAssignKey);
-                  addNotification({
-                    type: "department_task",
-                    title: "Department Task Reassigned",
-                    message: `"${updatedTask.title}" assigned to ${updatedTask.assigned_to || 'Unassigned'}`,
-                    task_id: updatedTask.id,
-                  });
-                }
-              }
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    // Subscribe to fines
-    const finesChannel = supabase
-      .channel('notification-bell-fines')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'fines'
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`
         },
         (payload) => {
-          const fine = payload.new as any;
-          if (fine.user_name?.toLowerCase() === userName?.toLowerCase()) {
-            addNotification({
-              type: "fine",
-              title: "Fine Applied",
-              message: `Rs ${fine.amount} fine: ${fine.reason}`,
-            });
-          }
+          const newNotification = payload.new as Notification;
+          setNotifications(prev => [newNotification, ...prev].slice(0, 50));
+          playNotificationSound();
         }
       )
       .subscribe();
-
-    // Subscribe to reminders
-    const remindersChannel = supabase
-      .channel('notification-bell-reminders')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'reminders'
-        },
-        (payload) => {
-          const reminder = payload.new as any;
-          if (reminder.user_id === userId) {
-            addNotification({
-              type: "reminder",
-              title: "New Reminder",
-              message: reminder.title,
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    // Cleanup old processed keys periodically (prevent memory leak)
-    const cleanupInterval = setInterval(() => {
-      if (processedUpdateKeys.current.size > 500) {
-        processedUpdateKeys.current.clear();
-      }
-    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
-      supabase.removeChannel(finesChannel);
-      supabase.removeChannel(remindersChannel);
-      clearInterval(cleanupInterval);
     };
-  }, [userName, userId, userDepartment, isUserAssigned, addNotification]);
+  }, [userId, playNotificationSound]);
 
   // Mark all as read when opening
-  const handleOpenChange = (isOpen: boolean) => {
+  const handleOpenChange = async (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen && unreadCount > 0) {
+      // Update local state immediately
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+
+      // Update in database
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      if (unreadIds.length > 0) {
+        await supabase
+          .from("notifications")
+          .update({ read: true })
+          .in("id", unreadIds);
+      }
     }
   };
 
-  const getNotificationIcon = (type: Notification["type"]) => {
+  const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "task_assigned":
-        return "🎯";
+      case "task_created":
+        return "🆕";
+      case "task_status_changed":
+        return "📊";
+      case "task_assignees_changed":
+        return "👤";
+      case "task_priority_changed":
+        return "🔥";
+      case "task_due_date_changed":
+        return "📅";
       case "task_updated":
         return "📝";
-      case "task_removed":
-        return "❌";
       case "reminder":
         return "⏰";
       case "fine":
         return "💰";
-      case "department_task":
-        return "👥";
       default:
         return "📌";
     }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
+    // Delete from database
+    const ids = notifications.map(n => n.id);
+    if (ids.length > 0) {
+      await supabase
+        .from("notifications")
+        .delete()
+        .in("id", ids);
+    }
     setNotifications([]);
   };
 
@@ -391,7 +187,7 @@ export const NotificationBell = ({ userName, userId }: NotificationBellProps) =>
                         {notification.message}
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-1">
-                        {formatDistanceToNow(notification.created_at, { addSuffix: true })}
+                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                       </p>
                     </div>
                     {!notification.read && (

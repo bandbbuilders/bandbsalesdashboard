@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./EditTaskDialog";
 import { TaskFineDialog } from "./TaskFineDialog";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useNotificationSound } from "@/hooks/useNotificationSound";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,131 +72,17 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [finingTask, setFiningTask] = useState<Task | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const { toast } = useToast();
   const { isManager, isCeoCoo } = useUserRole(userId || undefined);
-  const { playNotificationSound } = useNotificationSound();
-  const subscriptionRef = useRef<any>(null);
-
-  // Helper to check if a user is assigned
-  const isUserAssigned = useCallback((assignedTo: string | null, userName: string): boolean => {
-    if (!assignedTo || !userName) return false;
-    const assignees = assignedTo.split(',').map(a => a.trim().toLowerCase());
-    return assignees.includes(userName.toLowerCase());
-  }, []);
 
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       const uid = data.session?.user?.id || null;
       setUserId(uid);
-
-      if (uid) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('user_id', uid)
-          .maybeSingle();
-        
-        setCurrentUserName(profile?.full_name || null);
-      }
     };
     init();
   }, []);
-
-  // Real-time subscription for task notifications
-  useEffect(() => {
-    if (!currentUserName) return;
-
-    subscriptionRef.current = supabase
-      .channel('task-board-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'tasks' },
-        (payload) => {
-          const newData = payload.new as any;
-          const oldData = payload.old as any;
-
-          const wasAssigned = isUserAssigned(oldData?.assigned_to, currentUserName);
-          const isNowAssigned = isUserAssigned(newData?.assigned_to, currentUserName);
-          
-          // User was just assigned to this task
-          if (!wasAssigned && isNowAssigned) {
-            playNotificationSound();
-            toast({
-              title: "📋 New Task Assigned",
-              description: `You have been assigned to: ${newData.title}`,
-            });
-            onTaskUpdate();
-            return;
-          }
-
-          // User was removed from this task
-          if (wasAssigned && !isNowAssigned) {
-            playNotificationSound();
-            toast({
-              title: "📋 Task Unassigned",
-              description: `You have been removed from: ${newData.title}`,
-            });
-            onTaskUpdate();
-            return;
-          }
-
-          // Task the user is assigned to was updated
-          if (isNowAssigned && oldData?.status !== newData?.status) {
-            playNotificationSound();
-            toast({
-              title: "📋 Task Updated",
-              description: `Task "${newData.title}" status changed to ${newData.status}`,
-            });
-            onTaskUpdate();
-            return;
-          }
-
-          // Managers get notifications for all task changes
-          if (isManager || isCeoCoo) {
-            if (oldData?.status !== newData?.status || oldData?.assigned_to !== newData?.assigned_to) {
-              playNotificationSound();
-              toast({
-                title: "📋 Task Update",
-                description: `Task "${newData.title}" was modified`,
-              });
-              onTaskUpdate();
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'tasks' },
-        (payload) => {
-          const newTask = payload.new as any;
-          
-          if (isUserAssigned(newTask?.assigned_to, currentUserName)) {
-            playNotificationSound();
-            toast({
-              title: "📋 New Task Created",
-              description: `You have been assigned to: ${newTask.title}`,
-            });
-            onTaskUpdate();
-          } else if (isManager || isCeoCoo) {
-            playNotificationSound();
-            toast({
-              title: "📋 New Task Created",
-              description: `New task: ${newTask.title}`,
-            });
-            onTaskUpdate();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
-    };
-  }, [currentUserName, isManager, isCeoCoo, toast, playNotificationSound, onTaskUpdate, isUserAssigned]);
 
   const updateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled') => {
     try {
