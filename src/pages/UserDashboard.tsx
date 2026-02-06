@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  LogOut, 
+import {
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  LogOut,
   User,
   CalendarDays,
   ArrowRight,
@@ -39,6 +39,8 @@ import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useAutoAttendance } from "@/hooks/useAutoAttendance";
 import { AttendanceStatusCard } from "@/components/dashboard/AttendanceStatusCard";
 import { ApplyLeaveDialog } from "@/components/leave/ApplyLeaveDialog";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { PersonalAttendanceCard } from "@/components/dashboard/PersonalAttendanceCard";
 
 interface Profile {
   id: string;
@@ -112,15 +114,15 @@ const playNotificationSound = () => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
-  
+
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  
+
   oscillator.frequency.value = 800;
   oscillator.type = 'sine';
   gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
   gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-  
+
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + 0.3);
 };
@@ -150,7 +152,7 @@ const UserDashboard = () => {
       }
       setUserId(session.user.id);
       fetchData(session.user.id);
-      
+
       // Update last_seen timestamp
       await supabase
         .from('profiles')
@@ -170,12 +172,12 @@ const UserDashboard = () => {
   }, [navigate]);
 
   // Auto attendance hook with enhanced features
-  const { 
-    isChecking: isCheckingAttendance, 
-    attendanceStatus, 
-    locationStatus, 
+  const {
+    isChecking: isCheckingAttendance,
+    attendanceStatus,
+    locationStatus,
     manualCheckIn,
-    refreshLocation 
+    refreshLocation
   } = useAutoAttendance(profile?.full_name || null);
 
   // Helper to check if user is assigned to a task (supports comma-separated multiple assignees)
@@ -188,7 +190,7 @@ const UserDashboard = () => {
   // Real-time subscription for new and updated tasks
   useEffect(() => {
     if (!profileRef.current?.full_name) return;
-    
+
     const channel = supabase
       .channel('task-notifications')
       .on(
@@ -201,7 +203,7 @@ const UserDashboard = () => {
         (payload) => {
           const newTask = payload.new as Task;
           const userName = profileRef.current?.full_name || '';
-          
+
           // Check if current user is among the assignees (supports multiple)
           if (isUserAssigned(newTask.assigned_to, userName)) {
             playNotificationSound();
@@ -224,11 +226,11 @@ const UserDashboard = () => {
           const updatedTask = payload.new as Task;
           const oldTask = payload.old as Task;
           const userName = profileRef.current?.full_name || '';
-          
+
           // Check if user is assigned to this task
           const isAssigned = isUserAssigned(updatedTask.assigned_to, userName);
           const wasAssigned = isUserAssigned(oldTask.assigned_to, userName);
-          
+
           // Notify managers about any task changes
           if (isManager || isCeoCoo) {
             if (oldTask.status !== updatedTask.status) {
@@ -246,7 +248,7 @@ const UserDashboard = () => {
               playNotificationSound();
             }
           }
-          
+
           // Notify assigned users about task updates
           if (isAssigned) {
             // User was just added to the task
@@ -258,10 +260,10 @@ const UserDashboard = () => {
               });
             }
             // Task details changed (not just status)
-            else if (oldTask.title !== updatedTask.title || 
-                     oldTask.description !== updatedTask.description ||
-                     oldTask.priority !== updatedTask.priority ||
-                     oldTask.due_date !== updatedTask.due_date) {
+            else if (oldTask.title !== updatedTask.title ||
+              oldTask.description !== updatedTask.description ||
+              oldTask.priority !== updatedTask.priority ||
+              oldTask.due_date !== updatedTask.due_date) {
               playNotificationSound();
               toast.info(`Task updated: ${updatedTask.title}`, {
                 icon: <Bell className="h-4 w-4" />,
@@ -269,7 +271,7 @@ const UserDashboard = () => {
               });
             }
           }
-          
+
           // Update the task in local state
           setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
         }
@@ -382,7 +384,7 @@ const UserDashboard = () => {
         .eq('id', taskId);
 
       if (error) throw error;
-      
+
       toast.success('Task marked as complete!');
       refetchTasks();
     } catch (error: any) {
@@ -397,7 +399,7 @@ const UserDashboard = () => {
     const due = new Date(dueDate);
     const now = new Date();
     const hoursUntilDue = differenceInHours(due, now);
-    
+
     if (isPast(due)) {
       return 'border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20';
     } else if (hoursUntilDue <= 2) {
@@ -415,11 +417,11 @@ const UserDashboard = () => {
     if (!dueDate) return null;
     const due = new Date(dueDate);
     const now = new Date();
-    
+
     if (isPast(due)) {
       return { text: `Overdue by ${formatDistanceToNow(due)}`, urgent: true };
     }
-    
+
     const hoursLeft = differenceInHours(due, now);
     if (hoursLeft < 1) {
       return { text: 'Due in less than an hour!', urgent: true };
@@ -439,7 +441,7 @@ const UserDashboard = () => {
   useEffect(() => {
     const fetchTeamMembers = async () => {
       if (!profile) return;
-      
+
       try {
         if (isCeoCoo) {
           // CEO/COO sees ALL users
@@ -451,7 +453,7 @@ const UserDashboard = () => {
 
           if (error) throw error;
           setAllUsers((data || []) as TeamMember[]);
-          
+
           // Also fetch business stats for COO
           const [salesData, leadsData, tasksData, commissionsData, attendanceData] = await Promise.all([
             supabase.from('sales').select('unit_total_price'),
@@ -460,7 +462,7 @@ const UserDashboard = () => {
             supabase.from('commissions').select('total_amount'),
             supabase.from('attendance').select('id').eq('date', new Date().toISOString().split('T')[0])
           ]);
-          
+
           setBusinessStats({
             totalSales: salesData.data?.length || 0,
             totalSalesValue: salesData.data?.reduce((sum, s) => sum + (s.unit_total_price || 0), 0) || 0,
@@ -605,7 +607,7 @@ const UserDashboard = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           <Skeleton className="h-16 w-64" />
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[1,2,3,4].map(i => <Skeleton key={i} className="h-32" />)}
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
           </div>
           <Skeleton className="h-64" />
         </div>
@@ -637,10 +639,13 @@ const UserDashboard = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell userName={profile?.full_name} userId={userId || undefined} />
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -737,8 +742,8 @@ const UserDashboard = () => {
               {allowedModules.map((module) => {
                 const Icon = getModuleIcon(module.id);
                 return (
-                  <Card 
-                    key={module.id} 
+                  <Card
+                    key={module.id}
                     className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:border-primary/20"
                     onClick={() => navigate(module.path)}
                   >
@@ -802,6 +807,49 @@ const UserDashboard = () => {
           </Card>
         </div>
 
+        {/* Attendance & Fines Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Attendance Performance */}
+          <PersonalAttendanceCard userName={profile?.full_name || null} />
+
+          {/* Fines Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                Fines & Penalties
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {fines.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No fines recorded</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {fines.map((fine) => (
+                    <div key={fine.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm">{fine.reason}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(fine.date), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="font-bold text-destructive">Rs {fine.amount}</p>
+                        <Badge variant={fine.status === 'paid' ? 'secondary' : 'destructive'} className="text-[10px]">
+                          {fine.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Attendance Status Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AttendanceStatusCard
@@ -814,76 +862,79 @@ const UserDashboard = () => {
         </div>
 
         {/* Fines Alert Section */}
-        {fines.filter(f => f.status === 'approved').length > 0 && (
-          <Card className="border-orange-500/50 bg-orange-500/10">
-            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              <CardTitle className="text-orange-600">Unpaid Fines</CardTitle>
-              <Badge variant="destructive" className="ml-auto">
-                Rs {fines.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0)}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {fines.filter(f => f.status === 'approved').slice(0, 3).map(fine => (
-                  <div key={fine.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
-                    <div>
-                      <p className="text-sm font-medium">{fine.reason}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
+        {
+          fines.filter(f => f.status === 'approved').length > 0 && (
+            <Card className="border-orange-500/50 bg-orange-500/10">
+              <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                <CardTitle className="text-orange-600">Unpaid Fines</CardTitle>
+                <Badge variant="destructive" className="ml-auto">
+                  Rs {fines.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0)}
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {fines.filter(f => f.status === 'approved').slice(0, 3).map(fine => (
+                    <div key={fine.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                      <div>
+                        <p className="text-sm font-medium">{fine.reason}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
+                      </div>
+                      <span className="font-bold text-orange-600">Rs {fine.amount}</span>
                     </div>
-                    <span className="font-bold text-orange-600">Rs {fine.amount}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        }
 
         {/* Upcoming Reminders Section */}
-        {reminders.length > 0 && (
-          <Card className="border-blue-500/50 bg-blue-500/10">
-            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-              <Bell className="h-5 w-5 text-blue-500" />
-              <CardTitle className="text-blue-600">Your Reminders</CardTitle>
-              <Badge variant="secondary" className="ml-auto">
-                {reminders.length} upcoming
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {reminders.slice(0, 5).map(reminder => {
-                  const dueDate = new Date(reminder.due_date);
-                  const isOverdue = dueDate < new Date();
-                  const isDueSoon = !isOverdue && differenceInHours(dueDate, new Date()) <= 24;
-                  
-                  return (
-                    <div 
-                      key={reminder.id} 
-                      className={`flex items-center justify-between p-3 rounded-lg border bg-background ${
-                        isOverdue ? 'border-red-500/50' : isDueSoon ? 'border-orange-500/50' : ''
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{reminder.title}</p>
-                        {reminder.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">{reminder.description}</p>
-                        )}
-                        <p className={`text-xs mt-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                          <Clock className="h-3 w-3 inline mr-1" />
-                          {isOverdue ? 'Overdue: ' : 'Due: '}
-                          {format(dueDate, 'MMM dd, h:mm a')}
-                        </p>
+        {
+          reminders.length > 0 && (
+            <Card className="border-blue-500/50 bg-blue-500/10">
+              <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                <Bell className="h-5 w-5 text-blue-500" />
+                <CardTitle className="text-blue-600">Your Reminders</CardTitle>
+                <Badge variant="secondary" className="ml-auto">
+                  {reminders.length} upcoming
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {reminders.slice(0, 5).map(reminder => {
+                    const dueDate = new Date(reminder.due_date);
+                    const isOverdue = dueDate < new Date();
+                    const isDueSoon = !isOverdue && differenceInHours(dueDate, new Date()) <= 24;
+
+                    return (
+                      <div
+                        key={reminder.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border bg-background ${isOverdue ? 'border-red-500/50' : isDueSoon ? 'border-orange-500/50' : ''
+                          }`}
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{reminder.title}</p>
+                          {reminder.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">{reminder.description}</p>
+                          )}
+                          <p className={`text-xs mt-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            {isOverdue ? 'Overdue: ' : 'Due: '}
+                            {format(dueDate, 'MMM dd, h:mm a')}
+                          </p>
+                        </div>
+                        <Badge variant={isOverdue ? 'destructive' : isDueSoon ? 'default' : 'secondary'}>
+                          {reminder.reminder_type.replace('_', ' ')}
+                        </Badge>
                       </div>
-                      <Badge variant={isOverdue ? 'destructive' : isDueSoon ? 'default' : 'secondary'}>
-                        {reminder.reminder_type.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        }
 
         {/* Today's Tasks */}
         <Card>
@@ -922,8 +973,8 @@ const UserDashboard = () => {
                         <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                         <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
                         {task.status !== 'done' && (
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             className="h-8"
                             onClick={() => markTaskComplete(task.id)}
@@ -976,8 +1027,8 @@ const UserDashboard = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           className="h-8"
                           onClick={() => markTaskComplete(task.id)}
@@ -995,179 +1046,187 @@ const UserDashboard = () => {
         </Card>
 
         {/* All Business Tasks - COO Only */}
-        {isCeoCoo && (
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <FileText className="h-5 w-5 text-purple-500" />
-              <div>
-                <CardTitle>All Business Tasks</CardTitle>
-                <CardDescription>Complete task overview across all departments</CardDescription>
-              </div>
-              <Badge variant="secondary" className="ml-auto">{tasks.filter(t => t.status !== 'done').length} pending</Badge>
-            </CardHeader>
-            <CardContent>
-              {tasks.filter(t => t.status !== 'done').length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">All tasks completed!</p>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {tasks.filter(t => t.status !== 'done').map(task => {
-                    const dueInfo = formatDueTime(task.due_date);
-                    return (
-                      <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium">{task.title}</h4>
-                            {task.assigned_to && (
-                              <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
+        {
+          isCeoCoo && (
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <FileText className="h-5 w-5 text-purple-500" />
+                <div>
+                  <CardTitle>All Business Tasks</CardTitle>
+                  <CardDescription>Complete task overview across all departments</CardDescription>
+                </div>
+                <Badge variant="secondary" className="ml-auto">{tasks.filter(t => t.status !== 'done').length} pending</Badge>
+              </CardHeader>
+              <CardContent>
+                {tasks.filter(t => t.status !== 'done').length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">All tasks completed!</p>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {tasks.filter(t => t.status !== 'done').map(task => {
+                      const dueInfo = formatDueTime(task.due_date);
+                      return (
+                        <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-medium">{task.title}</h4>
+                              {task.assigned_to && (
+                                <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
+                              )}
+                            </div>
+                            {task.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
+                            )}
+                            {dueInfo && (
+                              <p className={`text-xs mt-1 ${dueInfo.urgent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                {dueInfo.text}
+                              </p>
                             )}
                           </div>
-                          {task.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
-                          )}
-                          {dueInfo && (
-                            <p className={`text-xs mt-1 ${dueInfo.urgent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                              <Clock className="h-3 w-3 inline mr-1" />
-                              {dueInfo.text}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                            <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8"
+                              onClick={() => markTaskComplete(task.id)}
+                            >
+                              <CheckCircle2 className="h-4 w-4 mr-1" />
+                              Done
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                          <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="h-8"
-                            onClick={() => markTaskComplete(task.id)}
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Done
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        }
 
         {/* All Team Members Section for CEO/COO */}
-        {isCeoCoo && allUsers.length > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <Crown className="h-5 w-5 text-amber-500" />
-              <div>
-                <CardTitle>All Team Members</CardTitle>
-                <CardDescription>Complete organization overview</CardDescription>
-              </div>
-              <Badge variant="secondary" className="ml-auto">{allUsers.length} members</Badge>
-            </CardHeader>
-            <CardContent>
-              {/* Group by department */}
-              {Object.entries(
-                allUsers.reduce((acc, member) => {
-                  const dept = member.department || 'Unassigned';
-                  if (!acc[dept]) acc[dept] = [];
-                  acc[dept].push(member);
-                  return acc;
-                }, {} as Record<string, TeamMember[]>)
-              ).map(([dept, members]) => (
-                <div key={dept} className="mb-6 last:mb-0">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`h-3 w-3 rounded-full ${getDepartmentColor(dept)}`} />
-                    <h3 className="font-semibold text-sm">{dept}</h3>
-                    <Badge variant="outline" className="text-xs">{members.length}</Badge>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {members.map(member => (
-                      <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
-                          <User className="h-5 w-5 text-primary" />
-                          {member.last_seen && new Date(member.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
-                            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium truncate">{member.full_name}</h4>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {member.position}
-                          </p>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Clock className="h-3 w-3" />
-                            {member.last_seen ? (
-                              <span>{formatDistanceToNow(new Date(member.last_seen), { addSuffix: true })}</span>
-                            ) : (
-                              <span>Never logged in</span>
+        {
+          isCeoCoo && allUsers.length > 0 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-500" />
+                <div>
+                  <CardTitle>All Team Members</CardTitle>
+                  <CardDescription>Complete organization overview</CardDescription>
+                </div>
+                <Badge variant="secondary" className="ml-auto">{allUsers.length} members</Badge>
+              </CardHeader>
+              <CardContent>
+                {/* Group by department */}
+                {Object.entries(
+                  allUsers.reduce((acc, member) => {
+                    const dept = member.department || 'Unassigned';
+                    if (!acc[dept]) acc[dept] = [];
+                    acc[dept].push(member);
+                    return acc;
+                  }, {} as Record<string, TeamMember[]>)
+                ).map(([dept, members]) => (
+                  <div key={dept} className="mb-6 last:mb-0">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={`h-3 w-3 rounded-full ${getDepartmentColor(dept)}`} />
+                      <h3 className="font-semibold text-sm">{dept}</h3>
+                      <Badge variant="outline" className="text-xs">{members.length}</Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {members.map(member => (
+                        <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
+                            <User className="h-5 w-5 text-primary" />
+                            {member.last_seen && new Date(member.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
+                              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
                             )}
                           </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium truncate">{member.full_name}</h4>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {member.position}
+                            </p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <Clock className="h-3 w-3" />
+                              {member.last_seen ? (
+                                <span>{formatDistanceToNow(new Date(member.last_seen), { addSuffix: true })}</span>
+                              ) : (
+                                <span>Never logged in</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Team Members Section for Managers */}
-        {!isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
-              <CardTitle>Your Team Members</CardTitle>
-              <Badge variant="secondary" className="ml-auto">{teamMembers.length} members</Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {teamMembers.map(member => (
-                  <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
-                      <User className="h-5 w-5 text-primary" />
-                      {member.last_seen && new Date(member.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
-                        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium truncate">{member.full_name}</h4>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {member.position} • {member.department}
-                      </p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <Clock className="h-3 w-3" />
-                        {member.last_seen ? (
-                          <span>Last seen: {formatDistanceToNow(new Date(member.last_seen), { addSuffix: true })}</span>
-                        ) : (
-                          <span>Never logged in</span>
-                        )}
-                      </div>
+                      ))}
                     </div>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )
+        }
 
-        {!isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
-              <CardTitle>Your Team Members</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                No executives in your department yet. Executives will appear here once they sign up.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </main>
+        {/* Team Members Section for Managers */}
+        {
+          !isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                <CardTitle>Your Team Members</CardTitle>
+                <Badge variant="secondary" className="ml-auto">{teamMembers.length} members</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {teamMembers.map(member => (
+                    <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
+                        <User className="h-5 w-5 text-primary" />
+                        {member.last_seen && new Date(member.last_seen) > new Date(Date.now() - 5 * 60 * 1000) && (
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium truncate">{member.full_name}</h4>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {member.position} • {member.department}
+                        </p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          {member.last_seen ? (
+                            <span>Last seen: {formatDistanceToNow(new Date(member.last_seen), { addSuffix: true })}</span>
+                          ) : (
+                            <span>Never logged in</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        }
+
+        {
+          !isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                <CardTitle>Your Team Members</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-center py-8">
+                  No executives in your department yet. Executives will appear here once they sign up.
+                </p>
+              </CardContent>
+            </Card>
+          )
+        }
+      </main >
 
       {/* Create Task Dialog */}
-      <CreateTaskDialog
+      < CreateTaskDialog
         isOpen={showCreateTask}
         onClose={() => setShowCreateTask(false)}
         departments={departments}
@@ -1179,7 +1238,7 @@ const UserDashboard = () => {
 
       {/* Chat Widget */}
       <ChatWidget />
-    </div>
+    </div >
   );
 };
 

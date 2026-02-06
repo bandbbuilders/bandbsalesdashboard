@@ -44,7 +44,7 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
 const calculateStatus = (checkIn: string): { status: "present" | "late"; isLate: boolean; shouldFine: boolean } => {
   const [hours, minutes] = checkIn.split(':').map(Number);
   const [stdHours, stdMinutes] = STANDARD_IN_TIME.split(':').map(Number);
-  
+
   const checkInMinutes = hours * 60 + minutes;
   const standardTime = stdHours * 60 + stdMinutes;
   const graceTime = standardTime + GRACE_PERIOD; // 10:20 AM
@@ -87,28 +87,28 @@ const checkIsExemptFromFines = async (userName: string): Promise<boolean> => {
     if (userName.toLowerCase().trim() === 'zain sarwar') {
       return true;
     }
-    
+
     // Get profile by name
     const { data: profile } = await supabase
       .from('profiles')
       .select('user_id')
       .eq('full_name', userName)
       .maybeSingle();
-    
+
     if (!profile?.user_id) return false;
-    
+
     // Check if this is Zain Sarwar's user_id
     if (profile.user_id === ZAIN_SARWAR_USER_ID) {
       return true;
     }
-    
+
     // Check user_roles table for ceo_coo role
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', profile.user_id)
       .maybeSingle();
-    
+
     return roleData?.role === 'ceo_coo';
   } catch (error) {
     console.error('Error checking fine exemption status:', error);
@@ -138,7 +138,7 @@ export const useAutoAttendance = (userName: string | null) => {
   // Check existing attendance status
   const checkAttendanceStatus = useCallback(async () => {
     if (!userName) return;
-    
+
     const today = format(new Date(), 'yyyy-MM-dd');
     const { data: existingAttendance } = await supabase
       .from('attendance')
@@ -162,7 +162,7 @@ export const useAutoAttendance = (userName: string | null) => {
   const checkLocationStatus = useCallback(() => {
     const mobile = isMobileDevice();
     const radius = getGeofenceRadius();
-    
+
     if (!navigator.geolocation) {
       setLocationStatus({
         permissionGranted: false,
@@ -176,55 +176,67 @@ export const useAutoAttendance = (userName: string | null) => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        const distance = calculateDistance(
-          latitude,
-          longitude,
-          OFFICE_COORDINATES.latitude,
-          OFFICE_COORDINATES.longitude
-        );
-        
-        console.log(`Location obtained - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m`);
-        
-        setLocationStatus({
-          permissionGranted: true,
-          distance,
-          isWithinGeofence: distance <= radius,
-          error: null,
-          loading: false,
-          isMobile: mobile,
-          effectiveRadius: radius
-        });
-      },
-      (error) => {
-        console.error('Geolocation error:', error.code, error.message);
-        let errorMessage = 'Location access denied';
-        if (error.code === error.TIMEOUT) {
-          errorMessage = 'Location request timed out. Please enable GPS and try again.';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          errorMessage = 'Location unavailable. Please enable GPS/Location services.';
-        } else if (error.code === error.PERMISSION_DENIED) {
-          errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
+    const getLocation = (highAccuracy: boolean) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          const distance = calculateDistance(
+            latitude,
+            longitude,
+            OFFICE_COORDINATES.latitude,
+            OFFICE_COORDINATES.longitude
+          );
+
+          console.log(`Location obtained (${highAccuracy ? 'High' : 'Low'} Accuracy) - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m`);
+
+          setLocationStatus({
+            permissionGranted: true,
+            distance,
+            isWithinGeofence: distance <= radius,
+            error: null,
+            loading: false,
+            isMobile: mobile,
+            effectiveRadius: radius
+          });
+        },
+        (error) => {
+          console.error(`Geolocation error (${highAccuracy ? 'High' : 'Low'} Accuracy):`, error.code, error.message);
+
+          // If high accuracy failed on mobile, try low accuracy
+          if (highAccuracy && mobile) {
+            console.log('Retrying with low accuracy...');
+            getLocation(false);
+            return;
+          }
+
+          let errorMessage = 'Location access denied';
+          if (error.code === error.TIMEOUT) {
+            errorMessage = 'Location request timed out. Please enable GPS and try again.';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMessage = 'Location unavailable. Please enable GPS/Location services.';
+          } else if (error.code === error.PERMISSION_DENIED) {
+            errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
+          }
+
+          setLocationStatus({
+            permissionGranted: false,
+            distance: null,
+            isWithinGeofence: false,
+            error: errorMessage,
+            loading: false,
+            isMobile: mobile,
+            effectiveRadius: radius
+          });
+        },
+        {
+          enableHighAccuracy: highAccuracy,
+          timeout: highAccuracy ? (mobile ? 15000 : 10000) : 10000,
+          maximumAge: 60000
         }
-        
-        setLocationStatus({
-          permissionGranted: false,
-          distance: null,
-          isWithinGeofence: false,
-          error: errorMessage,
-          loading: false,
-          isMobile: mobile,
-          effectiveRadius: radius
-        });
-      },
-      {
-        enableHighAccuracy: mobile, // High accuracy only for mobile (GPS)
-        timeout: mobile ? 30000 : 15000, // Longer timeout for mobile GPS
-        maximumAge: 60000 // Allow cached position up to 1 minute old
-      }
-    );
+      );
+    };
+
+    getLocation(mobile); // Start with high accuracy for mobile, low for desktop (or default based on device)
   }, []);
 
   // Manual check-in function
@@ -272,9 +284,9 @@ export const useAutoAttendance = (userName: string | null) => {
               OFFICE_COORDINATES.latitude,
               OFFICE_COORDINATES.longitude
             );
-            
+
             const radius = getGeofenceRadius();
-            
+
             console.log(`Manual check-in - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m, Radius: ${radius}m`);
 
             setLocationStatus(prev => ({
@@ -318,7 +330,7 @@ export const useAutoAttendance = (userName: string | null) => {
             // If late after grace period, create a fine (unless exempt - COO/CEO)
             if (shouldFine && attendanceData) {
               const isExempt = await checkIsExemptFromFines(userName);
-              
+
               if (!isExempt) {
                 const { error: fineError } = await supabase.from('fines').insert({
                   user_name: userName,
@@ -361,7 +373,7 @@ export const useAutoAttendance = (userName: string | null) => {
             } else if (error.code === error.POSITION_UNAVAILABLE) {
               message = 'Location unavailable. Please enable GPS/Location services on your device.';
             }
-            
+
             toast.error('Cannot verify location', {
               description: message,
               duration: 6000,
@@ -397,10 +409,10 @@ export const useAutoAttendance = (userName: string | null) => {
     const checkLocationAndMarkAttendance = async () => {
       // First check existing attendance
       await checkAttendanceStatus();
-      
+
       // Also check location status for display
       checkLocationStatus();
-      
+
       if (attendanceMarked) return;
 
       setIsChecking(true);
@@ -435,11 +447,11 @@ export const useAutoAttendance = (userName: string | null) => {
         // Get current position
         const mobile = isMobileDevice();
         const radius = getGeofenceRadius();
-        
+
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             const { latitude, longitude, accuracy } = position.coords;
-            
+
             const distance = calculateDistance(
               latitude,
               longitude,
@@ -448,7 +460,7 @@ export const useAutoAttendance = (userName: string | null) => {
             );
 
             console.log(`Auto-attendance - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance.toFixed(0)}m (Device: ${mobile ? 'Mobile' : 'Laptop'}, Radius: ${radius}m)`);
-            
+
             setLocationStatus({
               permissionGranted: true,
               distance,
@@ -476,10 +488,10 @@ export const useAutoAttendance = (userName: string | null) => {
               if (error) {
                 console.error('Error marking attendance:', error);
               } else {
-              // If late after grace period, create a fine (unless exempt - COO/CEO)
+                // If late after grace period, create a fine (unless exempt - COO/CEO)
                 if (shouldFine && attendanceData) {
                   const isExempt = await checkIsExemptFromFines(userName);
-                  
+
                   if (!isExempt) {
                     const { error: fineError } = await supabase.from('fines').insert({
                       user_name: userName,
@@ -505,7 +517,7 @@ export const useAutoAttendance = (userName: string | null) => {
                   description: isLate ? 'You arrived late today' : 'On time! Great job!',
                   duration: 5000,
                 });
-                
+
                 setAttendanceStatus({
                   isMarked: true,
                   checkInTime,
@@ -533,12 +545,12 @@ export const useAutoAttendance = (userName: string | null) => {
             } else if (error.code === error.PERMISSION_DENIED) {
               message = 'Location permission denied. Allow location in browser.';
             }
-            
+
             toast.info('Location access needed', {
               description: message,
               duration: 5000,
             });
-            
+
             setLocationStatus({
               permissionGranted: false,
               distance: null,
@@ -567,11 +579,11 @@ export const useAutoAttendance = (userName: string | null) => {
     return () => clearTimeout(timer);
   }, [userName, isChecking, attendanceMarked, checkAttendanceStatus, checkLocationStatus]);
 
-  return { 
-    isChecking, 
-    attendanceMarked, 
-    attendanceStatus, 
-    locationStatus, 
+  return {
+    isChecking,
+    attendanceMarked,
+    attendanceStatus,
+    locationStatus,
     manualCheckIn,
     refreshLocation: checkLocationStatus,
     refreshAttendance: checkAttendanceStatus
