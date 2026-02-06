@@ -17,10 +17,10 @@ const normalizeModuleId = (moduleId: string): string => moduleId.trim().toLowerC
 // Define allowed modules per department
 // Note: 'attendance' and 'hr' are available to ALL users
 export const DEPARTMENT_MODULES: Record<string, string[]> = {
-  "Marketing": ["content", "tasks", "crm", "attendance", "hr"],
+  "Marketing": ["content", "tasks", "crm", "attendance", "hr", "inventory"],
   "Accounting": ["accounting", "sales", "commission-management", "attendance", "hr"],
   "Finance": ["accounting", "sales", "commission-management", "attendance", "hr"],
-  "Sales": ["sales", "attendance", "hr"],
+  "Sales": ["sales", "attendance", "hr", "inventory"],
   "Operations": ["tasks", "attendance", "crm", "hr"],
   "HR": ["hr", "tasks", "attendance"],
 };
@@ -35,6 +35,7 @@ export const ALL_MODULES: ModuleAccess[] = [
   { id: "attendance", title: "Attendance", path: "/attendance" },
   { id: "commission-management", title: "Commission Management", path: "/commission-management" },
   { id: "hr", title: "HR Management", path: "/hr" },
+  { id: "inventory", title: "Inventory", path: "/sales/inventory" },
 ];
 
 // User-specific module overrides (by user_id)

@@ -29,7 +29,8 @@ import {
   MapPin,
   DollarSign,
   Activity,
-  Building2
+  Building2,
+  Warehouse
 } from "lucide-react";
 import { format, isToday, formatDistanceToNow, differenceInHours, isPast, isTomorrow } from "date-fns";
 import ChatWidget from "@/components/chat/ChatWidget";
@@ -583,6 +584,7 @@ const UserDashboard = () => {
       case 'attendance': return Target;
       case 'commission-management': return Coins;
       case 'hr': return User;
+      case 'inventory': return Warehouse;
       default: return FileText;
     }
   };
@@ -597,6 +599,7 @@ const UserDashboard = () => {
       case 'attendance': return 'bg-indigo-500';
       case 'commission-management': return 'bg-red-500';
       case 'hr': return 'bg-teal-500';
+      case 'inventory': return 'bg-emerald-500';
       default: return 'bg-gray-500';
     }
   };
