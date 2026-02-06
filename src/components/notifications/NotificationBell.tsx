@@ -41,6 +41,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
     const { data, error } = await supabase
       .from("notifications")
       .select("*")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -142,7 +143,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <Badge 
+            <Badge
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-destructive text-destructive-foreground"
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -154,9 +155,9 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
         <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
           <h4 className="font-semibold text-sm">Notifications</h4>
           {notifications.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
               onClick={clearAllNotifications}
             >
@@ -175,9 +176,8 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`px-4 py-3 hover:bg-muted/50 transition-colors ${
-                    !notification.read ? "bg-primary/5" : ""
-                  }`}
+                  className={`px-4 py-3 hover:bg-muted/50 transition-colors ${!notification.read ? "bg-primary/5" : ""
+                    }`}
                 >
                   <div className="flex gap-3">
                     <span className="text-lg">{getNotificationIcon(notification.type)}</span>
