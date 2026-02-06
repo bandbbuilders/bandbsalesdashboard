@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 export const OFFICE_COORDINATES = {
   latitude: 33.725636,
   longitude: 73.074649,
-  radiusMeters: 1000, // 1km for mobile GPS accuracy
+  radiusMeters: 2000, // 2km for mobile GPS accuracy in urban areas
   radiusMetersLaptop: 10000 // 10km for laptops (IP/Wi-Fi based location is inaccurate)
 };
 
