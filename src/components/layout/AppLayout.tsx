@@ -2,20 +2,20 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Building2, 
-  LayoutDashboard, 
-  Plus, 
-  FileText, 
-  Users, 
+import {
+  Building2,
+  LayoutDashboard,
+  Plus,
+  FileText,
+  Users,
   LogOut,
   Menu,
   X,
@@ -108,9 +108,10 @@ export const AppLayout = () => {
     { name: "Sales List", href: "/sales/list", icon: FileText, roles: ["admin", "agent", "manager"] },
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
+    { name: "Inventory", href: "/sales/inventory", icon: Building2, roles: ["admin", "agent", "manager"] },
   ];
 
-  const filteredNavigation = navigation.filter(item => 
+  const filteredNavigation = navigation.filter(item =>
     user && item.roles.includes(user.role)
   );
 
@@ -127,7 +128,7 @@ export const AppLayout = () => {
     <div className="min-h-screen bg-background">
       {/* Mobile menu overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -145,7 +146,7 @@ export const AppLayout = () => {
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            
+
             <Building2 className="h-6 w-6 text-primary" />
             <h1 className="text-lg font-semibold hidden sm:block">Sales Management</h1>
           </div>
@@ -155,7 +156,7 @@ export const AppLayout = () => {
               <Home className="h-4 w-4" />
             </Button>
             <NotificationBell userName={user?.name} userId={user?.id} />
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">

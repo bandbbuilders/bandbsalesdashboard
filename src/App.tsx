@@ -19,6 +19,7 @@ import SaleDetails from "./pages/SaleDetails";
 import PaymentLedger from "./pages/PaymentLedger";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
+import Inventory from "./pages/Inventory";
 import CrmDashboard from "./pages/crm/CrmDashboard";
 import LeadsList from "./pages/crm/LeadsList";
 import NewLead from "./pages/crm/NewLead";
@@ -83,6 +84,7 @@ const App = () => (
             <Route path=":saleId/ledger" element={<PaymentLedger />} />
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
+            <Route path="inventory" element={<Inventory />} />
           </Route>
           <Route path="/crm/*" element={
             <AuthGuard>
@@ -134,7 +136,7 @@ const App = () => (
           }>
             <Route index element={<Attendance />} />
           </Route>
-        
+
           {/* HR Management */}
           <Route path="/hr/*" element={
             <AuthGuard>
