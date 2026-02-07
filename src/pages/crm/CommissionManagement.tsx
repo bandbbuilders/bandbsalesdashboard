@@ -17,6 +17,7 @@ import autoTable from "jspdf-autotable";
 import ceoSignature from "@/assets/ceo-signature-new.png";
 import bbBuildersLogo from "@/assets/bb-builders-logo.png";
 import { numberToWords } from "@/lib/numberToWords";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const CORRECT_PASSWORD = "b&bcom1";
 
@@ -44,14 +45,14 @@ const CommissionManagement = () => {
           'fab190bd-3c71-43e8-9385-3ec66044e501', // Zain Sarwar (COO)
           'e91f0415-009a-4712-97e1-c70d1c29e6f9'  // Zia Shahid
         ];
-        
+
         if (allowedUserIds.includes(session.user.id)) {
           setIsAuthenticated(true);
         }
       }
       setCheckingAccess(false);
     };
-    
+
     checkAutoAccess();
   }, []);
 
@@ -78,29 +79,29 @@ const CommissionManagement = () => {
         const saleLedger = ledgerData?.filter(l => l.sale_id === c.sale_id) || [];
         const downpayments = saleLedger.filter(l => l.entry_type === 'downpayment');
         const lastDP = downpayments[downpayments.length - 1];
-        
+
         // Next release date is the last downpayment due date
         const next_release_date = lastDP?.due_date || null;
         const paid_amount = parseFloat(c.paid_amount || 0);
         const outstanding = parseFloat(c.total_amount) - paid_amount;
-        
+
         return { ...c, next_release_date, paid_amount, outstanding };
       });
       setCommissions(processed);
 
       const counts: Record<string, number> = {};
       const unique: Record<string, Set<string>> = {};
-      processed.forEach((c: any) => { 
-        if (c.recipient_type !== 'coo') { 
-          if (!unique[c.recipient_name]) unique[c.recipient_name] = new Set(); 
-          unique[c.recipient_name].add(c.sale_id); 
-        } 
+      processed.forEach((c: any) => {
+        if (c.recipient_type !== 'coo') {
+          if (!unique[c.recipient_name]) unique[c.recipient_name] = new Set();
+          unique[c.recipient_name].add(c.sale_id);
+        }
       });
       Object.entries(unique).forEach(([name, sales]) => { counts[name] = sales.size; });
       setSalesCount(counts);
-    } catch (error) { 
-      console.error(error); 
-      toast({ title: "Error", description: "Failed to load", variant: "destructive" }); 
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error", description: "Failed to load", variant: "destructive" });
     }
     finally { setLoading(false); }
   };
@@ -110,64 +111,64 @@ const CommissionManagement = () => {
     const amount = parseFloat(paymentAmount);
     const currentPaid = parseFloat(selectedCommission.paid_amount || 0);
     const newPaidAmount = currentPaid + amount;
-    
+
     try {
       // Update commission with new paid amount
-      await supabase.from('commissions').update({ 
-        paid_amount: newPaidAmount 
+      await supabase.from('commissions').update({
+        paid_amount: newPaidAmount
       }).eq('id', selectedCommission.id);
-      
+
       // Create journal entry
-      await supabase.from('journal_entries').insert({ 
-        date: paymentDate, 
-        description: `Commission paid to ${selectedCommission.recipient_name}`, 
-        debit_account: 'Commission Expense', 
-        credit_account: 'Cash', 
-        amount 
+      await supabase.from('journal_entries').insert({
+        date: paymentDate,
+        description: `Commission paid to ${selectedCommission.recipient_name}`,
+        debit_account: 'Commission Expense',
+        credit_account: 'Cash',
+        amount
       });
-      
+
       const outstanding = parseFloat(selectedCommission.total_amount) - newPaidAmount;
-      toast({ 
-        title: outstanding <= 0 ? "Fully Paid" : "Payment Recorded", 
-        description: outstanding <= 0 
+      toast({
+        title: outstanding <= 0 ? "Fully Paid" : "Payment Recorded",
+        description: outstanding <= 0
           ? `Commission fully paid - PKR ${amount.toLocaleString()}`
           : `PKR ${amount.toLocaleString()} paid. Outstanding: PKR ${outstanding.toLocaleString()}`
       });
-      
-      setPaymentDialogOpen(false); 
+
+      setPaymentDialogOpen(false);
       fetchCommissions();
-    } catch (error) { 
-      toast({ title: "Error", description: "Failed to process", variant: "destructive" }); 
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to process", variant: "destructive" });
     }
   };
 
   const generateReceiving = async () => {
     if (!selectedCommission || !paymentAmount) return;
     const amount = parseFloat(paymentAmount);
-    
+
     try {
       const doc = new jsPDF();
       const primaryColor = [180, 2, 2]; // #B40202
-      
+
       // Add B&B BUILDERS header
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.text('B&B BUILDERS', 105, 20, { align: 'center' });
-      
+
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('COMMISSION PAYMENT RECEIPT', 105, 30, { align: 'center' });
-      
+
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.5);
       doc.line(20, 35, 190, 35);
-      
+
       // Receipt details
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      
+
       let yPos = 50;
       doc.text(`Receipt Date: ${format(new Date(paymentDate), 'dd MMMM yyyy')}`, 20, yPos);
       yPos += 10;
@@ -178,9 +179,9 @@ const CommissionManagement = () => {
       doc.text(`Sale: ${selectedCommission.sale?.unit_number || 'N/A'}`, 20, yPos);
       yPos += 7;
       doc.text(`Customer: ${selectedCommission.sale?.customer?.name || 'N/A'}`, 20, yPos);
-      
+
       yPos += 15;
-      
+
       // Payment table
       autoTable(doc, {
         startY: yPos,
@@ -194,20 +195,20 @@ const CommissionManagement = () => {
         styles: { fontSize: 10 },
         columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70, halign: 'right' } },
       });
-      
+
       const finalY = (doc as any).lastAutoTable.finalY + 20;
-      
+
       // Two signature sections side by side
       // LEFT: CEO Signature
       const signatureImg = new Image();
       signatureImg.src = ceoSignature;
       await new Promise((resolve) => { signatureImg.onload = resolve; });
       doc.addImage(signatureImg, 'PNG', 20, finalY, 50, 20);
-      
+
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.3);
       doc.line(20, finalY + 22, 70, finalY + 22);
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text('Abdullah Shah', 20, finalY + 28);
@@ -215,12 +216,12 @@ const CommissionManagement = () => {
       doc.text('CEO', 20, finalY + 33);
       doc.setFont('helvetica', 'normal');
       doc.text(`Date: ${format(new Date(paymentDate), 'dd/MM/yyyy')}`, 20, finalY + 38);
-      
+
       // RIGHT: Agent/Recipient Signature
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.3);
       doc.line(130, finalY + 22, 190, finalY + 22);
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(selectedCommission.recipient_name, 130, finalY + 28);
@@ -228,46 +229,46 @@ const CommissionManagement = () => {
       doc.text(selectedCommission.recipient_type.toUpperCase(), 130, finalY + 33);
       doc.setFont('helvetica', 'normal');
       doc.text('(Signature)', 130, finalY + 38);
-      
+
       // Logo in CENTER (rotated 30 degrees)
       const logoImg = new Image();
       logoImg.src = bbBuildersLogo;
       await new Promise((resolve) => { logoImg.onload = resolve; });
-      
+
       const logoSize = 50;
       const centerX = 105;
       const centerY = finalY + 25;
       const angle = -30 * Math.PI / 180;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      
+
       (doc as any).internal.write('q');
       (doc as any).internal.write(`${cos.toFixed(4)} ${sin.toFixed(4)} ${(-sin).toFixed(4)} ${cos.toFixed(4)} ${centerX.toFixed(2)} ${centerY.toFixed(2)} cm`);
-      doc.addImage(logoImg, 'PNG', -logoSize/2, -logoSize/2, logoSize, logoSize);
+      doc.addImage(logoImg, 'PNG', -logoSize / 2, -logoSize / 2, logoSize, logoSize);
       (doc as any).internal.write('Q');
-      
+
       // Footer
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.3);
       doc.line(20, finalY + 55, 190, finalY + 55);
-      
+
       doc.setFontSize(11);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text('Thank you for choosing B&B Builders!', 105, finalY + 63, { align: 'center' });
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       const endingNote = 'We appreciate your trust in us for your property investment. For any queries, please feel free to contact us.';
       const splitNote = doc.splitTextToSize(endingNote, 170);
       doc.text(splitNote, 105, finalY + 70, { align: 'center' });
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 85, { align: 'center' });
-      
+
       doc.save(`Commission_Receipt_${selectedCommission.recipient_name}_${paymentDate}.pdf`);
       toast({ title: "Success", description: "Receipt generated and downloaded" });
     } catch (error) {
@@ -276,12 +277,12 @@ const CommissionManagement = () => {
     }
   };
 
-  const getStatus = (c: any) => { 
+  const getStatus = (c: any) => {
     const paid = parseFloat(c.paid_amount || 0);
     const total = parseFloat(c.total_amount);
-    if (paid >= total) return { label: 'Fully Paid', color: 'bg-green-600' }; 
-    if (paid > 0) return { label: 'Outstanding', color: 'bg-orange-500' }; 
-    return { label: 'Pending', color: 'bg-gray-500' }; 
+    if (paid >= total) return { label: 'Fully Paid', color: 'bg-green-600' };
+    if (paid > 0) return { label: 'Outstanding', color: 'bg-orange-500' };
+    return { label: 'Pending', color: 'bg-gray-500' };
   };
 
   if (checkingAccess) return (
@@ -318,34 +319,34 @@ const CommissionManagement = () => {
   const totalComm = commissions.reduce((s, c) => s + parseFloat(c.total_amount), 0);
   const totalPaid = commissions.reduce((s, c) => s + parseFloat(c.paid_amount || 0), 0);
   const totalOutstanding = totalComm - totalPaid;
-  
-  const recipientData = commissions.reduce((acc: any, c) => { 
-    if (!acc[c.recipient_name]) acc[c.recipient_name] = { total: 0, paid: 0, type: c.recipient_type, sales: salesCount[c.recipient_name] || 0 }; 
-    acc[c.recipient_name].total += parseFloat(c.total_amount); 
+
+  const recipientData = commissions.reduce((acc: any, c) => {
+    if (!acc[c.recipient_name]) acc[c.recipient_name] = { total: 0, paid: 0, type: c.recipient_type, sales: salesCount[c.recipient_name] || 0 };
+    acc[c.recipient_name].total += parseFloat(c.total_amount);
     acc[c.recipient_name].paid += parseFloat(c.paid_amount || 0);
-    return acc; 
+    return acc;
   }, {});
-  
-  const barData = Object.entries(recipientData).map(([name, d]: any) => ({ 
-    name, 
-    paid: d.paid, 
-    outstanding: d.total - d.paid, 
-    sales: d.sales 
+
+  const barData = Object.entries(recipientData).map(([name, d]: any) => ({
+    name,
+    paid: d.paid,
+    outstanding: d.total - d.paid,
+    sales: d.sales
   })).sort((a, b) => (b.paid + b.outstanding) - (a.paid + a.outstanding)).slice(0, 10);
-  
-  const pieData = Object.values(commissions.reduce((acc: any, c) => { 
-    if (!acc[c.recipient_type]) acc[c.recipient_type] = { name: c.recipient_type.toUpperCase(), value: 0 }; 
-    acc[c.recipient_type].value += parseFloat(c.total_amount); 
-    return acc; 
+
+  const pieData = Object.values(commissions.reduce((acc: any, c) => {
+    if (!acc[c.recipient_type]) acc[c.recipient_type] = { name: c.recipient_type.toUpperCase(), value: 0 };
+    acc[c.recipient_type].value += parseFloat(c.total_amount);
+    return acc;
   }, {}));
-  
+
   const COLORS = ['#B40202', '#F59E0B', '#10B981'];
-  
+
   const upcoming = commissions
     .filter(c => c.next_release_date && c.outstanding > 0)
     .sort((a, b) => new Date(a.next_release_date).getTime() - new Date(b.next_release_date).getTime())
     .slice(0, 5);
-  
+
   const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 
   return (
@@ -364,7 +365,7 @@ const CommissionManagement = () => {
           </Button>
         </div>
       </div>
-      
+
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -403,7 +404,7 @@ const CommissionManagement = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -431,7 +432,7 @@ const CommissionManagement = () => {
           )}
         </CardContent>
       </Card>
-      
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Commission by Recipient</CardTitle></CardHeader>
@@ -463,7 +464,7 @@ const CommissionManagement = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* COO Commission Stats */}
       {(() => {
         const cooData = recipientData['Zain Sarwar'];
@@ -497,7 +498,7 @@ const CommissionManagement = () => {
           </Card>
         );
       })()}
-      
+
       <Card>
         <CardHeader><CardTitle>Agent & Dealer Performance</CardTitle></CardHeader>
         <CardContent>
@@ -527,7 +528,7 @@ const CommissionManagement = () => {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader><CardTitle>All Commissions</CardTitle></CardHeader>
         <CardContent>
@@ -546,8 +547,8 @@ const CommissionManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {commissions.map(c => { 
-                const s = getStatus(c); 
+              {commissions.map(c => {
+                const s = getStatus(c);
                 const outstanding = parseFloat(c.total_amount) - parseFloat(c.paid_amount || 0);
                 return (
                   <TableRow key={c.id}>
@@ -568,24 +569,24 @@ const CommissionManagement = () => {
                     <TableCell><Badge className={s.color}>{s.label}</Badge></TableCell>
                     <TableCell>
                       {outstanding > 0 && (
-                        <Button size="sm" variant="outline" onClick={() => { 
-                          setSelectedCommission(c); 
-                          setPaymentAmount(""); 
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setSelectedCommission(c);
+                          setPaymentAmount("");
                           setPaymentDate(new Date().toISOString().split('T')[0]);
-                          setPaymentDialogOpen(true); 
+                          setPaymentDialogOpen(true);
                         }}>
                           Paid
                         </Button>
                       )}
                     </TableCell>
                   </TableRow>
-                ); 
+                );
               })}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-      
+
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -610,19 +611,19 @@ const CommissionManagement = () => {
               </div>
               <div className="space-y-2">
                 <Label>Payment Date</Label>
-                <Input 
-                  type="date" 
-                  value={paymentDate} 
-                  onChange={(e) => setPaymentDate(e.target.value)} 
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Amount Paid (PKR)</Label>
-                <Input 
-                  type="number" 
-                  value={paymentAmount} 
-                  onChange={(e) => setPaymentAmount(e.target.value)} 
-                  placeholder="Enter amount" 
+                <Input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="Enter amount"
                 />
               </div>
               {paymentAmount && (
@@ -646,6 +647,7 @@ const CommissionManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ChatWidget />
     </div>
   );
 };
