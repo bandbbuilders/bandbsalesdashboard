@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { canAccessModule } from "@/lib/departmentAccess";
 import { toast } from "sonner";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -253,7 +254,12 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
   // Allow access if demo user is logged in or valid Supabase user
   if (demoUser || user) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <ChatWidget />
+      </>
+    );
   }
 
   return null;
