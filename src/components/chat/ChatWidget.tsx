@@ -361,12 +361,16 @@ const ChatWidget = () => {
 
   const userOptions = users.map(u => ({ value: u.user_id, label: u.full_name }));
 
+  useEffect(() => {
+    console.log("ChatWidget: Mounted");
+  }, []);
+
   return (
     <>
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-6 left-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center transition-all hover:scale-105 z-50"
+          className="fixed bottom-6 left-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center transition-all hover:scale-105 z-[9999]"
         >
           <MessageCircle className="h-6 w-6" />
           {unreadCount > 0 && (
@@ -379,7 +383,7 @@ const ChatWidget = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-card border rounded-xl shadow-2xl flex flex-col z-50 overflow-hidden text-sm">
+        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-card border rounded-xl shadow-2xl flex flex-col z-[9999] overflow-hidden text-sm">
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b bg-muted/50">
             <div className="flex items-center gap-2">
@@ -590,7 +594,7 @@ const ChatWidget = () => {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[9999]"
         >
           <MessageCircle className="h-6 w-6" />
           {unreadCount > 0 && (
