@@ -27,7 +27,7 @@ export const FloorLayout = ({ floorName, imagePath, units }: FloorLayoutProps) =
     };
 
     return (
-        <Card className="mb-8 overflow-hidden border-4 border-yellow-500">
+        <Card className="mb-8 overflow-hidden">
             <CardHeader className="bg-muted/50 pb-4">
                 <CardTitle className="text-xl font-bold">{floorName}</CardTitle>
             </CardHeader>
@@ -40,6 +40,7 @@ export const FloorLayout = ({ floorName, imagePath, units }: FloorLayoutProps) =
                             src={imagePath}
                             alt={`${floorName} Layout`}
                             className="w-full h-full object-contain"
+                            onLoad={() => setImageLoaded(true)}
                         />
                     </div>
                 </div>
