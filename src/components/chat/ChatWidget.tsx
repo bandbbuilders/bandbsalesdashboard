@@ -74,9 +74,12 @@ const ChatWidget = () => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        console.log("ChatWidget: Found user", user.id);
         setCurrentUserId(user.id);
         fetchUsers(user.id);
         fetchGroups();
+      } else {
+        console.log("ChatWidget: No user found");
       }
     };
     getCurrentUser();
@@ -85,9 +88,12 @@ const ChatWidget = () => {
   useEffect(() => {
     if (currentUserId) {
       fetchMessages();
-      subscribeToMessages();
+      const unsubscribe = subscribeToMessages();
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
-  }, [currentUserId, activeTab, selectedUser, selectedGroup]);
+  }, [currentUserId, activeTab, selectedUser?.id, selectedGroup?.id]);
 
   useEffect(() => {
     scrollToBottom();
@@ -133,7 +139,6 @@ const ChatWidget = () => {
     } else if (activeTab === 'groups' && selectedGroup) {
       query = query.eq('group_id', selectedGroup.id);
     } else {
-      // If tab selected but no user/group selected, clear messages
       setMessages([]);
       return;
     }
@@ -169,8 +174,9 @@ const ChatWidget = () => {
   };
 
   const subscribeToMessages = () => {
+    const channelName = `chat-messages-${activeTab}-${selectedUser?.user_id || selectedGroup?.id || 'all'}`;
     const channel = supabase
-      .channel('chat-messages')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -180,42 +186,59 @@ const ChatWidget = () => {
         },
         async (payload) => {
           const newMsg = payload.new as ChatMessage;
+          console.log("ChatWidget: Received new message via Realtime", newMsg);
 
-          // Determine if message belongs to current view
-          let isRelevant = false;
-          if (activeTab === 'company' && !newMsg.receiver_id && !newMsg.group_id) {
-            isRelevant = true;
-          } else if (activeTab === 'dm' && selectedUser) {
-            if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === selectedUser.user_id) ||
-              (newMsg.sender_id === selectedUser.user_id && newMsg.receiver_id === currentUserId)) {
+          // Avoid duplicates from optimistic update
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+
+            // Determine if message belongs to current view (stricter check using local closure)
+            let isRelevant = false;
+            if (activeTab === 'company' && !newMsg.receiver_id && !newMsg.group_id) {
               isRelevant = true;
+            } else if (activeTab === 'dm' && selectedUser) {
+              if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === selectedUser.user_id) ||
+                (newMsg.sender_id === selectedUser.user_id && newMsg.receiver_id === currentUserId)) {
+                isRelevant = true;
+              }
+            } else if (activeTab === 'groups' && selectedGroup) {
+              if (newMsg.group_id === selectedGroup.id) {
+                isRelevant = true;
+              }
             }
-          } else if (activeTab === 'groups' && selectedGroup) {
-            if (newMsg.group_id === selectedGroup.id) {
-              isRelevant = true;
-            }
-          }
 
-          if (isRelevant) {
-            // Fetch sender profile for the new message
-            const { data: senderProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', newMsg.sender_id)
-              .single();
+            if (!isRelevant) return prev;
 
-            const msgWithSender = {
-              ...newMsg,
-              attachments: typeof newMsg.attachments === 'string' ? JSON.parse(newMsg.attachments as string) : newMsg.attachments,
-              sender: senderProfile || undefined
+            // Add the message and potentially fetch sender info if missing
+            const fetchSenderAndAdd = async () => {
+              const { data: senderProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', newMsg.sender_id)
+                .single();
+
+              const msgWithSender = {
+                ...newMsg,
+                attachments: typeof newMsg.attachments === 'string' ? JSON.parse(newMsg.attachments as string) : newMsg.attachments,
+                sender: senderProfile || undefined
+              };
+              setMessages(current => [...current, msgWithSender]);
             };
 
-            setMessages(prev => [...prev, msgWithSender]);
-            scrollToBottom();
-          }
+            // If it's ours, we can skip fetch or use current user info
+            if (newMsg.sender_id === currentUserId) {
+              const msgWithSender: ChatMessage = {
+                ...newMsg,
+                attachments: typeof newMsg.attachments === 'string' ? JSON.parse(newMsg.attachments as string) : newMsg.attachments
+              };
+              return [...prev, msgWithSender];
+            } else {
+              fetchSenderAndAdd();
+              return prev;
+            }
+          });
 
-          // Update unread count if message is for current user (direct or group)
-          // Simplified logic: strict unread count for when chat is closed
+          // Update unread count if chat is closed
           if (!isOpen && newMsg.sender_id !== currentUserId) {
             setUnreadCount(prev => prev + 1);
           }
@@ -273,28 +296,54 @@ const ChatWidget = () => {
   };
 
   const sendMessage = async (e?: any, attachments: { name: string; type: string; url: string }[] = []) => {
-    if ((!newMessage.trim() && attachments.length === 0) || !currentUserId) return;
+    const content = newMessage.trim();
+    if ((!content && attachments.length === 0) || !currentUserId) return;
 
     const messageData = {
       sender_id: currentUserId,
       receiver_id: activeTab === 'dm' && selectedUser ? selectedUser.user_id : null,
       group_id: activeTab === 'groups' && selectedGroup ? selectedGroup.id : null,
-      content: newMessage.trim(),
+      content: content,
       message_type: attachments.length > 0 ? (attachments[0].type === 'image' ? 'image' : 'file') : 'text',
       attachments: attachments
     };
 
-    const { error } = await supabase
+    // Optimistic Update
+    const optimisticId = `temp-${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: optimisticId,
+      sender_id: currentUserId,
+      receiver_id: messageData.receiver_id,
+      group_id: messageData.group_id,
+      content: content,
+      message_type: messageData.message_type,
+      attachments: attachments,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      sender: users.find(u => u.user_id === currentUserId) || undefined
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setNewMessage("");
+
+    console.log("ChatWidget: Sending message", messageData);
+
+    const { data, error } = await supabase
       .from('chat_messages')
-      .insert(messageData);
+      .insert(messageData)
+      .select()
+      .single();
 
     if (error) {
       toast.error("Failed to send message");
-      console.error(error);
+      console.error("ChatWidget: Error sending message", error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
       return;
     }
 
-    setNewMessage("");
+    console.log("ChatWidget: Message sent successfully", data);
+    // Replace optimistic message with real one to get real ID
+    setMessages(prev => prev.map(m => m.id === optimisticId ? { ...data, sender: optimisticMsg.sender } : m));
   };
 
   const handleCreateGroup = async () => {
