@@ -125,6 +125,7 @@ export default function Attendance() {
 
         // Hardcoded check for known admins
         const isSara = userEmail === "msara8032@gmail.com" || userId === "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0";
+        const isZain = userEmail === "mzainsarwar55@gmail.com" || userId === "fab190bd-3c71-43e8-9381-3ec66044e501";
 
         // Also check role from DB
         const { data: roleData } = await supabase
@@ -133,7 +134,7 @@ export default function Attendance() {
           .eq('user_id', userId)
           .maybeSingle();
 
-        if (roleData?.role === 'ceo_coo' || isSara) {
+        if (roleData?.role === 'ceo_coo' || isSara || isZain) {
           setCanEdit(true);
         } else {
           setCanEdit(false);

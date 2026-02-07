@@ -25,6 +25,18 @@ export const useUserRole = (userId?: string): UserRoleData => {
         return;
       }
 
+      // Hardcoded check for Sara Memon and Zain Sarwar (COO/CEO)
+      const ADMIN_IDS = [
+        "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
+        "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
+      ];
+
+      if (ADMIN_IDS.includes(userId)) {
+        setRole('ceo_coo');
+        setIsLoading(false);
+        return;
+      }
+
       try {
         // Query the user_roles table
         const { data, error: queryError } = await supabase
@@ -34,7 +46,7 @@ export const useUserRole = (userId?: string): UserRoleData => {
           .maybeSingle();
 
         if (queryError) throw queryError;
-        
+
         setRole((data?.role as AppRole) || null);
       } catch (err: any) {
         console.error('Error fetching user role:', err);
@@ -92,9 +104,9 @@ export const getManagerProfile = async (userId: string) => {
     .single();
 
   if (error) throw error;
-  
+
   const profileData = data as unknown as { manager_id?: string } | null;
-  
+
   if (profileData?.manager_id) {
     const { data: managerProfile, error: managerError } = await supabase
       .from('profiles')
@@ -105,6 +117,6 @@ export const getManagerProfile = async (userId: string) => {
     if (managerError) throw managerError;
     return managerProfile;
   }
-  
+
   return null;
 };
