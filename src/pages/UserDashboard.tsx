@@ -33,7 +33,6 @@ import {
   Warehouse
 } from "lucide-react";
 import { format, isToday, formatDistanceToNow, differenceInHours, isPast, isTomorrow } from "date-fns";
-import ChatWidget from "@/components/chat/ChatWidget";
 import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAccess";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
@@ -1269,7 +1268,7 @@ const UserDashboard = () => {
       />
 
       {/* Chat Widget */}
-      <ChatWidget />
+
     </div >
   );
 };
