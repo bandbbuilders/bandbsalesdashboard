@@ -14,9 +14,10 @@ export interface InventoryItem {
 
 interface UnitCardProps {
     unit: InventoryItem;
+    className?: string;
 }
 
-export const UnitCard = ({ unit }: UnitCardProps) => {
+export const UnitCard = ({ unit, className }: UnitCardProps) => {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Available':
@@ -54,7 +55,7 @@ export const UnitCard = ({ unit }: UnitCardProps) => {
     };
 
     return (
-        <Card className="hover:shadow-md transition-shadow duration-200">
+        <Card className={`hover:shadow-md transition-shadow duration-200 ${className}`}>
             <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-3">
                     <Badge className={`px-2 py-0.5 text-xs font-medium border ${getStatusColor(unit.status)} hover:bg-transparent`}>

@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { InventoryStats } from "@/components/inventory/InventoryStats";
 import { InventoryFilters } from "@/components/inventory/InventoryFilters";
-import { UnitCard, InventoryItem } from "@/components/inventory/UnitCard";
+import { InventoryItem } from "@/components/inventory/UnitCard";
+import { FloorLayout } from "@/components/inventory/FloorLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { sortInventoryItems } from "@/utils/inventory-sort";
 
 const Inventory = () => {
     const [items, setItems] = useState<InventoryItem[]>([]);
@@ -15,7 +17,6 @@ const Inventory = () => {
     useEffect(() => {
         fetchInventory();
 
-        // Real-time subscription
         const channel = supabase
             .channel('inventory-changes')
             .on(
@@ -50,20 +51,33 @@ const Inventory = () => {
         }
     };
 
-    // Get unique floors for filter
-    const floors = Array.from(new Set(items.map(item => item.floor))).sort();
+    // Derived floors
+    const floors = useMemo(() => Array.from(new Set(items.map(item => item.floor))).sort(), [items]);
 
-    // Filter items
-    const filteredItems = items.filter(item => {
-        const floorMatch = selectedFloor === "all" || item.floor === selectedFloor;
-        const statusMatch = selectedStatus === "all" || item.status === selectedStatus;
-        return floorMatch && statusMatch;
-    });
+    // Derived filtered items
+    const filteredItems = useMemo(() => {
+        return items.filter(item => {
+            const floorMatch = selectedFloor === "all" || item.floor === selectedFloor;
+            const statusMatch = selectedStatus === "all" || item.status === selectedStatus;
+            return floorMatch && statusMatch;
+        });
+    }, [items, selectedFloor, selectedStatus]);
 
     const handleClearFilters = () => {
         setSelectedFloor("all");
         setSelectedStatus("all");
     };
+
+    // Specific Floor Definition
+    const FLOOR_CONFIG = [
+        { name: "Lower Ground", image: "/images/layouts/lower_ground.jpeg" },
+        { name: "Ground Floor", image: "/images/layouts/ground_floor.jpeg" },
+        { name: "First Floor", image: "/images/layouts/apartment_floor.png" },
+        { name: "Second Floor", image: "/images/layouts/apartment_floor.png" },
+        { name: "Third Floor", image: "/images/layouts/apartment_floor.png" },
+        { name: "Fourth Floor", image: "/images/layouts/apartment_floor.png" },
+        { name: "Fifth Floor", image: "/images/layouts/apartment_floor.png" },
+    ];
 
     if (isLoading) {
         return (
@@ -107,10 +121,45 @@ const Inventory = () => {
                     No units found matching your filters.
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredItems.map(item => (
-                        <UnitCard key={item.id} unit={item} />
-                    ))}
+                <div className="space-y-8">
+                    {/* Render predefined floors in strict order */}
+                    {FLOOR_CONFIG
+                        .filter(f => selectedFloor === "all" || f.name === selectedFloor)
+                        .map(floorConfig => {
+                            const floorUnits = filteredItems.filter(item => item.floor === floorConfig.name);
+                            if (floorUnits.length === 0 && selectedFloor === "all") return null;
+                            if (floorUnits.length === 0 && selectedFloor !== floorConfig.name) return null;
+
+                            // Sort units within the floor using helper
+                            const sortedUnits = sortInventoryItems(floorUnits);
+
+                            return (
+                                <FloorLayout
+                                    key={floorConfig.name}
+                                    floorName={floorConfig.name}
+                                    imagePath={floorConfig.image}
+                                    units={sortedUnits}
+                                />
+                            );
+                        })
+                    }
+
+                    {/* Render any remaining floors (if any exist not in config) */}
+                    {Array.from(new Set(filteredItems.map(i => i.floor)))
+                        .filter(f => !FLOOR_CONFIG.some(config => config.name === f))
+                        .map(floorName => {
+                            const floorUnits = filteredItems.filter(item => item.floor === floorName);
+                            const sortedUnits = sortInventoryItems(floorUnits);
+                            return (
+                                <FloorLayout
+                                    key={floorName}
+                                    floorName={floorName}
+                                    imagePath="/images/placeholder.svg"
+                                    units={sortedUnits}
+                                />
+                            );
+                        })
+                    }
                 </div>
             )}
         </div>
