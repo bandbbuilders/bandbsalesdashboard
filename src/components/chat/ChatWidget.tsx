@@ -343,7 +343,7 @@ const ChatWidget = () => {
 
     console.log("ChatWidget: Message sent successfully", data);
     // Replace optimistic message with real one to get real ID
-    setMessages(prev => prev.map(m => m.id === optimisticId ? { ...data, sender: optimisticMsg.sender } : m));
+    setMessages(prev => prev.map(m => m.id === optimisticId ? ({ ...data, sender: optimisticMsg.sender } as ChatMessage) : m));
   };
 
   const handleCreateGroup = async () => {
