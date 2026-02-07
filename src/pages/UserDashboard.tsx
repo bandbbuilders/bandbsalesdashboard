@@ -817,11 +817,19 @@ const UserDashboard = () => {
 
           {/* Fines Section */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <AlertCircle className="h-5 w-5 text-destructive" />
-                Fines & Penalties
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                  Fines & Penalties
+                </CardTitle>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Lifetime Total</p>
+                  <p className="text-sm font-bold text-destructive">
+                    {fines.length} Fines (Rs {fines.reduce((sum, f) => sum + f.amount, 0).toLocaleString()})
+                  </p>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {fines.length === 0 ? (
@@ -831,7 +839,23 @@ const UserDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {fines.map((fine) => (
+                  <div className="grid grid-cols-2 gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Paid</p>
+                      <p className="font-semibold text-green-600">
+                        Rs {fines.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Unpaid</p>
+                      <p className="font-semibold text-destructive">
+                        Rs {fines.filter(f => f.status === 'approved').reduce((sum, f) => sum + f.amount, 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Recent Fines</p>
+                  {fines.slice(0, 5).map((fine) => (
                     <div key={fine.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
                       <div className="space-y-1">
                         <p className="font-medium text-sm">{fine.reason}</p>
@@ -847,6 +871,11 @@ const UserDashboard = () => {
                       </div>
                     </div>
                   ))}
+                  {fines.length > 5 && (
+                    <p className="text-xs text-center text-muted-foreground pt-2">
+                      + {fines.length - 5} more fines
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
