@@ -43,6 +43,8 @@ export const ALL_MODULES: ModuleAccess[] = [
 export const USER_MODULE_OVERRIDES: Record<string, string[]> = {
   // Sara Memon - Full access: Sales, HR, CRM, Attendance, Tasks
   "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0": ["hr", "crm", "attendance", "tasks", "sales"],
+  // Zia Shahid - Manager Access + Tasks
+  "e91f0415-009a-4712-97e1-c70d1c29e6f9": ["sales", "tasks", "crm", "attendance", "hr"],
 };
 
 // Get allowed modules for a department
