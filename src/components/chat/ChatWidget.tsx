@@ -586,6 +586,20 @@ const ChatWidget = () => {
           )}
         </div>
       )}
+
+      {!isOpen && (
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 left-6 h-14 w-14 rounded-full shadow-lg z-50"
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold h-5 w-5 rounded-full flex items-center justify-center">
+              {unreadCount}
+            </span>
+          )}
+        </Button>
+      )}
     </>
   );
 };
