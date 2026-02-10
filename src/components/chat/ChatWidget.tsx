@@ -87,6 +87,12 @@ const ChatWidget = () => {
 
   useEffect(() => {
     if (currentUserId) {
+      fetchUnreadCount();
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (currentUserId) {
       fetchMessages();
       const unsubscribe = subscribeToMessages();
       return () => {
@@ -143,6 +149,11 @@ const ChatWidget = () => {
       return;
     }
 
+    // Mark messages as read if it's a DM
+    if (activeTab === 'dm' && selectedUser) {
+      markAsRead(selectedUser.user_id);
+    }
+
     const { data, error } = await query.limit(100);
     if (error) {
       console.error('Error fetching messages:', error);
@@ -173,6 +184,38 @@ const ChatWidget = () => {
     }
   };
 
+  const fetchUnreadCount = async () => {
+    if (!currentUserId) return;
+    try {
+      // For DMs we can easily check is_read
+      const { count, error } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', currentUserId)
+        .eq('is_read', false);
+
+      if (!error && count !== null) {
+        setUnreadCount(count);
+      }
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+    }
+  };
+
+  const markAsRead = async (senderId: string) => {
+    if (!currentUserId) return;
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ is_read: true } as any)
+      .eq('receiver_id', currentUserId)
+      .eq('sender_id', senderId)
+      .eq('is_read', false);
+
+    if (!error) {
+      fetchUnreadCount();
+    }
+  };
+
   const subscribeToMessages = () => {
     const channelName = `chat-messages-${activeTab}-${selectedUser?.user_id || selectedGroup?.id || 'all'}`;
     const channel = supabase
@@ -188,11 +231,31 @@ const ChatWidget = () => {
           const newMsg = payload.new as ChatMessage;
           console.log("ChatWidget: Received new message via Realtime", newMsg);
 
+          // Update unread count if chat is closed or not in the active view
+          if (newMsg.sender_id !== currentUserId) {
+            let isCurrentView = false;
+            if (isOpen) {
+              if (activeTab === 'company' && !newMsg.receiver_id && !newMsg.group_id) isCurrentView = true;
+              else if (activeTab === 'dm' && selectedUser && newMsg.sender_id === selectedUser.user_id && newMsg.receiver_id === currentUserId) isCurrentView = true;
+              else if (activeTab === 'groups' && selectedGroup && newMsg.group_id === selectedGroup.id) isCurrentView = true;
+            }
+
+            if (!isCurrentView) {
+              setUnreadCount(prev => prev + 1);
+              // Visual feedback for new message
+              const badge = document.getElementById('chat-badge');
+              if (badge) {
+                badge.classList.add('animate-bounce');
+                setTimeout(() => badge.classList.remove('animate-bounce'), 3000);
+              }
+            }
+          }
+
           // Avoid duplicates from optimistic update
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
 
-            // Determine if message belongs to current view (stricter check using local closure)
+            // Determine if message belongs to current view
             let isRelevant = false;
             if (activeTab === 'company' && !newMsg.receiver_id && !newMsg.group_id) {
               isRelevant = true;
@@ -237,11 +300,6 @@ const ChatWidget = () => {
               return prev;
             }
           });
-
-          // Update unread count if chat is closed
-          if (!isOpen && newMsg.sender_id !== currentUserId) {
-            setUnreadCount(prev => prev + 1);
-          }
         }
       )
       .subscribe();
@@ -633,7 +691,7 @@ const ChatWidget = () => {
         >
           <MessageCircle className="h-6 w-6" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold h-5 w-5 rounded-full flex items-center justify-center">
+            <span id="chat-badge" className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold h-5 w-5 rounded-full flex items-center justify-center">
               {unreadCount}
             </span>
           )}
