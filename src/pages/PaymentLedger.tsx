@@ -3,16 +3,16 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -31,11 +31,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  CheckCircle,
   XCircle,
   Calendar,
   DollarSign,
@@ -61,7 +61,7 @@ const PaymentLedger = () => {
   const { toast } = useToast();
   const { ledgerEntries, loading, refetch, updateLedgerEntry, deleteLedgerEntry } = useLedgerEntries();
   const { sales } = useSales();
-  
+
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
@@ -99,7 +99,7 @@ const PaymentLedger = () => {
 
     const newAmount = parseFloat(editAmount);
     const originalAmount = editingEntry.amount;
-    
+
     if (newAmount <= 0) {
       toast({
         title: "Error",
@@ -110,35 +110,35 @@ const PaymentLedger = () => {
     }
 
     // Update data with new values
-    const updateData: any = { 
+    const updateData: any = {
       amount: newAmount,
       entry_type: editType
     };
-    
+
     if (editDueDate) {
       updateData.due_date = editDueDate;
     }
-    
+
     // Only mark as paid if paid_date is set AND wasn't already paid
     if (editPaidDate && editingEntry.status !== 'paid') {
       updateData.paid_date = editPaidDate;
       updateData.paid_amount = newAmount;
       updateData.status = 'paid';
-      
+
       // Check for overpayment
       if (newAmount > originalAmount) {
         const overpayment = newAmount - originalAmount;
-        
+
         // Find all remaining pending installments
-        const remainingInstallments = saleEntries.filter(entry => 
-          entry.entry_type === 'installment' && 
+        const remainingInstallments = saleEntries.filter(entry =>
+          entry.entry_type === 'installment' &&
           entry.status === 'pending' &&
           entry.id !== editingEntry.id
         ).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
 
         if (remainingInstallments.length > 0) {
           const reductionPerInstallment = overpayment / remainingInstallments.length;
-          
+
           // Update all remaining installments
           for (const installment of remainingInstallments) {
             const newInstallmentAmount = Math.max(0, installment.amount - reductionPerInstallment);
@@ -146,7 +146,7 @@ const PaymentLedger = () => {
               amount: newInstallmentAmount
             });
           }
-          
+
           toast({
             title: "Overpayment Applied",
             description: `PKR ${overpayment.toLocaleString()} distributed across ${remainingInstallments.length} remaining installments`,
@@ -155,13 +155,13 @@ const PaymentLedger = () => {
       }
     } else if (newAmount !== originalAmount) {
       const difference = originalAmount - newAmount;
-      
+
       // Find the next installment entry after this one
       const currentEntryIndex = saleEntries
         .filter(entry => entry.entry_type === 'installment' && entry.status === 'pending')
         .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
         .findIndex(entry => entry.id === editingEntry.id);
-      
+
       const nextInstallments = saleEntries
         .filter(entry => entry.entry_type === 'installment' && entry.status === 'pending')
         .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
@@ -169,11 +169,11 @@ const PaymentLedger = () => {
 
       if (nextInstallments.length > 0) {
         const nextInstallment = nextInstallments[0];
-        
+
         // If decreasing amount, add difference to next installment
         // If increasing amount, subtract difference from next installment
         const newNextAmount = nextInstallment.amount + difference;
-        
+
         if (newNextAmount <= 0) {
           toast({
             title: "Error",
@@ -182,7 +182,7 @@ const PaymentLedger = () => {
           });
           return;
         }
-        
+
         // Update the next installment
         await updateLedgerEntry(nextInstallment.id, {
           amount: newNextAmount
@@ -212,7 +212,7 @@ const PaymentLedger = () => {
     if (!newPaymentAmount || !newPaymentDueDate || !saleId) return;
 
     const paymentAmount = parseFloat(newPaymentAmount);
-    
+
     if (paymentAmount <= 0) {
       toast({
         title: "Error",
@@ -247,7 +247,7 @@ const PaymentLedger = () => {
 
       if (remainingInstallments.length > 0) {
         const reductionPerInstallment = paymentAmount / remainingInstallments.length;
-        
+
         for (const installment of remainingInstallments) {
           const newAmount = Math.max(0, installment.amount - reductionPerInstallment);
           await updateLedgerEntry(installment.id, { amount: newAmount });
@@ -282,15 +282,15 @@ const PaymentLedger = () => {
 
     // Redistribute amount to remaining installment entries
     if (entryToDeleteObj.entry_type === 'installment') {
-      const remainingInstallments = saleEntries.filter(entry => 
-        entry.entry_type === 'installment' && 
+      const remainingInstallments = saleEntries.filter(entry =>
+        entry.entry_type === 'installment' &&
         entry.id !== entryToDelete &&
         entry.status === 'pending'
       );
 
       if (remainingInstallments.length > 0) {
         const amountPerEntry = entryToDeleteObj.amount / remainingInstallments.length;
-        
+
         for (const entry of remainingInstallments) {
           await updateLedgerEntry(entry.id, {
             amount: entry.amount + amountPerEntry
@@ -307,7 +307,7 @@ const PaymentLedger = () => {
 
   const handleStatusChange = async (entryId: string, newStatus: 'paid' | 'overdue' | 'pending') => {
     const updateData: any = { status: newStatus };
-    
+
     if (newStatus === 'paid') {
       updateData.paid_date = new Date().toISOString().split('T')[0];
       updateData.paid_amount = saleEntries.find(e => e.id === entryId)?.amount || 0;
@@ -318,7 +318,7 @@ const PaymentLedger = () => {
 
     await updateLedgerEntry(entryId, updateData);
     refetch();
-    
+
     toast({
       title: "Success",
       description: `Payment marked as ${newStatus}`,
@@ -328,68 +328,71 @@ const PaymentLedger = () => {
   const handleGenerateReceipt = async () => {
     if (!selectedEntryForReceipt || !sale) return;
 
+    // Default payment type if none selected
+    const finalPaymentType = paymentType || 'cash';
+
     try {
       const doc = new jsPDF();
       const primaryColor = [180, 2, 2]; // #B40202
-      
+
       // Add B&B BUILDERS header with red color
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.text('B&B BUILDERS', 105, 20, { align: 'center' });
-      
+
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('PAYMENT RECEIPT', 105, 30, { align: 'center' });
-      
+
       // Add a decorative line
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.8);
       doc.line(20, 35, 190, 35);
-      
+
       // Receipt details
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(10);
       const receiptDate = format(new Date(), 'dd MMMM yyyy');
       doc.text(`Receipt Date: ${receiptDate}`, 20, 45);
       doc.text(`Receipt No: RCP-${selectedEntryForReceipt.id.substring(0, 8).toUpperCase()}`, 20, 52);
-      
+
       // Calculate installment number
       const sortedEntries = saleEntries
         .filter(e => e.entry_type === 'installment')
         .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
       const installmentNo = sortedEntries.findIndex(e => e.id === selectedEntryForReceipt.id) + 1;
-      
+
       if (selectedEntryForReceipt.entry_type === 'installment') {
         doc.text(`Installment No: ${installmentNo} of ${sortedEntries.length}`, 20, 59);
       }
-      
+
       // Customer & Property Details
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text('Customer Details:', 20, 70);
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       doc.text(`Name: ${sale.customer.name}`, 20, 78);
       doc.text(`Unit Number: ${sale.unit_number}`, 20, 85);
       doc.text(`Shop/Flat No: ${sale.unit_number}`, 20, 92);
-      
+
       // Payment Details Table
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text('Payment Details:', 20, 105);
-      
+
       const amountInWords = numberToWords(Math.floor(selectedEntryForReceipt.paid_amount));
-      
+
       autoTable(doc, {
         startY: 110,
         head: [['Description', 'Details']],
         body: [
-          ['Payment Mode', paymentType === 'bank' ? 'Bank Transfer' : 'Cash Payment'],
+          ['Payment Mode', finalPaymentType === 'bank' ? 'Bank Transfer' : 'Cash Payment'],
           ['Payment Type', selectedEntryForReceipt.entry_type.charAt(0).toUpperCase() + selectedEntryForReceipt.entry_type.slice(1)],
           ['Amount Received', formatCurrency(selectedEntryForReceipt.paid_amount)],
           ['Amount in Words', `${amountInWords} Rupees Only`],
@@ -400,10 +403,10 @@ const PaymentLedger = () => {
         headStyles: { fillColor: primaryColor as [number, number, number] },
         margin: { left: 20, right: 20 },
       });
-      
+
       // Signature and stamp section
       const finalY = (doc as any).lastAutoTable.finalY + 20;
-      
+
       // LEFT: CEO signature with date
       const signatureImg = new Image();
       signatureImg.src = ceoSignature;
@@ -411,12 +414,12 @@ const PaymentLedger = () => {
         signatureImg.onload = resolve;
       });
       doc.addImage(signatureImg, 'PNG', 20, finalY, 50, 20);
-      
+
       // Add a line between signature and name
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.3);
       doc.line(20, finalY + 22, 70, finalY + 22);
-      
+
       // Signature text on LEFT
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -425,66 +428,66 @@ const PaymentLedger = () => {
       doc.text('CEO', 20, finalY + 33);
       doc.setFont('helvetica', 'normal');
       doc.text(`Date: ${receiptDate}`, 20, finalY + 38);
-      
+
       // RIGHT: Company logo (double size and rotated 30 degrees)
       const logoImgRight = new Image();
       logoImgRight.src = bbBuildersLogo;
       await new Promise((resolve) => {
         logoImgRight.onload = resolve;
       });
-      
+
       // Save state, translate, rotate, draw logo, restore
       doc.saveGraphicsState();
       const logoX = 155;
       const logoY = finalY + 15;
       const logoSize = 70; // Double the original size (35 * 2)
-      
+
       // Translate to logo center, rotate, then draw
       const centerX = logoX + logoSize / 2;
       const centerY = logoY + logoSize / 2;
       const angle = -30 * Math.PI / 180; // 30 degrees in radians, negative for clockwise
-      
+
       // Apply rotation transformation
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      
+
       // jsPDF uses internal matrix transformation
       (doc as any).internal.write('q'); // Save graphics state
       (doc as any).internal.write(`${cos.toFixed(4)} ${sin.toFixed(4)} ${(-sin).toFixed(4)} ${cos.toFixed(4)} ${centerX.toFixed(2)} ${centerY.toFixed(2)} cm`);
-      doc.addImage(logoImgRight, 'PNG', -logoSize/2, -logoSize/2, logoSize, logoSize);
+      doc.addImage(logoImgRight, 'PNG', -logoSize / 2, -logoSize / 2, logoSize, logoSize);
       (doc as any).internal.write('Q'); // Restore graphics state
-      
+
       // Footer section
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.3);
       doc.line(20, finalY + 55, 190, finalY + 55);
-      
+
       doc.setFontSize(11);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text('Thank you for choosing B&B Builders!', 105, finalY + 63, { align: 'center' });
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       const endingNote = 'We appreciate your trust in us for your property investment. For any queries, please feel free to contact us.';
       const splitNote = doc.splitTextToSize(endingNote, 170);
       doc.text(splitNote, 105, finalY + 70, { align: 'center' });
-      
+
       // Footer with company tagline
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text('B&B Builders - Building Your Dreams with Excellence', 105, finalY + 85, { align: 'center' });
-      
+
       // Save the PDF
       doc.save(`Receipt_${sale.customer.name}_${selectedEntryForReceipt.id.substring(0, 8)}.pdf`);
-      
+
       toast({
         title: "Success",
         description: "Receipt generated successfully!",
       });
-      
+
       setGenerateReceivingOpen(false);
       setSelectedEntryForReceipt(null);
       setProofFile(null);
@@ -695,8 +698,8 @@ const PaymentLedger = () => {
                       <div className="flex gap-2">
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => {
                                 setEditingEntry(entry);
@@ -786,8 +789,8 @@ const PaymentLedger = () => {
                           </DialogContent>
                         </Dialog>
 
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => {
                             setEntryToDelete(entry.id);
@@ -798,8 +801,8 @@ const PaymentLedger = () => {
                         </Button>
 
                         {entry.status !== 'paid' && (
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleStatusChange(entry.id, 'paid')}
                           >
@@ -808,8 +811,8 @@ const PaymentLedger = () => {
                         )}
 
                         {entry.status !== 'overdue' && entry.status !== 'paid' && (
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleStatusChange(entry.id, 'overdue')}
                           >
@@ -818,8 +821,8 @@ const PaymentLedger = () => {
                         )}
 
                         {entry.status === 'paid' && (
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               setSelectedEntryForReceipt(entry);
@@ -851,7 +854,7 @@ const PaymentLedger = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteEntry}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -928,7 +931,7 @@ const PaymentLedger = () => {
             }}>
               Cancel
             </Button>
-            <Button onClick={handleGenerateReceipt} disabled={!proofFile}>
+            <Button onClick={handleGenerateReceipt}>
               <FileText className="h-4 w-4 mr-2" />
               Generate Receipt
             </Button>

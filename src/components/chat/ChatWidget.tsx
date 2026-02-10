@@ -416,20 +416,6 @@ const ChatWidget = () => {
 
   return (
     <>
-      {!isOpen && (
-        <button
-          onClick={handleOpen}
-          className="fixed bottom-6 left-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center transition-all hover:scale-105 z-[9999]"
-        >
-          <MessageCircle className="h-6 w-6" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      )}
-
       {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-card border rounded-xl shadow-2xl flex flex-col z-[9999] overflow-hidden text-sm">
@@ -642,8 +628,8 @@ const ChatWidget = () => {
 
       {!isOpen && (
         <Button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[9999]"
+          onClick={handleOpen}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[9999] bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <MessageCircle className="h-6 w-6" />
           {unreadCount > 0 && (
