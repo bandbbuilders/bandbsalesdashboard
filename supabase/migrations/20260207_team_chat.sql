@@ -77,6 +77,23 @@ FOR SELECT USING (
   ))
 );
 
--- Enable Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_groups;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_group_members;
+-- Ensure INSERT policy exists for chat_messages
+DROP POLICY IF EXISTS "Users can send messages" ON public.chat_messages;
+CREATE POLICY "Users can send messages" ON public.chat_messages
+FOR INSERT WITH CHECK (auth.uid() = sender_id);
+
+-- Safely enable Realtime
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'chat_messages') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'chat_groups') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_groups;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'chat_group_members') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_group_members;
+  END IF;
+END $$;
