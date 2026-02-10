@@ -122,6 +122,18 @@ interface LeaveApplication {
   };
 }
 
+interface LeaveBalance {
+  id: string;
+  leave_type_id: string;
+  total_days: number;
+  used_days: number;
+  pending_days: number;
+  leave_types: {
+    name: string;
+    color: string;
+  };
+}
+
 // Notification sound function
 const playNotificationSound = () => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -150,6 +162,7 @@ const UserDashboard = () => {
   const [fines, setFines] = useState<Fine[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveApplication[]>([]);
+  const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
   const [businessStats, setBusinessStats] = useState<BusinessStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -380,6 +393,22 @@ const UserDashboard = () => {
           .order('start_date', { ascending: true });
 
         setApprovedLeaves((leavesData || []) as unknown as LeaveApplication[]);
+
+        // Fetch leave balances for current year
+        const { data: balancesData } = await supabase
+          .from('leave_balances')
+          .select(`
+            id,
+            leave_type_id,
+            total_days,
+            used_days,
+            pending_days,
+            leave_types(name, color)
+          `)
+          .eq('employee_id', employeeData.id)
+          .eq('year', new Date().getFullYear());
+
+        setLeaveBalances((balancesData || []) as unknown as LeaveBalance[]);
       }
 
     } catch (error: any) {
@@ -1013,6 +1042,70 @@ const UserDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          )
+        }
+
+        {/* Leave Balances Section */}
+        {
+          leaveBalances.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {leaveBalances
+                .filter(b => ["Annual Leave", "Sick Leave", "Medical Leave", "Casual Leave", "Paid Leave"].includes(b.leave_types?.name))
+                .sort((a, b) => {
+                  const order = ["Annual Leave", "Paid Leave", "Casual Leave", "Sick Leave", "Medical Leave"];
+                  return order.indexOf(a.leave_types?.name) - order.indexOf(b.leave_types?.name);
+                })
+                .slice(0, 2) // Just show the primary two for each category if multiples exist
+                .map(balance => {
+                  const isMedical = balance.leave_types?.name.toLowerCase().includes('sick') || balance.leave_types?.name.toLowerCase().includes('medical');
+                  const isPaid = balance.leave_types?.name.toLowerCase().includes('annual') || balance.leave_types?.name.toLowerCase().includes('casual') || balance.leave_types?.name.toLowerCase().includes('paid');
+
+                  const displayName = isMedical ? "Medical Leaves" : "Paid Leaves";
+                  const total = balance.total_days || 0;
+                  const used = balance.used_days || 0;
+                  const pending = balance.pending_days || 0;
+                  const remaining = total - used - pending;
+
+                  return (
+                    <Card key={balance.id} className="border-primary/10 bg-primary/5">
+                      <CardHeader className="p-4 pb-0">
+                        <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                          {displayName}
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 font-normal">
+                            Quota: {total}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-3xl font-bold">{remaining}</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">Remaining Days</p>
+                          </div>
+                          <div className="text-right space-y-0.5">
+                            <div className="flex items-center gap-1 justify-end">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              <p className="text-xs font-medium">{used} used</p>
+                            </div>
+                            {pending > 0 && (
+                              <div className="flex items-center gap-1 justify-end">
+                                <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                                <p className="text-[10px] text-orange-600 font-medium">{pending} pending</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5 mt-3 overflow-hidden">
+                          <div
+                            className="bg-primary h-full transition-all duration-300"
+                            style={{ width: `${Math.min(100, (used / total) * 100)}%` }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
           )
         }
 
