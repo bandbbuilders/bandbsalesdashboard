@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard, AlertCircle, AlertTriangle } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -43,6 +44,7 @@ export const AccountingDashboard = () => {
   const [fines, setFines] = useState<Fine[]>([]);
   const [fineView, setFineView] = useState<"unpaid" | "paid">("unpaid");
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchDashboardData();
@@ -170,13 +172,13 @@ export const AccountingDashboard = () => {
 
       // Calculate monthly trend
       const monthlyData: { [key: string]: { revenue: number; expenses: number } } = {};
-      
+
       journalEntries?.forEach((entry) => {
         const month = new Date(entry.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         if (!monthlyData[month]) {
           monthlyData[month] = { revenue: 0, expenses: 0 };
         }
-        
+
         if (entry.credit_account.includes('Revenue') || entry.credit_account.includes('Sales')) {
           monthlyData[month].revenue += parseFloat(entry.amount?.toString() || '0');
         }
@@ -202,6 +204,31 @@ export const AccountingDashboard = () => {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateFineStatus = async (fineId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('fines')
+        .update({ status: newStatus })
+        .eq('id', fineId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Fine marked as ${newStatus}`,
+      });
+
+      fetchFines();
+    } catch (error) {
+      console.error('Error updating fine status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update fine status",
+        variant: "destructive"
+      });
     }
   };
 
@@ -416,11 +443,31 @@ export const AccountingDashboard = () => {
                         <p className="font-medium text-sm">{fine.user_name}</p>
                         <p className="text-xs text-muted-foreground">{format(new Date(fine.date), 'MMM dd, yyyy')}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-orange-600">Rs {fine.amount}</p>
-                        <Badge variant={fine.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
-                          {fine.status === 'paid' ? 'paid' : 'unpaid'}
-                        </Badge>
+                      <div className="text-right flex items-center gap-3">
+                        <div className="space-y-1">
+                          <p className="font-bold text-orange-600">Rs {fine.amount}</p>
+                          <Badge variant={fine.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                            {fine.status === 'paid' ? 'paid' : 'unpaid'}
+                          </Badge>
+                        </div>
+                        {fine.status === 'approved' ? (
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 h-8 text-xs font-bold"
+                            onClick={() => handleUpdateFineStatus(fine.id, 'paid')}
+                          >
+                            Mark Paid
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            onClick={() => handleUpdateFineStatus(fine.id, 'approved')}
+                          >
+                            Mark Unpaid
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
