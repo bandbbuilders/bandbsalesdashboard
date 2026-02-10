@@ -3,22 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { Target, Clock, AlertCircle, TrendingUp } from "lucide-react";
 
 interface PersonalAttendanceCardProps {
   userName: string | null;
+  profileId: string | null;
 }
 
 const WORKING_DAYS_PER_MONTH = 26;
 
-export const PersonalAttendanceCard = ({ userName }: PersonalAttendanceCardProps) => {
+export const PersonalAttendanceCard = ({ userName, profileId }: PersonalAttendanceCardProps) => {
   const [stats, setStats] = useState({
     presentDays: 0,
     lateDays: 0,
     absentDays: 0,
+    leaveDays: 0,
     attendanceRate: 0,
     punctualityRate: 0,
+    isOnLeave: false,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,32 +45,79 @@ export const PersonalAttendanceCard = ({ userName }: PersonalAttendanceCardProps
       const presentDays = records.filter(r => r.status === 'present').length;
       const lateDays = records.filter(r => r.status === 'late').length;
       const totalMarked = records.length;
-      
+
+      // Fetch approved leaves for the current month
+      let leaveDays = 0;
+      let isOnLeave = false;
+
+      if (profileId) {
+        const { data: employeeData } = await supabase
+          .from('employee_details')
+          .select('id')
+          .eq('profile_id', profileId)
+          .single();
+
+        if (employeeData) {
+          const { data: leavesData } = await supabase
+            .from('leave_applications')
+            .select('*')
+            .eq('employee_id', employeeData.id)
+            .eq('status', 'approved');
+
+          if (leavesData) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const monthStartObj = startOfMonth(now);
+            const monthEndObj = endOfMonth(now);
+
+            leavesData.forEach(leave => {
+              const start = new Date(leave.start_date);
+              const end = new Date(leave.end_date);
+
+              // Check if currently on leave
+              if (today >= start && today <= end) {
+                isOnLeave = true;
+              }
+
+              // Calculate days in current month
+              const actualStart = start < monthStartObj ? monthStartObj : start;
+              const actualEnd = end > monthEndObj ? monthEndObj : end;
+
+              if (actualStart <= actualEnd) {
+                leaveDays += differenceInDays(actualEnd, actualStart) + 1;
+              }
+            });
+          }
+        }
+      }
+
       // Calculate days passed in current month (max 26 working days)
       const dayOfMonth = now.getDate();
       const effectiveWorkingDays = Math.min(dayOfMonth, WORKING_DAYS_PER_MONTH);
-      const absentDays = Math.max(0, effectiveWorkingDays - totalMarked);
-      
-      const attendanceRate = effectiveWorkingDays > 0 
-        ? Math.round((totalMarked / effectiveWorkingDays) * 100) 
+      const absentDays = Math.max(0, effectiveWorkingDays - totalMarked - leaveDays);
+
+      const attendanceRate = effectiveWorkingDays > 0
+        ? Math.round(((totalMarked + leaveDays) / effectiveWorkingDays) * 100)
         : 0;
-      
-      const punctualityRate = totalMarked > 0 
-        ? Math.round((presentDays / totalMarked) * 100) 
+
+      const punctualityRate = totalMarked > 0
+        ? Math.round((presentDays / totalMarked) * 100)
         : 100;
 
       setStats({
         presentDays,
         lateDays,
         absentDays,
+        leaveDays,
         attendanceRate,
         punctualityRate,
+        isOnLeave,
       });
       setIsLoading(false);
     };
 
     fetchAttendance();
-  }, [userName]);
+  }, [userName, profileId]);
 
   const getPerformanceBadge = () => {
     if (stats.attendanceRate >= 95 && stats.punctualityRate >= 90) {
@@ -109,7 +159,14 @@ export const PersonalAttendanceCard = ({ userName }: PersonalAttendanceCardProps
             <Target className="h-5 w-5 text-primary" />
             Attendance Performance
           </CardTitle>
-          <Badge className={badge.className}>{badge.label}</Badge>
+          <div className="flex items-center gap-2">
+            {stats.isOnLeave && (
+              <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+                On Leave
+              </Badge>
+            )}
+            <Badge className={badge.className}>{badge.label}</Badge>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {format(new Date(), 'MMMM yyyy')}
@@ -141,7 +198,7 @@ export const PersonalAttendanceCard = ({ userName }: PersonalAttendanceCardProps
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 pt-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2">
           <div className="text-center p-2 rounded-lg bg-green-500/10">
             <p className="text-lg font-bold text-green-600">{stats.presentDays}</p>
             <p className="text-xs text-muted-foreground">Present</p>
@@ -153,6 +210,10 @@ export const PersonalAttendanceCard = ({ userName }: PersonalAttendanceCardProps
           <div className="text-center p-2 rounded-lg bg-red-500/10">
             <p className="text-lg font-bold text-red-600">{stats.absentDays}</p>
             <p className="text-xs text-muted-foreground">Absent</p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-amber-500/10">
+            <p className="text-lg font-bold text-amber-600">{stats.leaveDays}</p>
+            <p className="text-xs text-muted-foreground">Leave</p>
           </div>
         </div>
       </CardContent>

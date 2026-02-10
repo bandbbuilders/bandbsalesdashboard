@@ -109,6 +109,19 @@ interface BusinessStats {
   todayAttendance: number;
 }
 
+interface LeaveApplication {
+  id: string;
+  leave_type_id: string;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  status: string;
+  leave_types: {
+    name: string;
+    color: string;
+  };
+}
+
 // Notification sound function
 const playNotificationSound = () => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -136,6 +149,7 @@ const UserDashboard = () => {
   const [departments, setDepartments] = useState<DepartmentData[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [approvedLeaves, setApprovedLeaves] = useState<LeaveApplication[]>([]);
   const [businessStats, setBusinessStats] = useState<BusinessStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -340,6 +354,33 @@ const UserDashboard = () => {
         .eq('completed', false)
         .order('due_date', { ascending: true });
       setReminders((remindersData || []) as Reminder[]);
+
+      // Fetch approved leave applications for this user
+      const { data: employeeData } = await supabase
+        .from('employee_details')
+        .select('id')
+        .eq('profile_id', profileData.id)
+        .single();
+
+      if (employeeData) {
+        const { data: leavesData } = await supabase
+          .from('leave_applications')
+          .select(`
+            id,
+            leave_type_id,
+            start_date,
+            end_date,
+            total_days,
+            status,
+            leave_types(name, color)
+          `)
+          .eq('employee_id', employeeData.id)
+          .eq('status', 'approved')
+          .gte('end_date', new Date().toISOString().split('T')[0])
+          .order('start_date', { ascending: true });
+
+        setApprovedLeaves((leavesData || []) as unknown as LeaveApplication[]);
+      }
 
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -817,7 +858,10 @@ const UserDashboard = () => {
         {/* Attendance & Fines Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Attendance Performance */}
-          <PersonalAttendanceCard userName={profile?.full_name || null} />
+          <PersonalAttendanceCard
+            userName={profile?.full_name || null}
+            profileId={profile?.id || null}
+          />
 
           {/* Fines Section */}
           <Card>
@@ -962,6 +1006,51 @@ const UserDashboard = () => {
                         </div>
                         <Badge variant={isOverdue ? 'destructive' : isDueSoon ? 'default' : 'secondary'}>
                           {reminder.reminder_type.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        }
+
+        {/* Upcoming Approved Leaves Section */}
+        {
+          approvedLeaves.length > 0 && (
+            <Card className="border-green-500/50 bg-green-500/10">
+              <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                <CalendarDays className="h-5 w-5 text-green-600" />
+                <CardTitle className="text-green-700">Approved Leaves</CardTitle>
+                <Badge variant="secondary" className="ml-auto bg-green-200 text-green-800 hover:bg-green-200">
+                  {approvedLeaves.length} upcoming
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {approvedLeaves.map(leave => {
+                    const startDate = new Date(leave.start_date);
+                    const endDate = new Date(leave.end_date);
+                    const isOngoing = isPast(startDate) || isToday(startDate);
+
+                    return (
+                      <div
+                        key={leave.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border bg-background ${isOngoing ? 'border-green-500/50' : ''}`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{leave.leave_types?.name}</p>
+                            {isOngoing && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Active</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <CalendarDays className="h-3 w-3 inline mr-1" />
+                            {format(startDate, 'MMM dd')} - {format(endDate, 'MMM dd, yyyy')}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-green-200 text-green-700">
+                          {leave.total_days} {leave.total_days === 1 ? 'day' : 'days'}
                         </Badge>
                       </div>
                     );
