@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'ceo_coo' | 'manager' | 'executive';
+export type AppRole = 'ceo_coo' | 'manager' | 'executive' | 'hr' | 'admin';
 
 interface UserRoleData {
   role: AppRole | null;
@@ -11,6 +11,8 @@ interface UserRoleData {
   isCeoCoo: boolean;
   isManager: boolean;
   isExecutive: boolean;
+  isHR: boolean;
+  isAdmin: boolean;
 }
 
 export const useUserRole = (userId?: string): UserRoleData => {
@@ -69,6 +71,8 @@ export const useUserRole = (userId?: string): UserRoleData => {
     isCeoCoo: role === 'ceo_coo',
     isManager: role === 'manager',
     isExecutive: role === 'executive',
+    isHR: role === 'hr',
+    isAdmin: role === 'admin',
   };
 };
 
