@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { TaskList } from "@/components/tasks/TaskList";
 import { TaskStats } from "@/components/tasks/TaskStats";
@@ -48,11 +49,40 @@ export default function TaskManager() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [activeView, setActiveView] = useState<"board" | "list" | "stats">("board");
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [userDeptId, setUserDeptId] = useState<string | null>(null);
+  const { isCeoCoo, isLoading: roleLoading } = useUserRole(authUserId || undefined);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchDepartments();
-    fetchTasks();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setAuthUserId(user.id);
+
+        // Fetch user's department
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('department')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile?.department) {
+          // Fetch departments to find the ID
+          const { data: depts } = await supabase.from('departments').select('id, name');
+          const dept = depts?.find(d => d.name === profile.department);
+          if (dept) {
+            setUserDeptId(dept.id);
+            if (selectedDepartment === "all") {
+              setSelectedDepartment(dept.id);
+            }
+          }
+        }
+      }
+      fetchDepartments();
+      fetchTasks();
+    };
+    init();
   }, []);
 
   const fetchDepartments = async () => {
@@ -76,12 +106,19 @@ export default function TaskManager() {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select(`
           *,
           department:departments(*)
-        `)
+        `);
+
+      // If not CEO/COO, only show tasks for their department
+      if (!roleLoading && !isCeoCoo && userDeptId) {
+        query = query.eq('department_id', userDeptId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -101,10 +138,10 @@ export default function TaskManager() {
   const filteredTasks = tasks.filter(task => {
     const matchesDepartment = selectedDepartment === "all" || task.department_id === selectedDepartment;
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      task.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
-    
+
     return matchesDepartment && matchesSearch && matchesStatus && matchesPriority;
   });
 
@@ -145,28 +182,30 @@ export default function TaskManager() {
 
       {/* Department Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {getDepartmentStats().map((dept) => (
-          <Card key={dept.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setSelectedDepartment(dept.id)}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">{dept.name}</CardTitle>
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: dept.color }}
-                />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dept.totalTasks}</div>
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>Done: {dept.completedTasks}</span>
-                <span>In Progress: {dept.inProgressTasks}</span>
-                <span>Pending: {dept.pendingTasks}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {getDepartmentStats()
+          .filter(dept => isCeoCoo || dept.id === userDeptId)
+          .map((dept) => (
+            <Card key={dept.id} className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setSelectedDepartment(dept.id)}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium">{dept.name}</CardTitle>
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: dept.color }}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dept.totalTasks}</div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>Done: {dept.completedTasks}</span>
+                  <span>In Progress: {dept.inProgressTasks}</span>
+                  <span>Pending: {dept.pendingTasks}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
       {/* Filters */}
@@ -184,15 +223,17 @@ export default function TaskManager() {
                 />
               </div>
             </div>
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={!isCeoCoo}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                ))}
+                {isCeoCoo && <SelectItem value="all">All Departments</SelectItem>}
+                {departments
+                  .filter(dept => isCeoCoo || dept.id === userDeptId)
+                  .map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>

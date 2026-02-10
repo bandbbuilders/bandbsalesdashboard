@@ -297,21 +297,31 @@ const UserDashboard = () => {
       profileRef.current = profileData;
 
       // Fetch tasks - for COO, fetch ALL tasks; for others, fetch tasks where user is assigned
-      // Using ilike to support comma-separated multiple assignees
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*')
-        .ilike('assigned_to', `%${profileData.full_name}%`)
-        .order('due_date', { ascending: true });
-
-      if (tasksError) throw tasksError;
-      setTasks(tasksData || []);
-
-      // Fetch departments for create task dialog
+      // Fetch departments first to get department_id
       const { data: deptData } = await supabase
         .from('departments')
         .select('*');
       setDepartments(deptData || []);
+
+      const userDept = deptData?.find(d => d.name === profileData.department);
+      const userDeptId = userDept?.id;
+
+      // Fetch tasks for this user
+      // Managers see all tasks in their department + tasks assigned to them
+      // Others see only tasks assigned to them
+      let tasksQuery = supabase.from('tasks').select('*');
+
+      if (isManager && userDeptId) {
+        tasksQuery = tasksQuery.or(`assigned_to.ilike.%${profileData.full_name}%,department_id.eq.${userDeptId}`);
+      } else {
+        tasksQuery = tasksQuery.ilike('assigned_to', `%${profileData.full_name}%`);
+      }
+
+      const { data: tasksData, error: tasksError } = await tasksQuery
+        .order('due_date', { ascending: true });
+
+      if (tasksError) throw tasksError;
+      setTasks(tasksData || []);
 
       // Fetch fines for this user (only once HR approves; paid stays visible)
       const { data: finesData } = await supabase
@@ -349,31 +359,26 @@ const UserDashboard = () => {
         .order('due_date', { ascending: true });
       setTasks(tasksData || []);
     } else if (profile?.full_name) {
-      // Use ilike for comma-separated multiple assignees
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('*')
-        .ilike('assigned_to', `%${profile.full_name}%`)
-        .order('due_date', { ascending: true });
+      const userDeptId = departments.find(d => d.name === profile.department)?.id;
+      let tasksQuery = supabase.from('tasks').select('*');
+
+      if (isManager && userDeptId) {
+        tasksQuery = tasksQuery.or(`assigned_to.ilike.%${profile.full_name}%,department_id.eq.${userDeptId}`);
+      } else {
+        tasksQuery = tasksQuery.ilike('assigned_to', `%${profile.full_name}%`);
+      }
+
+      const { data: tasksData } = await tasksQuery.order('due_date', { ascending: true });
       setTasks(tasksData || []);
     }
   };
 
-  // Fetch all tasks for COO when role is loaded
+  // Refetch tasks when role or profile changes
   useEffect(() => {
-    const fetchAllTasks = async () => {
-      if (isCeoCoo) {
-        const { data: tasksData } = await supabase
-          .from('tasks')
-          .select('*')
-          .order('due_date', { ascending: true });
-        setTasks(tasksData || []);
-      }
-    };
-    if (!roleLoading && isCeoCoo) {
-      fetchAllTasks();
+    if (!roleLoading && profile) {
+      refetchTasks();
     }
-  }, [isCeoCoo, roleLoading]);
+  }, [roleLoading, isCeoCoo, isManager, profile]);
 
   // Mark task as complete
   const markTaskComplete = async (taskId: string) => {
@@ -986,7 +991,7 @@ const UserDashboard = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{task.title}</h4>
-                          {isCeoCoo && task.assigned_to && (
+                          {(isCeoCoo || isManager) && task.assigned_to && (
                             <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
                           )}
                         </div>
@@ -1042,7 +1047,7 @@ const UserDashboard = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{task.title}</h4>
-                          {isCeoCoo && task.assigned_to && (
+                          {(isCeoCoo || isManager) && task.assigned_to && (
                             <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
                           )}
                         </div>

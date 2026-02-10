@@ -12,6 +12,7 @@ import { Calendar as CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Department {
   id: string;
@@ -46,6 +47,8 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<Profile[]>([]);
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const { isCeoCoo, isLoading: roleLoading } = useUserRole(authUserId || undefined);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,14 +56,23 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
       // Fetch current user's name
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setAuthUserId(user.id);
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('full_name, department')
           .eq('user_id', user.id)
           .single();
-        
+
         if (profile) {
           setCurrentUserName(profile.full_name);
+
+          // Auto-select department for non-CEO/COO
+          if (profile.department) {
+            const userDept = departments.find(d => d.name === profile.department);
+            if (userDept && !departmentId) {
+              setDepartmentId(userDept.id);
+            }
+          }
         }
       }
 
@@ -69,12 +81,12 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
         .from('profiles')
         .select('id, full_name')
         .order('full_name');
-      
+
       if (!error && data) {
         setUsers(data);
       }
     };
-    
+
     if (isOpen) {
       fetchData();
     }
@@ -100,7 +112,7 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim() || !departmentId) {
       toast({
         title: "Error",
@@ -117,7 +129,7 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
       let dueDatetime = null;
       if (dueDate) {
         const dateStr = dueDate.toISOString().split('T')[0];
-        dueDatetime = dueTime 
+        dueDatetime = dueTime
           ? `${dateStr}T${dueTime}:00Z`
           : dueDate.toISOString();
       }
@@ -174,7 +186,7 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="title">Title *</Label>
@@ -200,22 +212,29 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
 
           <div>
             <Label htmlFor="department">Department *</Label>
-            <Select value={departmentId} onValueChange={setDepartmentId} required>
+            <Select
+              value={departmentId}
+              onValueChange={setDepartmentId}
+              required
+              disabled={!roleLoading && !isCeoCoo && !!departmentId}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: dept.color }}
-                      />
-                      {dept.name}
-                    </div>
-                  </SelectItem>
-                ))}
+                {departments
+                  .filter(dept => isCeoCoo || dept.id === departmentId)
+                  .map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: dept.color }}
+                        />
+                        {dept.name}
+                      </div>
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -255,30 +274,30 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
             </Popover>
           </div>
 
-            <div>
-              <Label>Due Time</Label>
-              <Input
-                type="time"
-                value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
-              />
-            </div>
+          <div>
+            <Label>Due Time</Label>
+            <Input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+            />
+          </div>
 
-            <div>
-              <Label>Assign To</Label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.full_name}>
-                      {user.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label>Assign To</Label>
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select team member" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.full_name}>
+                    {user.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div>
             <Label htmlFor="tags">Tags</Label>
