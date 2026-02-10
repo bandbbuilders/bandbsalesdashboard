@@ -334,7 +334,7 @@ const ChatWidget = () => {
       .single();
 
     if (error) {
-      toast.error("Failed to send message");
+      toast.error(`Failed to send message: ${error.message}${error.details ? ` (${error.details})` : ''}`);
       console.error("ChatWidget: Error sending message", error);
       // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== optimisticId));
