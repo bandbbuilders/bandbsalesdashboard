@@ -9,7 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X, Clock, Calendar, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, parseISO } from "date-fns";
+import { Edit, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface LeaveApplication {
   id: string;
@@ -47,7 +50,16 @@ const LeaveManagement = () => {
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
   const [reviewRemarks, setReviewRemarks] = useState("");
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
+  const [editData, setEditData] = useState({
+    startDate: "",
+    endDate: "",
+    remarks: "",
+    status: "",
+  });
+
+  const { isCeoCoo, isHR } = useUserRole();
 
   useEffect(() => {
     fetchData();
@@ -158,6 +170,125 @@ const LeaveManagement = () => {
     setShowReviewDialog(true);
   };
 
+  const openEditDialog = (application: LeaveApplication) => {
+    setSelectedApplication(application);
+    setEditData({
+      startDate: application.start_date,
+      endDate: application.end_date,
+      remarks: application.reviewer_remarks || "",
+      status: application.status,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEditLeave = async () => {
+    if (!selectedApplication) return;
+
+    try {
+      const start = parseISO(editData.startDate);
+      const end = parseISO(editData.endDate);
+      const newTotalDays = differenceInDays(end, start) + 1;
+
+      if (newTotalDays <= 0) {
+        toast.error("End date must be after start date");
+        return;
+      }
+
+      // Update leave application
+      const { error: updateError } = await supabase
+        .from("leave_applications")
+        .update({
+          start_date: editData.startDate,
+          end_date: editData.endDate,
+          total_days: newTotalDays,
+          status: editData.status,
+          reviewer_remarks: editData.remarks || null,
+        })
+        .eq("id", selectedApplication.id);
+
+      if (updateError) throw updateError;
+
+      // Handle balance adjustment
+      const year = new Date(editData.startDate).getFullYear();
+      const { data: balance } = await supabase
+        .from("leave_balances")
+        .select("*")
+        .eq("employee_id", selectedApplication.employee_id)
+        .eq("leave_type_id", selectedApplication.leave_type_id)
+        .eq("year", year)
+        .single();
+
+      if (balance) {
+        let newUsed = balance.used_days || 0;
+
+        // If it was approved and remains approved, adjust for delta
+        if (selectedApplication.status === "approved" && editData.status === "approved") {
+          newUsed = (balance.used_days || 0) - selectedApplication.total_days + newTotalDays;
+        }
+        // If it was approved and now rejected/cancelled, remove from used
+        else if (selectedApplication.status === "approved" && editData.status !== "approved") {
+          newUsed = Math.max(0, (balance.used_days || 0) - selectedApplication.total_days);
+        }
+        // If it was NOT approved and now IS approved, add to used
+        else if (selectedApplication.status !== "approved" && editData.status === "approved") {
+          newUsed = (balance.used_days || 0) + newTotalDays;
+        }
+
+        await supabase
+          .from("leave_balances")
+          .update({ used_days: newUsed })
+          .eq("id", balance.id);
+      }
+
+      toast.success("Leave application updated successfully");
+      setShowEditDialog(false);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error editing leave:", error);
+      toast.error("Failed to update leave application");
+    }
+  };
+
+  const handleDeleteLeave = async (application: LeaveApplication) => {
+    if (!confirm(`Are you sure you want to delete this leave history for ${application.employee_name}?`)) return;
+
+    try {
+      // Revert balance if it was approved
+      if (application.status === "approved") {
+        const year = new Date(application.start_date).getFullYear();
+        const { data: balance } = await supabase
+          .from("leave_balances")
+          .select("*")
+          .eq("employee_id", application.employee_id)
+          .eq("leave_type_id", application.leave_type_id)
+          .eq("year", year)
+          .single();
+
+        if (balance) {
+          await supabase
+            .from("leave_balances")
+            .update({
+              used_days: Math.max(0, (balance.used_days || 0) - application.total_days)
+            })
+            .eq("id", balance.id);
+        }
+      }
+
+      const { error } = await supabase
+        .from("leave_applications")
+        .delete()
+        .eq("id", application.id);
+
+      if (error) throw error;
+
+      toast.success("Leave entry deleted successfully");
+      fetchData();
+    } catch (error: any) {
+      console.error("Error deleting leave:", error);
+      toast.error("Failed to delete leave entry");
+    }
+  };
+
   const pendingApplications = applications.filter(a => a.status === "pending");
   const processedApplications = applications.filter(a => a.status !== "pending");
 
@@ -261,23 +392,25 @@ const LeaveManagement = () => {
                           <TableCell className="max-w-[200px] truncate">{app.reason || "—"}</TableCell>
                           <TableCell>{format(new Date(app.applied_at), "MMM d, yyyy")}</TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => openReviewDialog(app, "approve")}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => openReviewDialog(app, "reject")}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            {(isCeoCoo || isHR) && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={() => openReviewDialog(app, "approve")}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => openReviewDialog(app, "reject")}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -310,6 +443,7 @@ const LeaveManagement = () => {
                         <TableHead>Days</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Remarks</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -330,6 +464,28 @@ const LeaveManagement = () => {
                           <TableCell>{app.total_days}</TableCell>
                           <TableCell>{getStatusBadge(app.status)}</TableCell>
                           <TableCell className="max-w-[200px] truncate">{app.reviewer_remarks || "—"}</TableCell>
+                          <TableCell className="text-right">
+                            {(isCeoCoo || isHR) && (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => openEditDialog(app)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteLeave(app)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -382,6 +538,67 @@ const LeaveManagement = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Leave Application</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input
+                  type="date"
+                  value={editData.startDate}
+                  onChange={(e) => setEditData({ ...editData, startDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input
+                  type="date"
+                  value={editData.endDate}
+                  onChange={(e) => setEditData({ ...editData, endDate: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <select
+                className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={editData.status}
+                onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+              >
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reviewer Remarks</label>
+              <Textarea
+                placeholder="Add any remarks..."
+                value={editData.remarks}
+                onChange={(e) => setEditData({ ...editData, remarks: e.target.value })}
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditLeave}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
