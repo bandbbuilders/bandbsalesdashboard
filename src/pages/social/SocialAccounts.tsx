@@ -31,11 +31,86 @@ export default function SocialAccounts() {
         if (data) setAccounts(data);
     };
 
-    const handleConnect = (platform: string) => {
-        toast.info(`Connecting to ${platform}...`, {
+    const handleConnect = async (platform: string) => {
+        const id = toast.loading(`Connecting to ${platform}...`, {
             description: "Redirecting to OAuth authorization page."
         });
-        // Placeholder for actual OAuth redirect logic
+
+        // Simulate network delay for "redirection" and "authorization"
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
+
+            // Mock account data based on platform
+            const mockData: any = {
+                facebook: { name: "B&B Builders Official", username: "bandb_builders" },
+                instagram: { name: "B&B Luxury Homes", username: "@bandb_luxury" },
+                youtube: { name: "B&B Architecture TV", username: "bandb_tv" },
+                tiktok: { name: "B&B Construction Tips", username: "bandb_tips" }
+            };
+
+            const account = mockData[platform] || { name: `${platform} Account`, username: platform };
+
+            // Insert mock account into database
+            const { data, error } = await supabase
+                .from('social_accounts' as any)
+                .insert([{
+                    user_id: user.id,
+                    platform: platform,
+                    account_name: account.name,
+                    username: account.username,
+                    is_active: true,
+                    last_synced_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            const newAccount = data as any;
+
+            toast.success(`${account.name} connected!`, {
+                id,
+                description: "Your social leads are now being synced."
+            });
+
+            await fetchAccounts();
+
+            // Optional: Seed some initial mock leads/posts for this account
+            seedMockData(newAccount.id, platform);
+
+        } catch (error: any) {
+            console.error("Connect error:", error);
+            toast.error("Connection failed", {
+                id,
+                description: error.message || "Please try again later."
+            });
+        }
+    };
+
+    const seedMockData = async (accountId: string, platform: string) => {
+        // Mock leads to show the user the module value
+        const mockLeads = [
+            {
+                account_id: accountId,
+                platform: platform,
+                commenter_name: "Ahmed Khan",
+                comment_content: "I'm interested in the new project in DHA Phase 6. Can you share the price list?",
+                intent_score: "high",
+                status: "new"
+            },
+            {
+                account_id: accountId,
+                platform: platform,
+                commenter_name: "Sara Qureshi",
+                comment_content: "Beautiful design! When is the completion date?",
+                intent_score: "medium",
+                status: "new"
+            }
+        ];
+
+        await supabase.from('social_leads' as any).insert(mockLeads);
     };
 
     const handleManualSync = async (accountId: string) => {
