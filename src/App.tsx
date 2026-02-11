@@ -52,6 +52,10 @@ import PayrollManagement from "./pages/hr/PayrollManagement";
 import PerformanceManagement from "./pages/hr/PerformanceManagement";
 import DocumentsManagement from "./pages/hr/DocumentsManagement";
 import HrFines from "./pages/hr/Fines";
+import SocialLayout from "./components/layout/SocialLayout";
+import SocialDashboard from "./pages/social/SocialDashboard";
+import SocialLeads from "./pages/social/SocialLeads";
+import SocialAccounts from "./pages/social/SocialAccounts";
 
 const queryClient = new QueryClient();
 
@@ -150,6 +154,18 @@ const App = () => (
             <Route path="performance" element={<PerformanceManagement />} />
             <Route path="documents" element={<DocumentsManagement />} />
             <Route path="fines" element={<HrFines />} />
+          </Route>
+
+          <Route path="/social/*" element={
+            <AuthGuard>
+              <div className="container max-w-7xl mx-auto p-4 md:p-6 pb-20">
+                <SocialLayout />
+              </div>
+            </AuthGuard>
+          }>
+            <Route index element={<SocialDashboard />} />
+            <Route path="leads" element={<SocialLeads />} />
+            <Route path="accounts" element={<SocialAccounts />} />
           </Route>
 
           {/* Commission Management - Standalone with password protection */}

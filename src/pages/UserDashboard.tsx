@@ -30,7 +30,8 @@ import {
   DollarSign,
   Activity,
   Building2,
-  Warehouse
+  Warehouse,
+  Share2
 } from "lucide-react";
 import { format, isToday, formatDistanceToNow, differenceInHours, isPast, isTomorrow } from "date-fns";
 import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAccess";
@@ -659,6 +660,7 @@ const UserDashboard = () => {
       case 'commission-management': return Coins;
       case 'hr': return User;
       case 'inventory': return Warehouse;
+      case 'social': return Share2;
       default: return FileText;
     }
   };
@@ -674,6 +676,7 @@ const UserDashboard = () => {
       case 'commission-management': return 'bg-red-500';
       case 'hr': return 'bg-teal-500';
       case 'inventory': return 'bg-emerald-500';
+      case 'social': return 'bg-sky-500';
       default: return 'bg-gray-500';
     }
   };
