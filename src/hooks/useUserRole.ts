@@ -37,7 +37,7 @@ export const useUserRole = (userId?: string): UserRoleData => {
       // Hardcoded check for Sara Memon and Zain Sarwar (COO/CEO)
       const ADMIN_IDS = [
         "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
-        "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
+        "fab190bd-3c71-43e8-9385-3ec66044e501"  // Zain Sarwar
       ];
 
       if (ADMIN_IDS.includes(targetUserId)) {

@@ -49,7 +49,7 @@ export const USER_MODULE_OVERRIDES: Record<string, string[]> = {
   // Zia Shahid - Manager Access + Tasks
   "e91f0415-009a-4712-97e1-c70d1c29e6f9": ["sales", "tasks", "crm", "attendance", "hr"],
   // Zain Sarwar - Full access
-  "fab190bd-3c71-43e8-9381-3ec66044e501": ["hr", "crm", "attendance", "tasks", "sales", "social", "inventory"],
+  "fab190bd-3c71-43e8-9385-3ec66044e501": ["hr", "crm", "attendance", "tasks", "sales", "social", "inventory"],
 };
 
 // Get allowed modules for a department

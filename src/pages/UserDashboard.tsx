@@ -170,7 +170,7 @@ const UserDashboard = () => {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const profileRef = useRef<Profile | null>(null);
   const { role, isLoading: roleLoading, isCeoCoo, isManager, isAdmin } = useUserRole(userId || undefined);
-  const isSuperAdmin = isCeoCoo || isAdmin || profile?.position === 'CEO/COO' || profile?.department === 'Management' || userId === 'fab190bd-3c71-43e8-9381-3ec66044e501';
+  const isSuperAdmin = isCeoCoo || isAdmin || profile?.position === 'CEO/COO' || profile?.department === 'Management' || userId === 'fab190bd-3c71-43e8-9385-3ec66044e501';
 
   useEffect(() => {
     const checkAuth = async () => {
