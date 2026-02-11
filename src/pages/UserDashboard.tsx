@@ -535,7 +535,7 @@ const UserDashboard = () => {
             supabase.from('leads').select('id'),
             supabase.from('tasks').select('id, status'),
             supabase.from('commissions').select('total_amount'),
-            supabase.from('attendance').select('id').eq('date', new Date().toISOString().split('T')[0])
+            supabase.from('attendance').select('id').eq('date', new Date().toISOString().split('T')[0]).neq('status', 'absent')
           ]);
 
           setBusinessStats({

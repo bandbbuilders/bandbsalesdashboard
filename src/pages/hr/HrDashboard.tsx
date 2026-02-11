@@ -88,8 +88,8 @@ const HrDashboard = () => {
         pendingLeaves: pendingLeaves || 0,
         payrollPending: payrollPending || 0,
         performanceReviewsDue: 0,
-        todayAttendance: todayAttendance?.filter(a => a.status === 'present').length || 0,
-        lateToday: todayAttendance?.filter(a => a.is_late).length || 0,
+        todayAttendance: todayAttendance?.filter(a => a.status === 'present' || a.status === 'late').length || 0,
+        lateToday: todayAttendance?.filter(a => a.status === 'late').length || 0,
       });
 
       setRecentLeaves(leaves || []);
@@ -184,7 +184,7 @@ const HrDashboard = () => {
                     <Badge
                       variant={
                         leave.status === "approved" ? "default" :
-                        leave.status === "rejected" ? "destructive" : "secondary"
+                          leave.status === "rejected" ? "destructive" : "secondary"
                       }
                     >
                       {leave.status}

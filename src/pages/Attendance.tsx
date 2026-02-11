@@ -505,7 +505,7 @@ export default function Attendance() {
               <CardContent>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{todayAttendance.filter(r => r.status === 'present').length}</div>
+                    <div className="text-2xl font-bold text-green-600">{todayAttendance.filter(r => r.status === 'present' || r.status === 'late').length}</div>
                     <div className="text-sm text-muted-foreground">Present</div>
                   </div>
                   <div className="p-4 border rounded-lg">
