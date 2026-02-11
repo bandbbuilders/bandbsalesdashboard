@@ -112,20 +112,29 @@ const ChatWidget = () => {
       .not('user_id', 'is', null)
       .neq('user_id', excludeUserId);
 
-    if (!error && data) {
+    if (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to load users");
+    } else if (data) {
       setUsers(data);
     }
   };
 
   const fetchGroups = async () => {
-    // Cast any to bypass outdated types for new tables
-    // @ts-ignore
-    const { data, error } = await (supabase
-      .from('chat_groups' as any)
-      .select('*') as any);
+    try {
+      // Cast any to bypass outdated types for new tables
+      // @ts-ignore
+      const { data, error } = await (supabase
+        .from('chat_groups' as any)
+        .select('*') as any);
 
-    if (!error && data) {
-      setGroups(data as any[]);
+      if (error) throw error;
+      if (data) {
+        setGroups(data as any[]);
+      }
+    } catch (err: any) {
+      console.error("Error fetching groups:", err);
+      // No toast here to avoid spamming if table doesn't exist yet
     }
   };
 
@@ -158,6 +167,7 @@ const ChatWidget = () => {
     const { data, error } = await query.limit(100);
     if (error) {
       console.error('Error fetching messages:', error);
+      toast.error(`Failed to fetch messages: ${error.message}`);
       return;
     }
 
