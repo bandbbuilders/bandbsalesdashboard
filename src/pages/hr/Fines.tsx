@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Eye } from "lucide-react";
 
 interface Fine {
   id: string;
@@ -23,6 +26,8 @@ const HrFines = () => {
   const { toast } = useToast();
   const [fines, setFines] = useState<Fine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const fetchFines = async () => {
     setLoading(true);
@@ -107,6 +112,11 @@ const HrFines = () => {
     return Object.values(stats).sort((a, b) => b.unpaidAmount - a.unpaidAmount);
   }, [fines]);
 
+  const selectedUserFines = useMemo(() => {
+    if (!selectedUser) return [];
+    return fines.filter(f => f.user_name === selectedUser);
+  }, [fines, selectedUser]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -189,17 +199,30 @@ const HrFines = () => {
                         <p className="font-bold text-lg">{stat.name}</p>
                         <p className="text-sm text-muted-foreground">{stat.totalCount} total fines</p>
                       </div>
-                      <div className="text-right">
-                        <div className="mb-1">
-                          <span className="text-sm text-muted-foreground mr-2">Total Amount:</span>
-                          <span className="font-medium">Rs {stat.totalAmount}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="mb-1">
+                            <span className="text-sm text-muted-foreground mr-2">Total Amount:</span>
+                            <span className="font-medium">Rs {stat.totalAmount}</span>
+                          </div>
+                          <div>
+                            <span className="text-sm text-muted-foreground mr-2">Unpaid:</span>
+                            <Badge variant={stat.unpaidAmount > 0 ? "destructive" : "secondary"}>
+                              Rs {stat.unpaidAmount}
+                            </Badge>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-sm text-muted-foreground mr-2">Unpaid:</span>
-                          <Badge variant={stat.unpaidAmount > 0 ? "destructive" : "secondary"}>
-                            Rs {stat.unpaidAmount}
-                          </Badge>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(stat.name);
+                            setIsDetailsOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Details
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -209,7 +232,46 @@ const HrFines = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Fine Details: {selectedUser}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedUserFines.map((fine) => (
+                  <TableRow key={fine.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {format(new Date(fine.date), "MMM dd, yyyy")}
+                    </TableCell>
+                    <TableCell className="max-w-xs">{fine.reason}</TableCell>
+                    <TableCell>Rs {fine.amount}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        fine.status === "approved" ? "default" :
+                          fine.status === "pending" ? "destructive" : "secondary"
+                      }>
+                        {fine.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div >
   );
 };
 
