@@ -99,28 +99,34 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         startHeartbeat(session.user.id);
 
         // Fetch user profile for department-based access
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('department')
+          .select('department, role') // Also fetch role here
           .eq('user_id', session.user.id)
           .single();
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          // Handle error, maybe redirect to auth or show a message
+          setLoading(false);
+          return;
+        }
 
         setUserProfile(profile);
 
         // Check if user is CEO/COO - they have access to all modules
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .maybeSingle(); // Use maybeSingle to avoid error when no role exists
+        // CEO/COO has access to everything
+        const ADMIN_IDS = [
+          "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
+          "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
+        ];
 
-        const isCeoCoo = roleData?.role === 'ceo_coo';
+        const isCeoCoo = profile?.role === 'ceo_coo' || ADMIN_IDS.includes(session.user.id);
 
         // Debug logging
         console.log('AuthGuard - Role check:', {
           userId: session.user.id,
-          roleData,
-          roleError: roleError?.message,
+          roleData: profile?.role,
           isCeoCoo,
         });
 
@@ -133,9 +139,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
         // For non-CEO/COO users, check department-based access (including user overrides)
         const moduleId = getModuleFromPath(location.pathname);
-        if (moduleId && profile?.department) {
-          const hasAccess = canAccessModule(profile.department, moduleId, session.user.id);
-          console.log('AuthGuard - Module access check:', { moduleId, department: profile.department, userId: session.user.id, hasAccess });
+        if (moduleId) { // Check access even if department is null, to allow for overrides
+          const hasAccess = canAccessModule(profile?.department || null, moduleId, session.user.id);
+          console.log('AuthGuard - Module access check:', { moduleId, department: profile?.department, userId: session.user.id, hasAccess });
           if (!hasAccess) {
             toast.error(`You don't have access to this module`);
             navigate('/user-dashboard');
@@ -157,9 +163,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           setDemoUser(parsed);
 
           const moduleId = getModuleFromPath(location.pathname);
-          if (moduleId && parsed.department) {
+          if (moduleId) { // Check access even if department is null, to allow for overrides
             // Include user-specific overrides for demo users as well
-            const hasAccess = canAccessModule(parsed.department, moduleId, parsed.id);
+            const hasAccess = canAccessModule(parsed.department || null, moduleId, parsed.id);
             if (!hasAccess) {
               toast.error(`You don't have access to this module`);
               navigate('/user-dashboard');
@@ -198,21 +204,24 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
         // Fetch profile and role on auth change
         setTimeout(async () => {
-          const [profileResult, roleResult] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('department')
-              .eq('user_id', session.user.id)
-              .single(),
-            supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .maybeSingle() // Use maybeSingle to avoid error when no role exists
-          ]);
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('department, role') // Also fetch role here
+            .eq('user_id', session.user.id)
+            .single();
 
-          const profile = profileResult.data;
-          const isCeoCoo = roleResult.data?.role === 'ceo_coo';
+          if (profileError) {
+            console.error('Error fetching user profile on auth change:', profileError);
+            setLoading(false);
+            return;
+          }
+
+          const ADMIN_IDS = [
+            "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
+            "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
+          ];
+
+          const isCeoCoo = profile?.role === 'ceo_coo' || ADMIN_IDS.includes(session.user.id);
 
           setUserProfile(profile);
 
@@ -224,8 +233,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           }
 
           const moduleId = getModuleFromPath(location.pathname);
-          if (moduleId && profile?.department) {
-            const hasAccess = canAccessModule(profile.department, moduleId, session.user.id);
+          if (moduleId) { // Check access even if department is null, to allow for overrides
+            const hasAccess = canAccessModule(profile?.department || null, moduleId, session.user.id);
             if (!hasAccess) {
               toast.error(`You don't have access to this module`);
               navigate("/user-dashboard");

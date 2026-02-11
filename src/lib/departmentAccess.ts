@@ -20,9 +20,10 @@ export const DEPARTMENT_MODULES: Record<string, string[]> = {
   "Marketing": ["content", "social", "tasks", "crm", "attendance", "hr", "inventory"],
   "Accounting": ["accounting", "sales", "commission-management", "attendance", "hr"],
   "Finance": ["accounting", "sales", "commission-management", "attendance", "hr"],
-  "Sales": ["sales", "attendance", "hr", "inventory"],
-  "Operations": ["tasks", "attendance", "crm", "hr"],
-  "HR": ["hr", "tasks", "attendance"],
+  "Sales": ["sales", "attendance", "hr", "inventory", "social"],
+  "Operations": ["tasks", "attendance", "crm", "hr", "social"],
+  "HR": ["hr", "tasks", "attendance", "social"],
+  "Management": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social"],
 };
 
 // All available modules in the system
@@ -61,7 +62,6 @@ export const getAllowedModules = (
   if (isCeoCoo) return ALL_MODULES;
 
   const normalizedDepartment = normalizeDepartment(department);
-  if (!normalizedDepartment) return [];
 
   const departmentModuleIds = DEPARTMENT_MODULES[normalizedDepartment] || [];
   const userOverrides = userId ? USER_MODULE_OVERRIDES[userId] || [] : [];
@@ -80,7 +80,6 @@ export const canAccessModule = (
   userId?: string
 ): boolean => {
   const normalizedDepartment = normalizeDepartment(department);
-  if (!normalizedDepartment) return false;
 
   const normalizedModuleId = normalizeModuleId(moduleId);
 
