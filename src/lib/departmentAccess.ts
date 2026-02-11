@@ -16,14 +16,15 @@ const normalizeModuleId = (moduleId: string): string => moduleId.trim().toLowerC
 
 // Define allowed modules per department
 // Note: 'attendance' and 'hr' are available to ALL users
-export const DEPARTMENT_MODULES: Record<string, string[]> = {
-  "Marketing": ["content", "social", "tasks", "crm", "attendance", "hr", "inventory"],
-  "Accounting": ["accounting", "sales", "commission-management", "attendance", "hr"],
-  "Finance": ["accounting", "sales", "commission-management", "attendance", "hr"],
-  "Sales": ["sales", "attendance", "hr", "inventory", "social"],
-  "Operations": ["tasks", "attendance", "crm", "hr", "social"],
-  "HR": ["hr", "tasks", "attendance", "social"],
-  "Management": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social"],
+export const DEPARTMENT_MODULE_MAP: Record<string, string[]> = {
+  "marketing": ["content", "social", "tasks", "crm", "attendance", "hr", "inventory"],
+  "accounting": ["accounting", "sales", "commission-management", "attendance", "hr", "social"],
+  "finance": ["accounting", "sales", "commission-management", "attendance", "hr", "social"],
+  "sales": ["sales", "attendance", "hr", "inventory", "social"],
+  "operations": ["tasks", "attendance", "crm", "hr", "social"],
+  "hr": ["hr", "tasks", "attendance", "social"],
+  "management": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social"],
+  "ceo/coo": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social"],
 };
 
 // All available modules in the system
@@ -43,8 +44,8 @@ export const ALL_MODULES: ModuleAccess[] = [
 // User-specific module overrides (by user_id)
 // These users get access to additional modules beyond their department defaults
 export const USER_MODULE_OVERRIDES: Record<string, string[]> = {
-  // Sara Memon - Full access: Sales, HR, CRM, Attendance, Tasks
-  "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0": ["hr", "crm", "attendance", "tasks", "sales"],
+  // Sara Memon - Full access
+  "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0": ["hr", "crm", "attendance", "tasks", "sales", "social", "inventory"],
   // Zia Shahid - Manager Access + Tasks
   "e91f0415-009a-4712-97e1-c70d1c29e6f9": ["sales", "tasks", "crm", "attendance", "hr"],
   // Zain Sarwar - Full access
@@ -61,9 +62,8 @@ export const getAllowedModules = (
 ): ModuleAccess[] => {
   if (isCeoCoo) return ALL_MODULES;
 
-  const normalizedDepartment = normalizeDepartment(department);
-
-  const departmentModuleIds = DEPARTMENT_MODULES[normalizedDepartment] || [];
+  const normalizedDeptName = department ? department.trim().toLowerCase() : "";
+  const departmentModuleIds = DEPARTMENT_MODULE_MAP[normalizedDeptName] || ["attendance", "hr", "tasks", "social"];
   const userOverrides = userId ? USER_MODULE_OVERRIDES[userId] || [] : [];
 
   // Combine department modules with user-specific overrides (no duplicates)
@@ -79,11 +79,10 @@ export const canAccessModule = (
   moduleId: string,
   userId?: string
 ): boolean => {
-  const normalizedDepartment = normalizeDepartment(department);
-
+  const normalizedDeptName = department ? department.trim().toLowerCase() : "";
   const normalizedModuleId = normalizeModuleId(moduleId);
 
-  const departmentModuleIds = (DEPARTMENT_MODULES[normalizedDepartment] || []).map(normalizeModuleId);
+  const departmentModuleIds = (DEPARTMENT_MODULE_MAP[normalizedDeptName] || ["attendance", "hr", "tasks", "social"]).map(normalizeModuleId);
   const userOverrides = (userId ? USER_MODULE_OVERRIDES[userId] || [] : []).map(normalizeModuleId);
 
   return departmentModuleIds.includes(normalizedModuleId) || userOverrides.includes(normalizedModuleId);

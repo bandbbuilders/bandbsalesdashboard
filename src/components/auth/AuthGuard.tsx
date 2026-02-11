@@ -20,6 +20,7 @@ interface DemoUser {
 
 interface UserProfile {
   department: string | null;
+  position?: string | null;
 }
 
 type AppRole = "ceo_coo" | "manager" | "executive";
@@ -102,7 +103,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         // Fetch user profile for department-based access
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('department')
+          .select('department, position')
           .eq('user_id', session.user.id)
           .single();
 
@@ -127,7 +128,10 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
           "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
         ];
 
-        const isCeoCoo = (roleData?.role === 'ceo_coo') || ADMIN_IDS.includes(session.user.id);
+        const isCeoCoo = (roleData?.role === 'ceo_coo') ||
+          ADMIN_IDS.includes(session.user.id) ||
+          profile?.position === 'CEO/COO' ||
+          profile?.department === 'Management';
 
         // Debug logging
         console.log('AuthGuard - Role check:', {
@@ -212,7 +216,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         setTimeout(async () => {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('department')
+            .select('department, position')
             .eq('user_id', session.user.id)
             .single();
 
