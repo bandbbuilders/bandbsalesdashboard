@@ -731,6 +731,19 @@ const UserDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* DEBUG BANNER - TEMPORARY */}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Debug Info: </strong>
+          <span className="block sm:inline">
+            User ID: {userId} |
+            Role: {role} |
+            Pos: {profile?.position} |
+            Dept: {profile?.department} |
+            SuperAdmin: {isSuperAdmin ? 'YES' : 'NO'} |
+            Modules: {allowedModules.length}
+          </span>
+        </div>
+
         {/* COO Business Overview - Only for CEO/COO */}
         {isSuperAdmin && businessStats && (
           <>
