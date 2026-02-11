@@ -169,7 +169,8 @@ const UserDashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const profileRef = useRef<Profile | null>(null);
-  const { role, isLoading: roleLoading, isCeoCoo, isManager } = useUserRole(userId || undefined);
+  const { role, isLoading: roleLoading, isCeoCoo, isManager, isAdmin } = useUserRole(userId || undefined);
+  const isSuperAdmin = isCeoCoo || isAdmin;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -260,7 +261,7 @@ const UserDashboard = () => {
           const wasAssigned = isUserAssigned(oldTask.assigned_to, userName);
 
           // Notify managers about any task changes
-          if (isManager || isCeoCoo) {
+          if (isManager || isSuperAdmin) {
             if (oldTask.status !== updatedTask.status) {
               const statusLabel = updatedTask.status.replace('_', ' ');
               toast.info(`Task "${updatedTask.title}" is now ${statusLabel}`, {
@@ -309,7 +310,7 @@ const UserDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.full_name, isManager, isCeoCoo]);
+  }, [profile?.full_name, isManager, isSuperAdmin]);
 
   const fetchData = async (userId: string) => {
     try {
@@ -422,7 +423,7 @@ const UserDashboard = () => {
 
   // Refetch tasks function
   const refetchTasks = async () => {
-    if (isCeoCoo) {
+    if (isSuperAdmin) {
       // COO sees all tasks
       const { data: tasksData } = await supabase
         .from('tasks')
@@ -449,7 +450,7 @@ const UserDashboard = () => {
     if (!roleLoading && profile) {
       refetchTasks();
     }
-  }, [roleLoading, isCeoCoo, isManager, profile]);
+  }, [roleLoading, isSuperAdmin, isManager, profile]);
 
   // Mark task as complete
   const markTaskComplete = async (taskId: string) => {
@@ -519,7 +520,7 @@ const UserDashboard = () => {
       if (!profile) return;
 
       try {
-        if (isCeoCoo) {
+        if (isSuperAdmin) {
           // CEO/COO sees ALL users
           const { data, error } = await supabase
             .from('profiles')
@@ -567,7 +568,7 @@ const UserDashboard = () => {
     if (!roleLoading && profile) {
       fetchTeamMembers();
     }
-  }, [isCeoCoo, isManager, roleLoading, profile]);
+  }, [isSuperAdmin, isManager, roleLoading, profile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -611,7 +612,7 @@ const UserDashboard = () => {
   const stats = getTaskStats();
   const todayTasks = getTodayTasks();
   const inProgressTasks = getInProgressTasks();
-  const allowedModules = getAllowedModules(profile?.department || null, isCeoCoo, userId || undefined);
+  const allowedModules = getAllowedModules(profile?.department || null, isSuperAdmin, userId || undefined);
 
   const formatCurrency = (amount: number) => {
     if (amount >= 10000000) {
@@ -732,7 +733,7 @@ const UserDashboard = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* COO Business Overview - Only for CEO/COO */}
-        {isCeoCoo && businessStats && (
+        {isSuperAdmin && businessStats && (
           <>
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="h-5 w-5 text-primary" />
@@ -799,7 +800,7 @@ const UserDashboard = () => {
 
         {/* Quick Actions */}
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-lg font-semibold">{isCeoCoo ? 'All Modules' : 'Your Applications'}</h2>
+          <h2 className="text-lg font-semibold">{isSuperAdmin ? 'All Modules' : 'Your Applications'}</h2>
           <div className="flex gap-2">
             <ApplyLeaveDialog userName={profile?.full_name} userId={userId} />
             <Button onClick={() => setShowCreateTask(true)}>
@@ -1161,7 +1162,7 @@ const UserDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            <CardTitle>{isCeoCoo ? "All Tasks Due Today" : "Today's Tasks"}</CardTitle>
+            <CardTitle>{isSuperAdmin ? "All Tasks Due Today" : "Today's Tasks"}</CardTitle>
             <Badge variant="secondary" className="ml-auto">{todayTasks.length} tasks</Badge>
           </CardHeader>
           <CardContent>
@@ -1176,7 +1177,7 @@ const UserDashboard = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{task.title}</h4>
-                          {(isCeoCoo || isManager) && task.assigned_to && (
+                          {(isSuperAdmin || isManager) && task.assigned_to && (
                             <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
                           )}
                         </div>
@@ -1217,7 +1218,7 @@ const UserDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2">
             <ArrowRight className="h-5 w-5 text-blue-500" />
-            <CardTitle>{isCeoCoo ? "All Tasks In Progress" : "Tasks In Progress"}</CardTitle>
+            <CardTitle>{isSuperAdmin ? "All Tasks In Progress" : "Tasks In Progress"}</CardTitle>
             <Badge variant="secondary" className="ml-auto">{inProgressTasks.length} tasks</Badge>
           </CardHeader>
           <CardContent>
@@ -1232,7 +1233,7 @@ const UserDashboard = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{task.title}</h4>
-                          {(isCeoCoo || isManager) && task.assigned_to && (
+                          {(isSuperAdmin || isManager) && task.assigned_to && (
                             <Badge variant="outline" className="text-xs">{task.assigned_to}</Badge>
                           )}
                         </div>
@@ -1268,7 +1269,7 @@ const UserDashboard = () => {
 
         {/* All Business Tasks - COO Only */}
         {
-          isCeoCoo && (
+          isSuperAdmin && (
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <FileText className="h-5 w-5 text-purple-500" />
@@ -1329,7 +1330,7 @@ const UserDashboard = () => {
 
         {/* All Team Members Section for CEO/COO */}
         {
-          isCeoCoo && allUsers.length > 0 && (
+          isSuperAdmin && allUsers.length > 0 && (
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <Crown className="h-5 w-5 text-amber-500" />
@@ -1390,7 +1391,7 @@ const UserDashboard = () => {
 
         {/* Team Members Section for Managers */}
         {
-          !isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
+          !isSuperAdmin && (isManager || profile?.position === 'Manager') && teamMembers.length > 0 && (
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />
@@ -1430,7 +1431,7 @@ const UserDashboard = () => {
         }
 
         {
-          !isCeoCoo && (isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
+          !isSuperAdmin && (isManager || profile?.position === 'Manager') && teamMembers.length === 0 && (
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />

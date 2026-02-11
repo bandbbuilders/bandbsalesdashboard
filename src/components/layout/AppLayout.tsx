@@ -21,7 +21,8 @@ import {
   X,
   CheckSquare,
   Home,
-  PenTool
+  PenTool,
+  Share2
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -70,9 +71,17 @@ export const AppLayout = () => {
         .eq("user_id", session.user.id)
         .maybeSingle();
 
+      // Hardcoded check for CEO/COO
+      const ADMIN_IDS = [
+        "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
+        "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
+      ];
+
+      const userAppRole = ADMIN_IDS.includes(session.user.id) ? 'ceo_coo' : (userRole?.role ?? null);
+
       // Map app_role to Sales module role
       const mapToSalesRole = (appRole: string | null): 'admin' | 'agent' | 'manager' => {
-        if (appRole === 'ceo_coo') return 'admin';
+        if (appRole === 'ceo_coo' || appRole === 'admin') return 'admin';
         if (appRole === 'manager') return 'manager';
         return 'agent';
       };
@@ -81,7 +90,7 @@ export const AppLayout = () => {
         id: session.user.id,
         name: profile?.full_name ?? session.user.email ?? "User",
         email: profile?.email ?? session.user.email ?? "",
-        role: mapToSalesRole(userRole?.role ?? null),
+        role: mapToSalesRole(userAppRole),
         created_at: new Date().toISOString(),
       });
     };
@@ -109,6 +118,7 @@ export const AppLayout = () => {
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
     { name: "Inventory", href: "/sales/inventory", icon: Building2, roles: ["admin", "agent", "manager"] },
+    { name: "Social Media", href: "/social", icon: Share2, roles: ["admin", "manager"] },
   ];
 
   const filteredNavigation = navigation.filter(item =>
