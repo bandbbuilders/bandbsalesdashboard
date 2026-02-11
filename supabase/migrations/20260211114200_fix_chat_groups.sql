@@ -1,3 +1,4 @@
+-- Consolidated migration for chat groups and members
 -- Create chat groups table
 CREATE TABLE IF NOT EXISTS public.chat_groups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.chat_group_members (
   PRIMARY KEY (group_id, user_id)
 );
 
--- Add group_id to chat_messages
+-- Add group_id to chat_messages if it doesn't exist
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'chat_messages' AND column_name = 'group_id') THEN
@@ -28,6 +29,7 @@ ALTER TABLE public.chat_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_group_members ENABLE ROW LEVEL SECURITY;
 
 -- Policies for chat_groups
+DROP POLICY IF EXISTS "Users can view groups they are members of" ON public.chat_groups;
 CREATE POLICY "Users can view groups they are members of" ON public.chat_groups
   FOR SELECT USING (
     EXISTS (
@@ -37,10 +39,12 @@ CREATE POLICY "Users can view groups they are members of" ON public.chat_groups
     )
   );
 
+DROP POLICY IF EXISTS "Users can create groups" ON public.chat_groups;
 CREATE POLICY "Users can create groups" ON public.chat_groups
   FOR INSERT WITH CHECK (auth.uid() = created_by);
 
 -- Policies for chat_group_members
+DROP POLICY IF EXISTS "Members can view other members" ON public.chat_group_members;
 CREATE POLICY "Members can view other members" ON public.chat_group_members
   FOR SELECT USING (
     EXISTS (
@@ -50,16 +54,19 @@ CREATE POLICY "Members can view other members" ON public.chat_group_members
     )
   );
 
+DROP POLICY IF EXISTS "Users can join/leave groups" ON public.chat_group_members;
 CREATE POLICY "Users can join/leave groups" ON public.chat_group_members
-  FOR INSERT WITH CHECK (true); -- Ideally restricted, but allowing open join for now or handled by creator
+  FOR INSERT WITH CHECK (true);
 
 -- Storage for Chat Attachments
 INSERT INTO storage.buckets (id, name, public) VALUES ('chat-attachments', 'chat-attachments', true)
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Authenticated users can upload chat files" ON storage.objects;
 CREATE POLICY "Authenticated users can upload chat files" ON storage.objects
   FOR INSERT TO authenticated WITH CHECK (bucket_id = 'chat-attachments');
 
+DROP POLICY IF EXISTS "Authenticated users can read chat files" ON storage.objects;
 CREATE POLICY "Authenticated users can read chat files" ON storage.objects
   FOR SELECT TO authenticated USING (bucket_id = 'chat-attachments');
 

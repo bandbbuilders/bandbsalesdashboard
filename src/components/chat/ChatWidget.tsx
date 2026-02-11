@@ -109,6 +109,7 @@ const ChatWidget = () => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
+      .not('user_id', 'is', null)
       .neq('user_id', excludeUserId);
 
     if (!error && data) {
@@ -452,6 +453,7 @@ const ChatWidget = () => {
     }
 
     try {
+      console.log("ChatWidget: Creating group", newGroupName, "for user", currentUserId);
       // 1. Create Group
       // @ts-ignore
       const { data: groupData, error: groupError } = await (supabase
@@ -463,7 +465,12 @@ const ChatWidget = () => {
         .select()
         .single() as any);
 
-      if (groupError) throw groupError;
+      if (groupError) {
+        console.error("ChatWidget: Error creating group record", groupError);
+        throw groupError;
+      }
+
+      console.log("ChatWidget: Group created successfully", groupData);
 
       // 2. Add Members (including creator)
       const membersToAdd = [
@@ -471,12 +478,17 @@ const ChatWidget = () => {
         ...selectedGroupMembers.map(m => ({ group_id: groupData.id, user_id: m.value }))
       ];
 
+      console.log("ChatWidget: Adding members", membersToAdd);
+
       // @ts-ignore
       const { error: membersError } = await (supabase
         .from('chat_group_members' as any)
         .insert(membersToAdd) as any);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error("ChatWidget: Error adding members", membersError);
+        throw membersError;
+      }
 
       toast.success("Group created successfully");
       setIsCreateGroupOpen(false);
@@ -485,8 +497,9 @@ const ChatWidget = () => {
       fetchGroups();
 
     } catch (error: any) {
-      toast.error("Failed to create group");
-      console.error(error);
+      const errorMsg = error.message || "Failed to create group";
+      toast.error(errorMsg);
+      console.error("ChatWidget: Error creating group", error);
     }
   };
 
