@@ -99,34 +99,40 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         startHeartbeat(session.user.id);
 
         // Fetch user profile for department-based access
+        // Fetch user profile for department-based access
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('department, role') // Also fetch role here
+          .select('department')
           .eq('user_id', session.user.id)
           .single();
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError);
-          // Handle error, maybe redirect to auth or show a message
           setLoading(false);
           return;
         }
 
         setUserProfile(profile);
 
-        // Check if user is CEO/COO - they have access to all modules
+        // Fetch role from user_roles table
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
         // CEO/COO has access to everything
         const ADMIN_IDS = [
           "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
           "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
         ];
 
-        const isCeoCoo = profile?.role === 'ceo_coo' || ADMIN_IDS.includes(session.user.id);
+        const isCeoCoo = (roleData?.role === 'ceo_coo') || ADMIN_IDS.includes(session.user.id);
 
         // Debug logging
         console.log('AuthGuard - Role check:', {
           userId: session.user.id,
-          roleData: profile?.role,
+          roleData: roleData?.role,
           isCeoCoo,
         });
 
@@ -206,7 +212,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         setTimeout(async () => {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('department, role') // Also fetch role here
+            .select('department')
             .eq('user_id', session.user.id)
             .single();
 
@@ -216,12 +222,18 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
             return;
           }
 
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
           const ADMIN_IDS = [
             "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
             "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
           ];
 
-          const isCeoCoo = profile?.role === 'ceo_coo' || ADMIN_IDS.includes(session.user.id);
+          const isCeoCoo = (roleData?.role === 'ceo_coo') || ADMIN_IDS.includes(session.user.id);
 
           setUserProfile(profile);
 
