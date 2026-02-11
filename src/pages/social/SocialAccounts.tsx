@@ -9,16 +9,35 @@ import {
     Link as LinkIcon,
     CheckCircle2,
     AlertCircle,
-    RefreshCw
+    RefreshCw,
+    Settings2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SocialAccounts() {
     const [accounts, setAccounts] = useState<any[]>([]);
     const [isSyncing, setIsSyncing] = useState<string | null>(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+
+    // Manual setup state
+    const [showManualSetup, setShowManualSetup] = useState<string | null>(null);
+    const [manualName, setManualName] = useState("");
+    const [manualAccountId, setManualAccountId] = useState("");
+    const [manualToken, setManualToken] = useState("");
 
     useEffect(() => {
         fetchAccounts();
@@ -31,36 +50,59 @@ export default function SocialAccounts() {
         if (data) setAccounts(data);
     };
 
-    const handleConnect = async (platform: string) => {
-        const id = toast.loading(`Connecting to ${platform}...`, {
-            description: "Redirecting to OAuth authorization page."
+    const handleConnect = async (platform: string, isManual = false) => {
+        if (!isManual && (platform === 'facebook' || platform === 'instagram')) {
+            setShowManualSetup(platform);
+            return;
+        }
+
+        const id = toast.loading(isManual ? `Setting up ${platform}...` : `Connecting to ${platform}...`, {
+            description: "Connecting to the platform API."
         });
 
-        // Simulate network delay for "redirection" and "authorization"
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        setIsConnecting(true);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Not authenticated");
 
-            // Mock account data based on platform
-            const mockData: any = {
-                facebook: { name: "B&B Builders Official", username: "bandb_builders" },
-                instagram: { name: "B&B Luxury Homes", username: "@bandb_luxury" },
-                youtube: { name: "B&B Architecture TV", username: "bandb_tv" },
-                tiktok: { name: "B&B Construction Tips", username: "bandb_tips" }
-            };
+            let accountData: any;
 
-            const account = mockData[platform] || { name: `${platform} Account`, username: platform };
+            if (isManual) {
+                if (!manualName || !manualAccountId || !manualToken) {
+                    throw new Error("Please fill in all fields.");
+                }
+                accountData = {
+                    name: manualName,
+                    accountId: manualAccountId,
+                    token: manualToken,
+                    username: manualAccountId.startsWith('@') ? manualAccountId : `@${manualAccountId}`
+                };
+            } else {
+                // Mock account data for other platforms
+                const mockData: any = {
+                    youtube: { name: "B&B Architecture TV", username: "bandb_tv" },
+                    tiktok: { name: "B&B Construction Tips", username: "bandb_tips" }
+                };
+                const mock = mockData[platform] || { name: `${platform} Account`, username: platform };
+                accountData = {
+                    name: mock.name,
+                    accountId: `mock_${platform}_${Date.now()}`,
+                    token: "mock_token",
+                    username: mock.username
+                };
+            }
 
-            // Insert mock account into database
+            // Insert account into database
             const { data, error } = await supabase
                 .from('social_accounts' as any)
                 .insert([{
                     user_id: user.id,
                     platform: platform,
-                    account_name: account.name,
-                    username: account.username,
+                    account_name: accountData.name,
+                    platform_account_id: accountData.accountId,
+                    access_token: accountData.token, // Store real token if manual
+                    username: accountData.username,
                     is_active: true,
                     last_synced_at: new Date().toISOString()
                 }])
@@ -70,14 +112,18 @@ export default function SocialAccounts() {
             if (error) throw error;
             const newAccount = data as any;
 
-            toast.success(`${account.name} connected!`, {
+            toast.success(`${accountData.name} connected!`, {
                 id,
                 description: "Your social leads are now being synced."
             });
 
-            await fetchAccounts();
+            // Reset manual form
+            setShowManualSetup(null);
+            setManualName("");
+            setManualAccountId("");
+            setManualToken("");
 
-            // Optional: Seed some initial mock leads/posts for this account
+            await fetchAccounts();
             seedMockData(newAccount.id, platform);
 
         } catch (error: any) {
@@ -86,11 +132,12 @@ export default function SocialAccounts() {
                 id,
                 description: error.message || "Please try again later."
             });
+        } finally {
+            setIsConnecting(false);
         }
     };
 
     const seedMockData = async (accountId: string, platform: string) => {
-        // Mock leads to show the user the module value
         const mockLeads = [
             {
                 account_id: accountId,
@@ -109,15 +156,12 @@ export default function SocialAccounts() {
                 status: "new"
             }
         ];
-
         await supabase.from('social_leads' as any).insert(mockLeads);
     };
 
     const handleManualSync = async (accountId: string) => {
         setIsSyncing(accountId);
-        // Simulate API fetch delay
         await new Promise(resolve => setTimeout(resolve, 2000));
-
         toast.success("Sync complete", {
             description: "Latest posts and comments have been imported."
         });
@@ -177,7 +221,8 @@ export default function SocialAccounts() {
                                     </>
                                 ) : (
                                     <Button className="w-full" onClick={() => handleConnect(p.id)}>
-                                        <LinkIcon className="h-4 w-4 mr-2" /> Connect Account
+                                        <LinkIcon className="h-4 w-4 mr-2" />
+                                        {p.id === 'facebook' || p.id === 'instagram' ? 'Manual API Setup' : 'Connect Account'}
                                     </Button>
                                 )}
                             </CardContent>
@@ -185,6 +230,38 @@ export default function SocialAccounts() {
                     );
                 })}
             </div>
+
+            {/* Manual Setup Dialog */}
+            <Dialog open={!!showManualSetup} onOpenChange={(open) => !open && setShowManualSetup(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Manual API Setup - {showManualSetup?.charAt(0).toUpperCase()}{showManualSetup?.slice(1)}</DialogTitle>
+                        <DialogDescription>
+                            Enter your Page Access Token and ID from the {showManualSetup} developer portal.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">Account Name</Label>
+                            <Input id="name" value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="e.g. Official Page" className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="id" className="text-right">Page ID</Label>
+                            <Input id="id" value={manualAccountId} onChange={(e) => setManualAccountId(e.target.value)} placeholder="Enter Page/Account ID" className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="token" className="text-right">Access Token</Label>
+                            <Input id="token" type="password" value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="Paste token here" className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowManualSetup(null)}>Cancel</Button>
+                        <Button onClick={() => showManualSetup && handleConnect(showManualSetup, true)} disabled={isConnecting}>
+                            Save Connection
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Card>
                 <CardHeader>
