@@ -611,7 +611,15 @@ const UserDashboard = () => {
   const stats = getTaskStats();
   const todayTasks = getTodayTasks();
   const inProgressTasks = getInProgressTasks();
+  console.log('UserDashboard - About to call getAllowedModules:', {
+    department: profile?.department,
+    isSuperAdmin,
+    userId,
+    isCeoCoo,
+    isAdmin
+  });
   const allowedModules = getAllowedModules(profile?.department || null, isSuperAdmin, userId || undefined);
+  console.log('UserDashboard - allowedModules returned:', allowedModules.map(m => m.id));
 
   const formatCurrency = (amount: number) => {
     if (amount >= 10000000) {
