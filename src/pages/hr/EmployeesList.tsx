@@ -23,6 +23,7 @@ interface Employee {
   basic_salary: number;
   phone_number: string | null;
   address: string | null;
+  status: string;
   profile?: {
     full_name: string;
     email: string;
@@ -48,6 +49,7 @@ const EmployeesList = () => {
     basic_salary: "",
     phone_number: "",
     address: "",
+    status: "active",
   });
 
   useEffect(() => {
@@ -75,6 +77,7 @@ const EmployeesList = () => {
           const profile = profilesData?.find(p => p.id === emp.profile_id);
           return {
             ...emp,
+            status: (emp as any).status || "active",
             profile: profile ? {
               full_name: profile.full_name,
               email: profile.email,
@@ -135,6 +138,29 @@ const EmployeesList = () => {
     }
   };
 
+  const handleDeleteEmployee = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this employee's details? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("employee_details")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Employee details deleted successfully");
+      setShowEditDialog(false);
+      setEditingEmployee(null);
+      fetchEmployees();
+    } catch (error: any) {
+      console.error("Error deleting employee:", error);
+      toast.error(error.message || "Failed to delete employee");
+    }
+  };
+
   const resetFormData = () => {
     setFormData({
       cnic: "",
@@ -144,6 +170,7 @@ const EmployeesList = () => {
       basic_salary: "",
       phone_number: "",
       address: "",
+      status: "active",
     });
   };
 
@@ -157,6 +184,7 @@ const EmployeesList = () => {
       basic_salary: employee.basic_salary?.toString() || "",
       phone_number: employee.phone_number || "",
       address: employee.address || "",
+      status: employee.status || "active",
     });
     setShowEditDialog(true);
   };
@@ -175,6 +203,7 @@ const EmployeesList = () => {
           basic_salary: parseFloat(formData.basic_salary) || 0,
           phone_number: formData.phone_number || null,
           address: formData.address || null,
+          status: formData.status,
         })
         .eq("id", editingEmployee.id);
 
@@ -339,7 +368,7 @@ const EmployeesList = () => {
         <CardContent>
           {filteredEmployees.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {employees.length === 0 
+              {employees.length === 0
                 ? "No employees found. Add employee details to get started."
                 : "No employees match your search."}
             </div>
@@ -354,6 +383,7 @@ const EmployeesList = () => {
                     <TableHead>Contract</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Joining Date</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -374,7 +404,7 @@ const EmployeesList = () => {
                         <Badge
                           variant={
                             employee.contract_type === "permanent" ? "default" :
-                            employee.contract_type === "probation" ? "secondary" : "outline"
+                              employee.contract_type === "probation" ? "secondary" : "outline"
                           }
                         >
                           {employee.contract_type}
@@ -382,9 +412,14 @@ const EmployeesList = () => {
                       </TableCell>
                       <TableCell className="capitalize">{employee.work_location}</TableCell>
                       <TableCell>
-                        {employee.joining_date 
+                        {employee.joining_date
                           ? format(new Date(employee.joining_date), "MMM d, yyyy")
                           : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={employee.status === 'active' ? 'default' : 'destructive'}>
+                          {employee.status}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -455,47 +490,37 @@ const EmployeesList = () => {
                 onChange={(e) => setFormData({ ...formData, basic_salary: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Contract Type</Label>
-                <Select
-                  value={formData.contract_type}
-                  onValueChange={(value) => setFormData({ ...formData, contract_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="permanent">Permanent</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="probation">Probation</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Work Location</Label>
-                <Select
-                  value={formData.work_location}
-                  onValueChange={(value) => setFormData({ ...formData, work_location: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="office">Office</SelectItem>
-                    <SelectItem value="site">Site</SelectItem>
-                    <SelectItem value="hybrid">Hybrid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Employment Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="resigned">Resigned</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowEditDialog(false)} className="flex-1">
-                Cancel
+            <div className="flex gap-2 pt-4 border-t">
+              <Button
+                variant="destructive"
+                onClick={() => editingEmployee && handleDeleteEmployee(editingEmployee.id)}
+                className="flex-1"
+              >
+                Delete Details
               </Button>
-              <Button onClick={handleUpdateEmployee} className="flex-1">
-                Save Changes
-              </Button>
+              <div className="flex gap-2 flex-[2]">
+                <Button variant="outline" onClick={() => setShowEditDialog(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateEmployee} className="flex-1">
+                  Save Changes
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
