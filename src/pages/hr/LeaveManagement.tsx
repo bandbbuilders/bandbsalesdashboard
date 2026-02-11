@@ -400,14 +400,24 @@ const LeaveManagement = () => {
                                   className="bg-green-600 hover:bg-green-700"
                                   onClick={() => openReviewDialog(app, "approve")}
                                 >
-                                  <Check className="h-4 w-4" />
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Approve
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => openReviewDialog(app, "reject")}
                                 >
-                                  <X className="h-4 w-4" />
+                                  <X className="h-4 w-4 mr-1" />
+                                  Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openEditDialog(app)}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit
                                 </Button>
                               </div>
                             )}
@@ -470,18 +480,19 @@ const LeaveManagement = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 w-8 p-0"
                                   onClick={() => openEditDialog(app)}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                  className="text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteLeave(app)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
                                 </Button>
                               </div>
                             )}

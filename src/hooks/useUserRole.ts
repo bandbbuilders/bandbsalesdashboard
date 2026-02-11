@@ -22,9 +22,16 @@ export const useUserRole = (userId?: string): UserRoleData => {
 
   useEffect(() => {
     const fetchRole = async () => {
-      if (!userId) {
-        setIsLoading(false);
-        return;
+      let targetUserId = userId;
+
+      if (!targetUserId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          targetUserId = session.user.id;
+        } else {
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Hardcoded check for Sara Memon and Zain Sarwar (COO/CEO)
@@ -33,7 +40,7 @@ export const useUserRole = (userId?: string): UserRoleData => {
         "fab190bd-3c71-43e8-9381-3ec66044e501"  // Zain Sarwar
       ];
 
-      if (ADMIN_IDS.includes(userId)) {
+      if (ADMIN_IDS.includes(targetUserId)) {
         setRole('ceo_coo');
         setIsLoading(false);
         return;
@@ -44,7 +51,7 @@ export const useUserRole = (userId?: string): UserRoleData => {
         const { data, error: queryError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', userId)
+          .eq('user_id', targetUserId)
           .maybeSingle();
 
         if (queryError) throw queryError;
