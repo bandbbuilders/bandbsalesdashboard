@@ -248,6 +248,47 @@ const ChatWidget = () => {
                 badge.classList.add('animate-bounce');
                 setTimeout(() => badge.classList.remove('animate-bounce'), 3000);
               }
+
+              // Browser Notification / Toast
+              const showNotification = async () => {
+                const { data: sender } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('user_id', newMsg.sender_id)
+                  .single();
+
+                let title = sender?.full_name || "New Message";
+
+                if (newMsg.group_id) {
+                  // @ts-ignore
+                  const { data: group } = await (supabase
+                    .from('chat_groups' as any)
+                    .select('name')
+                    .eq('id', newMsg.group_id)
+                    .single() as any);
+                  if (group) title = `${sender?.full_name} in ${group.name}`;
+                }
+
+                toast(title, {
+                  description: newMsg.content || "Sent an attachment",
+                  duration: 5000,
+                  action: {
+                    label: "Open Chat",
+                    onClick: () => {
+                      setIsOpen(true);
+                      if (newMsg.group_id) {
+                        setActiveTab('groups');
+                        // We might need to fetch the group if not in state
+                      } else if (newMsg.receiver_id) {
+                        setActiveTab('dm');
+                      } else {
+                        setActiveTab('company');
+                      }
+                    }
+                  }
+                });
+              };
+              showNotification();
             }
           }
 
