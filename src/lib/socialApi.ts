@@ -172,3 +172,128 @@ export const fetchInstagramConversations = async (accountId: string) => {
         return [];
     }
 };
+/**
+ * Fetches Facebook Page media (posts)
+ */
+export const fetchFacebookMedia = async (accountId: string) => {
+    try {
+        const { data: account } = await supabase
+            .from("social_accounts" as any)
+            .select("access_token, platform_account_id")
+            .eq("id", accountId)
+            .single();
+
+        const fbAccount = account as any;
+        const token = fbAccount.access_token;
+        const pageId = fbAccount.platform_account_id;
+
+        if (!token || !pageId) throw new Error("Missing token or Page ID");
+
+        console.log("Fetching Facebook media for page:", pageId);
+        const fields = "id,message,attachments{media,type},permalink_url,created_time,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0)";
+        const url = `${FB_GRAPH_URL}/${pageId}/feed?fields=${fields}&access_token=${token}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Facebook API Media Error:", data.error);
+            throw new Error(data.error.message);
+        }
+
+        // Map FB fields to unified structure
+        return (data.data || []).map((item: any) => ({
+            id: item.id,
+            caption: item.message,
+            media_type: item.attachments?.data?.[0]?.type === 'photo' ? 'image' : 'video',
+            media_url: item.attachments?.data?.[0]?.media?.image?.src,
+            permalink: item.permalink_url,
+            timestamp: item.created_time,
+            like_count: item.reactions?.summary?.total_count || 0,
+            comments_count: item.comments?.summary?.total_count || 0
+        }));
+
+    } catch (error: any) {
+        console.error("fetchFacebookMedia error:", error);
+        throw error;
+    }
+};
+
+/**
+ * Fetches Facebook Page comments for a specific post
+ */
+export const fetchFacebookComments = async (postId: string, accessToken: string) => {
+    try {
+        const fields = "id,message,created_time,from{id,name}";
+        const url = `${FB_GRAPH_URL}/${postId}/comments?fields=${fields}&access_token=${accessToken}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error(`Facebook API Comments Error for post ${postId}:`, data.error);
+            return [];
+        }
+
+        return (data.data || []).map((c: any) => ({
+            id: c.id,
+            text: c.message,
+            timestamp: c.created_time,
+            from: {
+                id: c.from?.id,
+                username: c.from?.name || "FB User"
+            }
+        }));
+    } catch (error) {
+        console.error("fetchFacebookComments error:", error);
+        return [];
+    }
+};
+
+/**
+ * Fetches Facebook Page Conversations (DMs)
+ */
+export const fetchFacebookConversations = async (accountId: string) => {
+    try {
+        const { data: account } = await supabase
+            .from("social_accounts" as any)
+            .select("access_token, platform_account_id")
+            .eq("id", accountId)
+            .single();
+
+        const fbAccount = account as any;
+        const token = fbAccount.access_token;
+        const pageId = fbAccount.platform_account_id;
+
+        if (!token || !pageId) return [];
+
+        console.log("Fetching Facebook conversations for page:", pageId);
+        const fields = "id,participants,updated_time,messages.limit(1){id,message,created_time,from}";
+        const url = `${FB_GRAPH_URL}/${pageId}/conversations?fields=${fields}&access_token=${token}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Facebook API Conversations Error:", data.error);
+            return [];
+        }
+
+        return (data.data || []).map((conv: any) => ({
+            id: conv.id,
+            participants: conv.participants,
+            updated_time: conv.updated_time,
+            messages: {
+                data: conv.messages?.data?.map((m: any) => ({
+                    id: m.id,
+                    text: m.message,
+                    created_time: m.created_time,
+                    from: m.from
+                }))
+            }
+        }));
+
+    } catch (error) {
+        console.error("fetchFacebookConversations error:", error);
+        return [];
+    }
+};

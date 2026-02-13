@@ -4,13 +4,11 @@ import { Button } from "@/components/ui/button";
 import {
     Facebook,
     Instagram,
-    Youtube,
-    MessageSquare,
+    TrendingUp,
+    RefreshCw,
     Link as LinkIcon,
     CheckCircle2,
-    AlertCircle,
-    RefreshCw,
-    Settings2
+    Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +61,26 @@ export default function SocialAccounts() {
             .from('social_accounts' as any)
             .select('*');
         if (data) setAccounts(data);
+    };
+
+    const handleDisconnect = async (accountId: string) => {
+        if (!confirm("Are you sure you want to disconnect this account?")) return;
+
+        const tid = toast.loading("Disconnecting account...");
+        try {
+            const { error } = await supabase
+                .from('social_accounts' as any)
+                .delete()
+                .eq('id', accountId);
+
+            if (error) throw error;
+
+            toast.success("Account disconnected!", { id: tid });
+            await fetchAccounts();
+        } catch (error: any) {
+            console.error("Disconnect error:", error);
+            toast.error("Failed to disconnect", { id: tid, description: error.message });
+        }
     };
 
     const handleConnect = async (platform: string, isManual = false) => {
@@ -221,6 +239,8 @@ export default function SocialAccounts() {
 
                 // 3. Process Posts & Comments
                 for (const item of media) {
+                    const mappedMediaType = item.media_type?.toLowerCase() === 'carousel_album' ? 'carousel' : (item.media_type?.toLowerCase() || 'image');
+
                     await (supabase
                         .from("social_posts" as any)
                         .upsert({
@@ -228,7 +248,7 @@ export default function SocialAccounts() {
                             platform_post_id: item.id,
                             content: item.caption,
                             media_url: item.media_url,
-                            media_type: item.media_type?.toLowerCase(),
+                            media_type: mappedMediaType,
                             posted_at: item.timestamp,
                             likes_count: item.like_count || 0,
                             comments_count: item.comments_count || 0,
@@ -302,6 +322,95 @@ export default function SocialAccounts() {
 
                 if (!isBackground) toast.success("Instagram sync complete!", { id: tid });
                 console.log(`Sync completed for ${account.platform}`);
+            } else if (account.platform === 'facebook') {
+                // [/] Phase 7: Facebook Integration & TikTok Disconnection
+                //   - [x] Implement Facebook API support (Media, Comments, DMs) in socialApi.ts
+                //   - [x] Connect Facebook account with new credentials
+                //   - [/] Disconnect and remove TikTok from accounts (UI implemented)
+                //   - [x] Update SocialAccounts.tsx for Facebook sync
+                //   - [ ] Verify Facebook lead capture
+                const { fetchFacebookMedia, fetchFacebookComments, fetchFacebookConversations } = await import("@/lib/socialApi");
+
+                // 1. Fetch real media and conversations
+                const media = await fetchFacebookMedia(accountId);
+                const conversations = await fetchFacebookConversations(accountId);
+
+                console.log(`Fetched for ${account.platform}: ${media.length} media items, ${conversations.length} conversations.`);
+
+                // 2. Process Posts & Comments
+                for (const item of media) {
+                    await (supabase
+                        .from("social_posts" as any)
+                        .upsert({
+                            account_id: accountId,
+                            platform_post_id: item.id,
+                            content: item.caption,
+                            media_url: item.media_url,
+                            media_type: item.media_type,
+                            posted_at: item.timestamp,
+                            likes_count: item.like_count || 0,
+                            comments_count: item.comments_count || 0,
+                        }, { onConflict: "account_id,platform_post_id" }) as any);
+
+                    const comments = await fetchFacebookComments(item.id, account.access_token);
+                    for (const comment of comments) {
+                        const content = comment.text?.toLowerCase() || "";
+                        let intent: 'low' | 'medium' | 'high' = 'low';
+                        if (content.includes("price") || content.includes("how much") || content.includes("interested") || content.includes("location")) {
+                            intent = 'high';
+                        } else if (content.includes("info") || content.includes("contact")) {
+                            intent = 'medium';
+                        }
+
+                        await (supabase
+                            .from("social_leads" as any)
+                            .upsert({
+                                account_id: accountId,
+                                platform: "facebook",
+                                post_id: item.id,
+                                comment_id: comment.id,
+                                commenter_name: comment.from?.username || "FB User",
+                                commenter_username: comment.from?.username,
+                                comment_content: comment.text,
+                                intent_score: intent,
+                                captured_at: comment.timestamp,
+                                status: "new"
+                            }, { onConflict: "comment_id" }) as any);
+                    }
+                }
+
+                // 3. Process Conversations
+                for (const conv of conversations) {
+                    const lastMsg = conv.messages?.data?.[0];
+                    if (!lastMsg) continue;
+                    const participant = conv.participants?.data?.[0];
+                    const msgText = lastMsg.text?.toLowerCase() || "";
+                    let msgIntent: 'low' | 'medium' | 'high' = 'low';
+                    if (msgText.includes("price") || msgText.includes("buy") || msgText.includes("booking") || msgText.includes("appointment")) {
+                        msgIntent = 'high';
+                    }
+
+                    await (supabase
+                        .from("social_leads" as any)
+                        .upsert({
+                            account_id: accountId,
+                            platform: "facebook",
+                            comment_id: `fb_msg_${lastMsg.id}`,
+                            commenter_name: participant?.name || "FB User",
+                            commenter_username: participant?.id,
+                            comment_content: lastMsg.text,
+                            intent_score: msgIntent,
+                            captured_at: lastMsg.created_time,
+                            status: "new"
+                        }, { onConflict: "comment_id" }) as any);
+                }
+
+                await (supabase
+                    .from("social_accounts" as any)
+                    .update({ last_synced_at: new Date().toISOString() })
+                    .eq("id", accountId) as any);
+
+                if (!isBackground) toast.success("Facebook sync complete!", { id: tid });
             } else {
                 if (!isBackground) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -362,15 +471,25 @@ export default function SocialAccounts() {
                                         <div className="text-xs text-muted-foreground">
                                             Last synced: {connectedAccount.last_synced_at ? new Date(connectedAccount.last_synced_at).toLocaleString() : 'Never'}
                                         </div>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleManualSync(connectedAccount.id)}
-                                            disabled={isSyncing === connectedAccount.id}
-                                        >
-                                            <RefreshCw className={cn("h-4 w-4 mr-2", isSyncing === connectedAccount.id && "animate-spin")} />
-                                            Sync Now
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleManualSync(connectedAccount.id)}
+                                                disabled={isSyncing === connectedAccount.id}
+                                            >
+                                                <RefreshCw className={cn("h-4 w-4 mr-2", isSyncing === connectedAccount.id && "animate-spin")} />
+                                                Sync Now
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                onClick={() => handleDisconnect(connectedAccount.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </>
                                 ) : (
                                     <Button className="w-full" onClick={() => handleConnect(p.id)}>
