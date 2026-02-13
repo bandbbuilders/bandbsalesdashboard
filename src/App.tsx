@@ -56,6 +56,7 @@ import SocialLayout from "./components/layout/SocialLayout";
 import SocialDashboard from "./pages/social/SocialDashboard";
 import SocialLeads from "./pages/social/SocialLeads";
 import SocialAccounts from "./pages/social/SocialAccounts";
+import SocialCallback from "./pages/social/SocialCallback";
 
 const queryClient = new QueryClient();
 
@@ -166,6 +167,7 @@ const App = () => (
             <Route index element={<SocialDashboard />} />
             <Route path="leads" element={<SocialLeads />} />
             <Route path="accounts" element={<SocialAccounts />} />
+            <Route path="callback" element={<SocialCallback />} />
           </Route>
 
           {/* Commission Management - Standalone with password protection */}

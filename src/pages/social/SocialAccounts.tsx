@@ -51,18 +51,37 @@ export default function SocialAccounts() {
     };
 
     const handleConnect = async (platform: string, isManual = false) => {
-        if (!isManual && (platform === 'facebook' || platform === 'instagram')) {
-            setShowManualSetup(platform);
-            return;
-        }
-
-        const id = toast.loading(isManual ? `Setting up ${platform}...` : `Connecting to ${platform}...`, {
-            description: "Connecting to the platform API."
-        });
-
         setIsConnecting(true);
 
         try {
+            if (platform === 'instagram' && !isManual) {
+                // Try real OAuth first
+                const { data: settings } = await supabase
+                    .from("social_settings" as any)
+                    .select("app_id, redirect_uri")
+                    .eq("platform", "instagram")
+                    .single();
+
+                if (settings?.app_id) {
+                    const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${settings.app_id}&redirect_uri=${settings.redirect_uri}&scope=user_profile,user_media&response_type=code`;
+                    window.location.href = authUrl;
+                    return;
+                }
+
+                // Fall back to manual setup if no app_id configured
+                setShowManualSetup(platform);
+                return;
+            }
+
+            if (!isManual && platform === 'facebook') {
+                setShowManualSetup(platform);
+                return;
+            }
+
+            const toastId = toast.loading(isManual ? `Setting up ${platform}...` : `Connecting to ${platform}...`, {
+                description: "Connecting to the platform API."
+            });
+
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Not authenticated");
 
@@ -79,7 +98,6 @@ export default function SocialAccounts() {
                     username: manualAccountId.startsWith('@') ? manualAccountId : `@${manualAccountId}`
                 };
             } else {
-                // Mock account data for other platforms
                 const mockData: any = {
                     youtube: { name: "B&B Architecture TV", username: "bandb_tv" },
                     tiktok: { name: "B&B Construction Tips", username: "bandb_tips" }
@@ -93,7 +111,6 @@ export default function SocialAccounts() {
                 };
             }
 
-            // Insert account into database
             const { data, error } = await supabase
                 .from('social_accounts' as any)
                 .insert([{
@@ -101,7 +118,7 @@ export default function SocialAccounts() {
                     platform: platform,
                     account_name: accountData.name,
                     platform_account_id: accountData.accountId,
-                    access_token: accountData.token, // Store real token if manual
+                    access_token: accountData.token,
                     username: accountData.username,
                     is_active: true,
                     last_synced_at: new Date().toISOString()
@@ -113,11 +130,10 @@ export default function SocialAccounts() {
             const newAccount = data as any;
 
             toast.success(`${accountData.name} connected!`, {
-                id,
+                id: toastId,
                 description: "Your social leads are now being synced."
             });
 
-            // Reset manual form
             setShowManualSetup(null);
             setManualName("");
             setManualAccountId("");
@@ -129,7 +145,6 @@ export default function SocialAccounts() {
         } catch (error: any) {
             console.error("Connect error:", error);
             toast.error("Connection failed", {
-                id,
                 description: error.message || "Please try again later."
             });
         } finally {
