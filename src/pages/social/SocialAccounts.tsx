@@ -33,9 +33,10 @@ export default function SocialAccounts() {
     const [accounts, setAccounts] = useState<any[]>([]);
     const [isSyncing, setIsSyncing] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [showManualSetup, setShowManualSetup] = useState<string | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
     // Manual setup state
-    const [showManualSetup, setShowManualSetup] = useState<string | null>(null);
     const [manualName, setManualName] = useState("");
     const [manualAccountId, setManualAccountId] = useState("");
     const [manualToken, setManualToken] = useState("");
@@ -66,7 +67,7 @@ export default function SocialAccounts() {
     };
 
     const handleDisconnect = async (accountId: string) => {
-        if (!confirm("Are you sure you want to disconnect this account?")) return;
+        setConfirmDelete(null);
 
         const tid = toast.loading("Disconnecting account...");
         try {
@@ -407,6 +408,81 @@ export default function SocialAccounts() {
                     .eq("id", accountId) as any);
 
                 if (!isBackground) toast.success("Facebook sync complete!", { id: tid });
+
+                // 2. Process Posts & Comments
+                for (const item of media) {
+                    await (supabase
+                        .from("social_posts" as any)
+                        .upsert({
+                            account_id: accountId,
+                            platform_post_id: item.id,
+                            content: item.caption,
+                            media_url: item.media_url,
+                            media_type: item.media_type,
+                            posted_at: item.timestamp,
+                            likes_count: item.like_count || 0,
+                            comments_count: item.comments_count || 0,
+                        }, { onConflict: "account_id,platform_post_id" }) as any);
+
+                    const comments = await fetchFacebookComments(item.id, account.access_token);
+                    for (const comment of comments) {
+                        const content = comment.text?.toLowerCase() || "";
+                        let intent: 'low' | 'medium' | 'high' = 'low';
+                        if (content.includes("price") || content.includes("how much") || content.includes("interested") || content.includes("location")) {
+                            intent = 'high';
+                        } else if (content.includes("info") || content.includes("contact")) {
+                            intent = 'medium';
+                        }
+
+                        await (supabase
+                            .from("social_leads" as any)
+                            .upsert({
+                                account_id: accountId,
+                                platform: "facebook",
+                                post_id: item.id,
+                                comment_id: comment.id,
+                                commenter_name: comment.from?.username || "FB User",
+                                commenter_username: comment.from?.username,
+                                comment_content: comment.text,
+                                intent_score: intent,
+                                captured_at: comment.timestamp,
+                                status: "new"
+                            }, { onConflict: "comment_id" }) as any);
+                    }
+                }
+
+                // 3. Process Conversations
+                for (const conv of conversations) {
+                    const lastMsg = conv.messages?.data?.[0];
+                    if (!lastMsg) continue;
+                    const participant = conv.participants?.data?.[0];
+                    const msgText = lastMsg.text?.toLowerCase() || "";
+                    let msgIntent: 'low' | 'medium' | 'high' = 'low';
+                    if (msgText.includes("price") || msgText.includes("buy") || msgText.includes("booking") || msgText.includes("appointment")) {
+                        msgIntent = 'high';
+                    }
+
+                    await (supabase
+                        .from("social_leads" as any)
+                        .upsert({
+                            account_id: accountId,
+                            platform: "facebook",
+                            comment_id: `fb_msg_${lastMsg.id}`,
+                            commenter_name: participant?.name || "FB User",
+                            commenter_username: participant?.id,
+                            comment_content: lastMsg.text,
+                            intent_score: msgIntent,
+                            captured_at: lastMsg.created_time,
+                            status: "new"
+                        }, { onConflict: "comment_id" }) as any);
+                }
+
+                await (supabase
+                    .from("social_accounts" as any)
+                    .update({ last_synced_at: new Date().toISOString() })
+                    .eq("id", accountId) as any);
+
+                if (!isBackground) toast.success("Facebook sync complete!", { id: tid });
             } else {
                 if (!isBackground) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -481,7 +557,7 @@ export default function SocialAccounts() {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onClick={() => handleDisconnect(connectedAccount.id)}
+                                                onClick={() => setConfirmDelete(connectedAccount.id)}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -515,17 +591,35 @@ export default function SocialAccounts() {
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="id" className="text-right">Page ID</Label>
-                            <Input id="id" value={manualAccountId} onChange={(e) => setManualAccountId(e.target.value)} placeholder="Enter Page/Account ID" className="col-span-3" />
+                            <Input id="id" value={manualAccountId} onChange={(e) => setManualAccountId(e.target.value)} placeholder="Enter Page/Account ID" className="col-span-3" autoComplete="off" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="token" className="text-right">Access Token</Label>
-                            <Input id="token" type="password" value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="Paste token here" className="col-span-3" />
+                            <Input id="token" type="text" value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="Paste token here" className="col-span-3" autoComplete="off" />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowManualSetup(null)}>Cancel</Button>
                         <Button onClick={() => showManualSetup && handleConnect(showManualSetup, true)} disabled={isConnecting}>
                             Save Connection
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Disconnect Confirmation Dialog */}
+            <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Disconnection</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to disconnect this account? All associated leads and data will be kept but no new data will be synced.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={() => confirmDelete && handleDisconnect(confirmDelete)}>
+                            Confirm Disconnect
                         </Button>
                     </DialogFooter>
                 </DialogContent>
