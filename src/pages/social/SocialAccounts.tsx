@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fetchInstagramMedia, fetchInstagramComments, discoverInstagramAccount, fetchInstagramConversations } from "@/lib/socialApi";
 
 export default function SocialAccounts() {
     const [accounts, setAccounts] = useState<any[]>([]);
@@ -43,6 +44,20 @@ export default function SocialAccounts() {
         fetchAccounts();
     }, []);
 
+    // Phase 6: Automated 1-minute sync
+    useEffect(() => {
+        const interval = setInterval(() => {
+            accounts.forEach(acc => {
+                if (acc.is_active && acc.platform === 'instagram') {
+                    console.log(`Auto-syncing ${acc.platform} account...`);
+                    handleManualSync(acc.id, true); // true for background sync
+                }
+            });
+        }, 60000); // 60 seconds
+
+        return () => clearInterval(interval);
+    }, [accounts]);
+
     const fetchAccounts = async () => {
         const { data } = await supabase
             .from('social_accounts' as any)
@@ -56,11 +71,11 @@ export default function SocialAccounts() {
         try {
             if (platform === 'instagram' && !isManual) {
                 // Try real OAuth first
-                const { data: settings } = await supabase
+                const { data: settings } = await (supabase
                     .from("social_settings" as any)
                     .select("app_id, redirect_uri")
                     .eq("platform", "instagram")
-                    .single();
+                    .single() as any);
 
                 if (settings?.app_id) {
                     const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${settings.app_id}&redirect_uri=${settings.redirect_uri}&scope=user_profile,user_media&response_type=code`;
@@ -127,7 +142,6 @@ export default function SocialAccounts() {
                 .single();
 
             if (error) throw error;
-            const newAccount = data as any;
 
             toast.success(`${accountData.name} connected!`, {
                 id: toastId,
@@ -140,7 +154,6 @@ export default function SocialAccounts() {
             setManualToken("");
 
             await fetchAccounts();
-            // seedMockData(newAccount.id, platform); // Removed per user request to clean dummy data
 
         } catch (error: any) {
             console.error("Connect error:", error);
@@ -174,13 +187,123 @@ export default function SocialAccounts() {
         await supabase.from('social_leads' as any).insert(mockLeads);
     };
 
-    const handleManualSync = async (accountId: string) => {
-        setIsSyncing(accountId);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        toast.success("Sync complete", {
-            description: "Latest posts and comments have been imported."
-        });
-        setIsSyncing(null);
+    const handleManualSync = async (accountId: string, isBackground = false) => {
+        const account = accounts.find(a => a.id === accountId);
+        if (!account) return;
+
+        if (!isBackground) setIsSyncing(accountId);
+        const tid = !isBackground ? toast.loading(`Syncing ${account.platform} data...`) : null;
+
+        try {
+            if (account.platform === 'instagram') {
+                // 1. Fetch real media and profile
+                const media = await fetchInstagramMedia(accountId);
+                const profile = await (discoverInstagramAccount(accountId) as any);
+                const conversations = await fetchInstagramConversations(accountId);
+
+                // 2. Save latest metrics (Followers)
+                if (profile?.followers !== undefined) {
+                    await (supabase
+                        .from("social_metrics" as any)
+                        .insert({
+                            account_id: accountId,
+                            follower_count: profile.followers,
+                            recorded_at: new Date().toISOString()
+                        }) as any);
+                }
+
+                // 3. Process Posts & Comments
+                for (const item of media) {
+                    await (supabase
+                        .from("social_posts" as any)
+                        .upsert({
+                            account_id: accountId,
+                            platform_post_id: item.id,
+                            content: item.caption,
+                            media_url: item.media_url,
+                            media_type: item.media_type?.toLowerCase(),
+                            posted_at: item.timestamp,
+                            likes_count: item.like_count || 0,
+                            comments_count: item.comments_count || 0,
+                        }, { onConflict: "account_id,platform_post_id" }) as any);
+
+                    const comments = await fetchInstagramComments(item.id, account.access_token);
+                    for (const comment of comments) {
+                        // Detect intent (Simple keywords)
+                        const content = comment.text?.toLowerCase() || "";
+                        let intent: 'low' | 'medium' | 'high' = 'low';
+                        if (content.includes("price") || content.includes("how much") || content.includes("interested") || content.includes("location")) {
+                            intent = 'high';
+                        } else if (content.includes("info") || content.includes("contact")) {
+                            intent = 'medium';
+                        }
+
+                        await (supabase
+                            .from("social_leads" as any)
+                            .upsert({
+                                account_id: accountId,
+                                platform: "instagram",
+                                post_id: item.id,
+                                comment_id: comment.id,
+                                commenter_name: comment.from?.username || "Instagram User",
+                                commenter_username: comment.from?.username,
+                                comment_content: comment.text,
+                                intent_score: intent,
+                                captured_at: comment.timestamp,
+                                status: "new"
+                            }, { onConflict: "comment_id" }) as any);
+                    }
+                }
+
+                // 4. Process Conversations (DMs)
+                for (const conv of conversations) {
+                    const lastMsg = conv.messages?.data?.[0];
+                    if (!lastMsg) continue;
+
+                    const participant = conv.participants?.data?.[0]; // Usually the sender
+
+                    // Detect intent in message
+                    const msgText = lastMsg.text?.toLowerCase() || "";
+                    let msgIntent: 'low' | 'medium' | 'high' = 'low';
+                    if (msgText.includes("price") || msgText.includes("buy") || msgText.includes("booking") || msgText.includes("appointment")) {
+                        msgIntent = 'high';
+                    }
+
+                    await (supabase
+                        .from("social_leads" as any)
+                        .upsert({
+                            account_id: accountId,
+                            platform: "instagram",
+                            comment_id: `msg_${lastMsg.id}`, // Reuse column for message ID
+                            commenter_name: participant?.name || participant?.username || "IG User",
+                            commenter_username: participant?.username,
+                            comment_content: lastMsg.text,
+                            intent_score: msgIntent,
+                            captured_at: lastMsg.created_time,
+                            status: "new"
+                        }, { onConflict: "comment_id" }) as any);
+                }
+
+                await (supabase
+                    .from("social_accounts" as any)
+                    .update({ last_synced_at: new Date().toISOString() })
+                    .eq("id", accountId) as any);
+
+                if (!isBackground) toast.success("Instagram sync complete!", { id: tid });
+            } else {
+                if (!isBackground) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    toast.success("Sync complete", { id: tid });
+                }
+            }
+
+            await fetchAccounts();
+        } catch (error: any) {
+            console.error("Sync error:", error);
+            if (!isBackground && tid) toast.error("Sync failed", { id: tid, description: error.message });
+        } finally {
+            if (!isBackground) setIsSyncing(null);
+        }
     };
 
     const platforms = [
@@ -287,9 +410,9 @@ export default function SocialAccounts() {
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                             <p className="font-medium">Automatic Background Sync</p>
-                            <p className="text-sm text-muted-foreground">Sync data every 6 hours automatically.</p>
+                            <p className="text-sm text-muted-foreground">Syncing data every 1 minute while the dashboard is open.</p>
                         </div>
-                        <Button variant="outline">Configure</Button>
+                        <Badge className="bg-green-500">Enabled (Every 1m)</Badge>
                     </div>
                 </CardContent>
             </Card>

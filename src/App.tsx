@@ -57,6 +57,7 @@ import SocialDashboard from "./pages/social/SocialDashboard";
 import SocialLeads from "./pages/social/SocialLeads";
 import SocialAccounts from "./pages/social/SocialAccounts";
 import SocialCallback from "./pages/social/SocialCallback";
+import SocialConversations from "./pages/social/SocialConversations";
 
 const queryClient = new QueryClient();
 
@@ -167,6 +168,7 @@ const App = () => (
             <Route index element={<SocialDashboard />} />
             <Route path="leads" element={<SocialLeads />} />
             <Route path="accounts" element={<SocialAccounts />} />
+            <Route path="conversations" element={<SocialConversations />} />
             <Route path="callback" element={<SocialCallback />} />
           </Route>
 
