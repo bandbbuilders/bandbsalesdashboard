@@ -173,6 +173,37 @@ export const fetchInstagramConversations = async (accountId: string) => {
     }
 };
 /**
+ * Discovers the Facebook Page ID and Name from a token
+ */
+export const discoverFacebookPage = async (token: string) => {
+    try {
+        // First try /me to see if the token is already a Page Token
+        const url = `${FB_GRAPH_URL}/me?fields=id,name&access_token=${token}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.id && !data.error) {
+            return { id: data.id, name: data.name };
+        }
+
+        // If not, try /me/accounts to find pages the user manages
+        const accountsUrl = `${FB_GRAPH_URL}/me/accounts?access_token=${token}`;
+        const accResponse = await fetch(accountsUrl);
+        const accData = await accResponse.json();
+
+        if (accData.data && accData.data.length > 0) {
+            // Return the first page found
+            return { id: accData.data[0].id, name: accData.data[0].name, token: accData.data[0].access_token };
+        }
+
+        return null;
+    } catch (error) {
+        console.error("discoverFacebookPage error:", error);
+        return null;
+    }
+};
+
+/**
  * Fetches Facebook Page media (posts)
  */
 export const fetchFacebookMedia = async (accountId: string) => {

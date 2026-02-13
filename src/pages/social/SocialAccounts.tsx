@@ -127,11 +127,30 @@ export default function SocialAccounts() {
                 if (!manualName || !manualAccountId || !manualToken) {
                     throw new Error("Please fill in all fields.");
                 }
+
+                let finalAccountId = manualAccountId;
+                let finalName = manualName;
+                let finalToken = manualToken;
+
+                if (platform === 'facebook') {
+                    const { discoverFacebookPage } = await import("@/lib/socialApi");
+                    const discovery = await discoverFacebookPage(manualToken);
+                    if (discovery) {
+                        console.log("Facebook Discovery Succeeded:", discovery);
+                        finalAccountId = discovery.id;
+                        finalName = discovery.name;
+                        if ((discovery as any).token) {
+                            finalToken = (discovery as any).token;
+                        }
+                        toast.success(`Discovered Page: ${finalName}`, { description: "Using discovered Page ID instead of App ID." });
+                    }
+                }
+
                 accountData = {
-                    name: manualName,
-                    accountId: manualAccountId,
-                    token: manualToken,
-                    username: manualAccountId.startsWith('@') ? manualAccountId : `@${manualAccountId}`
+                    name: finalName,
+                    accountId: finalAccountId,
+                    token: finalToken,
+                    username: finalAccountId.startsWith('@') ? finalAccountId : `@${finalAccountId}`
                 };
             } else {
                 const mockData: any = {
