@@ -140,7 +140,7 @@ export default function SocialAccounts() {
             setManualToken("");
 
             await fetchAccounts();
-            seedMockData(newAccount.id, platform);
+            // seedMockData(newAccount.id, platform); // Removed per user request to clean dummy data
 
         } catch (error: any) {
             console.error("Connect error:", error);
