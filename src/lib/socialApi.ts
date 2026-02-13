@@ -152,7 +152,6 @@ export const fetchInstagramConversations = async (accountId: string) => {
         if (!token || !igUserId || igUserId === 'initial_setup') return [];
 
         console.log("Fetching Instagram conversations for account:", igUserId);
-        // platform=instagram is requested for IG DMs
         const fields = "id,participants,updated_time,messages.limit(1){id,text,created_time,from}";
         const url = `${FB_GRAPH_URL}/${igUserId}/conversations?platform=instagram&fields=${fields}&access_token=${token}`;
 
@@ -172,21 +171,17 @@ export const fetchInstagramConversations = async (accountId: string) => {
         return [];
     }
 };
-/**
- * Discovers the Facebook Page ID and Name from a token
- */
+
 /**
  * Discovers the Facebook Page ID and Name from a token
  */
 export const discoverFacebookPage = async (token: string) => {
     try {
-        // Try /me/accounts first - this is the safest way to find Pages managed by the user
         const accountsUrl = `${FB_GRAPH_URL}/me/accounts?access_token=${token}`;
         const accResponse = await fetch(accountsUrl);
         const accData = await accResponse.json();
 
         if (accData.data && accData.data.length > 0) {
-            // Return the first page found, along with its token for better scope
             return {
                 id: accData.data[0].id,
                 name: accData.data[0].name,
@@ -194,12 +189,10 @@ export const discoverFacebookPage = async (token: string) => {
             };
         }
 
-        // Only try /me as fallback if we can't find accounts, and verify it's a page
         const url = `${FB_GRAPH_URL}/me?fields=id,name,category&access_token=${token}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        // If it has a category, it's likely a Page, not a simple User
         if (data.id && data.category && !data.error) {
             return { id: data.id, name: data.name };
         }
@@ -228,18 +221,26 @@ export const fetchFacebookProfile = async (accountId: string) => {
 
         if (!token || !pageId) throw new Error("Missing token or Page ID");
 
-        const url = `${FB_GRAPH_URL}/${pageId}?fields=name,fan_count,followers_count,picture&access_token=${token}`;
+        const url = `${FB_GRAPH_URL}/${pageId}?fields=name,followers_count,picture&access_token=${token}`;
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.error) {
             console.error("Facebook API Profile Error:", data.error);
-            return null;
+            const fallbackUrl = `${FB_GRAPH_URL}/${pageId}?fields=name,picture&access_token=${token}`;
+            const fbResponse = await fetch(fallbackUrl);
+            const fbData = await fbResponse.json();
+            if (fbData.error) return null;
+            return {
+                name: fbData.name,
+                followers: 0,
+                profile_image: fbData.picture?.data?.url
+            };
         }
 
         return {
             name: data.name,
-            followers: data.followers_count || data.fan_count || 0,
+            followers: data.followers_count || 0,
             profile_image: data.picture?.data?.url
         };
     } catch (error) {
@@ -277,7 +278,6 @@ export const fetchFacebookMedia = async (accountId: string) => {
             throw new Error(data.error.message);
         }
 
-        // Map FB fields to unified structure
         return (data.data || []).map((item: any) => ({
             id: item.id,
             caption: item.message,
@@ -295,9 +295,6 @@ export const fetchFacebookMedia = async (accountId: string) => {
     }
 };
 
-/**
- * Fetches Facebook Page comments for a specific post
- */
 export const fetchFacebookComments = async (postId: string, accessToken: string) => {
     try {
         const fields = "id,message,created_time,from{id,name}";
@@ -325,9 +322,6 @@ export const fetchFacebookComments = async (postId: string, accessToken: string)
     }
 };
 
-/**
- * Fetches Facebook Page Conversations (DMs)
- */
 export const fetchFacebookConversations = async (accountId: string) => {
     try {
         const { data: account } = await supabase

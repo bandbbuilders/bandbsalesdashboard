@@ -137,12 +137,14 @@ export default function SocialAccounts() {
                     const discovery = await discoverFacebookPage(manualToken);
                     if (discovery) {
                         console.log("Facebook Discovery Succeeded:", discovery);
+                        // Trust discovery as it verifies the token actually works for this ID
                         finalAccountId = discovery.id;
                         finalName = discovery.name;
+
                         if ((discovery as any).token) {
                             finalToken = (discovery as any).token;
                         }
-                        toast.success(`Discovered Page: ${finalName}`, { description: "Using discovered Page ID instead of App ID." });
+                        toast.success(`Connected Page: ${finalName}`);
                     }
                 }
 
