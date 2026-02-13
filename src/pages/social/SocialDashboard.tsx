@@ -25,10 +25,10 @@ export default function SocialDashboard() {
     });
 
     const [platformStats, setPlatformStats] = useState<Record<string, any>>({
-        facebook: { followers: 0, engagement: 0, leads: 0 },
-        instagram: { followers: 0, engagement: 0, leads: 0 },
-        youtube: { followers: 0, engagement: 0, leads: 0 },
-        tiktok: { followers: 0, engagement: 0, leads: 0 }
+        facebook: { followers: 0, engagement: 0, leads: 0, connected: false },
+        instagram: { followers: 0, engagement: 0, leads: 0, connected: false },
+        youtube: { followers: 0, engagement: 0, leads: 0, connected: false },
+        tiktok: { followers: 0, engagement: 0, leads: 0, connected: false }
     });
 
     const [recentLeads, setRecentLeads] = useState<any[]>([]);
@@ -52,11 +52,18 @@ export default function SocialDashboard() {
 
         // Stats per platform
         const newPlatformStats: Record<string, any> = {
-            facebook: { followers: 0, engagement: 0, leads: 0 },
-            instagram: { followers: 0, engagement: 0, leads: 0 },
-            youtube: { followers: 0, engagement: 0, leads: 0 },
-            tiktok: { followers: 0, engagement: 0, leads: 0 }
+            facebook: { followers: 0, engagement: 0, leads: 0, connected: false },
+            instagram: { followers: 0, engagement: 0, leads: 0, connected: false },
+            youtube: { followers: 0, engagement: 0, leads: 0, connected: false },
+            tiktok: { followers: 0, engagement: 0, leads: 0, connected: false }
         };
+
+        // Mark connected platforms
+        (accounts as any[])?.forEach(acc => {
+            if (newPlatformStats[acc.platform]) {
+                newPlatformStats[acc.platform].connected = true;
+            }
+        });
 
         // Total Posts Engagement per account/platform
         const { data: posts } = await (supabase

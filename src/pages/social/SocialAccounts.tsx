@@ -189,10 +189,15 @@ export default function SocialAccounts() {
 
     const handleManualSync = async (accountId: string, isBackground = false) => {
         const account = accounts.find(a => a.id === accountId);
-        if (!account) return;
+        if (!account) {
+            console.warn(`Sync failed: Account ${accountId} not found in state.`);
+            return;
+        }
 
         if (!isBackground) setIsSyncing(accountId);
         const tid = !isBackground ? toast.loading(`Syncing ${account.platform} data...`) : null;
+
+        console.log(`Sync started for ${account.platform} (${accountId}). Background: ${isBackground}`);
 
         try {
             if (account.platform === 'instagram') {
@@ -200,6 +205,8 @@ export default function SocialAccounts() {
                 const media = await fetchInstagramMedia(accountId);
                 const profile = await (discoverInstagramAccount(accountId) as any);
                 const conversations = await fetchInstagramConversations(accountId);
+
+                console.log(`Fetched for ${account.platform}: ${media.length} media items, ${conversations.length} conversations.`);
 
                 // 2. Save latest metrics (Followers)
                 if (profile?.followers !== undefined) {
@@ -228,6 +235,10 @@ export default function SocialAccounts() {
                         }, { onConflict: "account_id,platform_post_id" }) as any);
 
                     const comments = await fetchInstagramComments(item.id, account.access_token);
+                    if (comments.length > 0) {
+                        console.log(`Found ${comments.length} comments for post ${item.id}`);
+                    }
+
                     for (const comment of comments) {
                         // Detect intent (Simple keywords)
                         const content = comment.text?.toLowerCase() || "";
@@ -290,6 +301,7 @@ export default function SocialAccounts() {
                     .eq("id", accountId) as any);
 
                 if (!isBackground) toast.success("Instagram sync complete!", { id: tid });
+                console.log(`Sync completed for ${account.platform}`);
             } else {
                 if (!isBackground) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -297,7 +309,10 @@ export default function SocialAccounts() {
                 }
             }
 
-            await fetchAccounts();
+            // Only refresh accounts if not background, or only every few times to avoid interval thrashing
+            if (!isBackground) {
+                await fetchAccounts();
+            }
         } catch (error: any) {
             console.error("Sync error:", error);
             if (!isBackground && tid) toast.error("Sync failed", { id: tid, description: error.message });
