@@ -191,8 +191,8 @@ export default function SocialDashboard() {
                             <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">
                                     <p.icon className={cn("h-5 w-5", p.color)} />
-                                    <Badge variant={pStat.followers > 0 ? "default" : "secondary"} className="text-[10px]">
-                                        {pStat.followers > 0 ? "Connected" : "Disconnected"}
+                                    <Badge variant={pStat.connected ? "default" : "secondary"} className="text-[10px]">
+                                        {pStat.connected ? "Connected" : "Disconnected"}
                                     </Badge>
                                 </div>
                                 <CardTitle className="text-base mt-2">{p.name}</CardTitle>

@@ -82,14 +82,15 @@ export const fetchInstagramMedia = async (accountId: string) => {
         const token = instagramAccount.access_token;
         const igUserId = instagramAccount.platform_account_id;
 
-        if (!token || !igUserId) {
-            console.error("Missing token or IG User ID for sync", { token: !!token, igUserId });
+        if (!token || !igUserId || igUserId === 'initial_setup') {
+            console.log("Missing token or IG User ID for sync (or initial setup). Checking for discovery...", { token: !!token, igUserId });
             // Try discovery if it's the first time or if igUserId is 'initial_setup'
-            if (igUserId === 'initial_setup') {
+            if (igUserId === 'initial_setup' && token) {
                 await discoverInstagramAccount(accountId);
                 return fetchInstagramMedia(accountId); // Retry after discovery
             }
-            throw new Error("Missing token or IG User ID");
+            if (!token || !igUserId) throw new Error("Missing token or IG User ID");
+            return [];
         }
 
         console.log("Fetching Instagram media for account:", igUserId);
