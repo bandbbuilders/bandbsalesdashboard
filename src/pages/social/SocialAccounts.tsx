@@ -324,6 +324,7 @@ export default function SocialAccounts() {
 
                 if (!isBackground) toast.success("Instagram sync complete!", { id: tid });
                 console.log(`Sync completed for ${account.platform}`);
+            } else if (account.platform === 'facebook') {
                 const { fetchFacebookMedia, fetchFacebookComments, fetchFacebookConversations } = await import("@/lib/socialApi");
 
                 // 1. Fetch real media and conversations
