@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const FB_GRAPH_URL = "https://graph.facebook.com/v18.0";
+const FB_GRAPH_URL = "https://graph.facebook.com/v22.0";
 
 /**
  * Discovers the Instagram Business Account ID associated with the token.
