@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
     Facebook,
     Instagram,
+    Youtube,
+    MessageSquare,
     TrendingUp,
     RefreshCw,
     Link as LinkIcon,
@@ -322,13 +324,6 @@ export default function SocialAccounts() {
 
                 if (!isBackground) toast.success("Instagram sync complete!", { id: tid });
                 console.log(`Sync completed for ${account.platform}`);
-            } else if (account.platform === 'facebook') {
-                // [/] Phase 7: Facebook Integration & TikTok Disconnection
-                //   - [x] Implement Facebook API support (Media, Comments, DMs) in socialApi.ts
-                //   - [x] Connect Facebook account with new credentials
-                //   - [/] Disconnect and remove TikTok from accounts (UI implemented)
-                //   - [x] Update SocialAccounts.tsx for Facebook sync
-                //   - [ ] Verify Facebook lead capture
                 const { fetchFacebookMedia, fetchFacebookComments, fetchFacebookConversations } = await import("@/lib/socialApi");
 
                 // 1. Fetch real media and conversations
