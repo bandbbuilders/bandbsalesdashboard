@@ -204,6 +204,43 @@ export const discoverFacebookPage = async (token: string) => {
 };
 
 /**
+ * Fetches Facebook Page profile details (followers, name, etc.)
+ */
+export const fetchFacebookProfile = async (accountId: string) => {
+    try {
+        const { data: account } = await supabase
+            .from("social_accounts" as any)
+            .select("access_token, platform_account_id")
+            .eq("id", accountId)
+            .single();
+
+        const fbAccount = account as any;
+        const token = fbAccount.access_token;
+        const pageId = fbAccount.platform_account_id;
+
+        if (!token || !pageId) throw new Error("Missing token or Page ID");
+
+        const url = `${FB_GRAPH_URL}/${pageId}?fields=name,fan_count,followers_count,picture&access_token=${token}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Facebook API Profile Error:", data.error);
+            return null;
+        }
+
+        return {
+            name: data.name,
+            followers: data.followers_count || data.fan_count || 0,
+            profile_image: data.picture?.data?.url
+        };
+    } catch (error) {
+        console.error("fetchFacebookProfile error:", error);
+        return null;
+    }
+};
+
+/**
  * Fetches Facebook Page media (posts)
  */
 export const fetchFacebookMedia = async (accountId: string) => {
@@ -220,9 +257,9 @@ export const fetchFacebookMedia = async (accountId: string) => {
 
         if (!token || !pageId) throw new Error("Missing token or Page ID");
 
-        console.log("Fetching Facebook media for page:", pageId);
+        console.log("Fetching Facebook posts for page:", pageId);
         const fields = "id,message,attachments{media,type},permalink_url,created_time,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0)";
-        const url = `${FB_GRAPH_URL}/${pageId}/feed?fields=${fields}&access_token=${token}`;
+        const url = `${FB_GRAPH_URL}/${pageId}/posts?fields=${fields}&access_token=${token}`;
 
         const response = await fetch(url);
         const data = await response.json();

@@ -345,9 +345,29 @@ export default function SocialAccounts() {
                 if (!isBackground) toast.success("Instagram sync complete!", { id: tid });
                 console.log(`Sync completed for ${account.platform}`);
             } else if (account.platform === 'facebook') {
-                const { fetchFacebookMedia, fetchFacebookComments, fetchFacebookConversations } = await import("@/lib/socialApi");
+                const { fetchFacebookMedia, fetchFacebookComments, fetchFacebookConversations, fetchFacebookProfile } = await import("@/lib/socialApi");
 
-                // 1. Fetch real media and conversations
+                // 1. Fetch Profile Metrics
+                const profile = await fetchFacebookProfile(accountId);
+                if (profile) {
+                    await (supabase
+                        .from("social_metrics" as any)
+                        .insert({
+                            account_id: accountId,
+                            platform: "facebook",
+                            follower_count: profile.followers,
+                            recorded_at: new Date().toISOString()
+                        }) as any);
+
+                    if (profile.profile_image) {
+                        await (supabase
+                            .from("social_accounts" as any)
+                            .update({ account_name: profile.name, profile_image_url: profile.profile_image })
+                            .eq("id", accountId) as any);
+                    }
+                }
+
+                // 2. Fetch real media and conversations
                 const media = await fetchFacebookMedia(accountId);
                 const conversations = await fetchFacebookConversations(accountId);
 
