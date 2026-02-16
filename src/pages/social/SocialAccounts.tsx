@@ -356,7 +356,6 @@ export default function SocialAccounts() {
                         .from("social_metrics" as any)
                         .insert({
                             account_id: accountId,
-                            platform: "facebook",
                             follower_count: profile.followers,
                             recorded_at: new Date().toISOString()
                         }) as any);
