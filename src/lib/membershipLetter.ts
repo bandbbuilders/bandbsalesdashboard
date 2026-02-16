@@ -105,9 +105,10 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
 
-    // Stamp (Centered behind/over signature)
-    // Assuming stamp is roughly square, 30x30 or 40x40
-    doc.addImage(stampImg, 'PNG', 135, page1SignatureY - 15, 40, 40);
+    // Stamp (Left side, middle of the authorized signature area)
+    // Authorized Signature is at x=130. We want stamp to the left of it.
+    // Signature Y is page1SignatureY - 10.
+    doc.addImage(stampImg, 'PNG', 90, page1SignatureY - 20, 40, 40);
 
     // Signature Image
     doc.addImage(signature, 'PNG', 130, page1SignatureY - 10, 40, 16);

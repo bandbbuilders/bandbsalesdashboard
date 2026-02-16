@@ -110,72 +110,91 @@ const PaymentPlanGenerator = () => {
         // Page 1
         addBackground(doc);
 
-        // Title
+        // Title Section
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(22);
+        doc.setFontSize(24);
         doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text('PAYMENT PLAN PROPOSAL', 105, 60, { align: 'center' });
+        doc.text('B&B BUILDERS', 105, 50, { align: 'center' });
 
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setLineWidth(1);
-        doc.line(60, 65, 150, 65);
+        doc.setFontSize(16);
+        doc.text('PAYMENT PLAN', 105, 60, { align: 'center' });
+        doc.text('(3 YEARS PLAN)', 105, 68, { align: 'center' });
 
-        // Client & Unit Details
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CLIENT & UNIT DETAILS', 20, 80);
-
-        doc.setFont('helvetica', 'normal');
+        // Client & Unit Details (Grid Layout)
         doc.setFontSize(11);
-        let yPos = 90;
-        const lineHeight = 8;
+        doc.setTextColor(0, 0, 0);
 
-        // Left Column
-        doc.text(`Client Name:`, 20, yPos);
-        doc.text(clientName, 60, yPos);
-
-        doc.text(`Date:`, 120, yPos);
-        doc.text(format(new Date(), "dd MMMM yyyy"), 150, yPos);
-
-        yPos += lineHeight;
-        doc.text(`Unit Category:`, 20, yPos);
-        doc.text(unitCategory, 60, yPos);
-
-        doc.text(`Floor:`, 120, yPos);
-        doc.text(floorType, 150, yPos);
-
-        yPos += lineHeight;
-        if (unitCategory === 'Shop') {
-            doc.text(`Facing:`, 20, yPos);
-            doc.text(facingType, 60, yPos);
+        // Calculate Unit Description
+        let unitDesc = "";
+        if (unitCategory === 'Apartment') {
+            const floorDesc = floorType === '1st Floor' ? '1st Floor' : '2-5 Floors';
+            unitDesc = `Apartment (${floorDesc}) - ${area} sq.ft.`;
         } else {
-            doc.text(`Type:`, 20, yPos);
-            doc.text(floorType === '1st Floor' ? 'Furnished 1 Bed' : '1 Bed Apartment', 60, yPos);
+            unitDesc = `Shop (${floorType}, ${facingType}) - ${area} sq.ft.`;
         }
 
-        doc.text(`Area:`, 120, yPos);
-        doc.text(`${area} sqft`, 150, yPos);
+        // Grid Layout for Details
+        const startY = 80;
+        const col1X = 20;
+        const col2X = 120;
+
+        // Row 1
+        doc.setFont('helvetica', 'bold');
+        doc.text(unitDesc, col1X, startY);
+
+        // Line under top section
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(0, 0, 0);
+        doc.line(col1X, startY + 2, 190, startY + 2);
+
+        const detailsY = startY + 10;
+
+        // Client Name
+        doc.setFont('helvetica', 'bold');
+        doc.text('Client Name:', col1X, detailsY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(clientName, col1X + 30, detailsY);
+
+        // Date
+        doc.setFont('helvetica', 'bold');
+        doc.text('Date:', col2X, detailsY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(format(new Date(), "dd/MM/yyyy"), col2X + 15, detailsY);
+
+        // Category
+        const detailsY2 = detailsY + 8;
+        doc.setFont('helvetica', 'bold');
+        doc.text('CATEGORY:', col1X, detailsY2);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${unitCategory} - ${floorType}`, col1X + 30, detailsY2);
 
         // Financial Breakdown Table
-        yPos += lineHeight * 2;
-        doc.setFont('helvetica', 'bold');
-        doc.text('FINANCIAL BREAKDOWN', 20, yPos);
+        let tableY = detailsY2 + 15;
 
         const financialData = [
             ['Total Standard Price', `PKR ${standardTotal.toLocaleString()}`],
-            ['Discount Applied', `${discountPercentage.toFixed(2)}% (PKR ${discountAmount.toLocaleString()})`],
+            ...(discountAmount !== 0 ? [['Discount/Premium', `${discountPercentage.toFixed(2)}% (PKR ${Math.abs(discountAmount).toLocaleString()})`]] : []),
             ['Net Payable Price', `PKR ${customTotal.toLocaleString()}`],
         ];
 
         autoTable(doc, {
-            startY: yPos + 5,
+            startY: tableY,
             head: [['Description', 'Amount']],
             body: financialData,
             theme: 'grid',
-            headStyles: { fillColor: primaryColor as [number, number, number] },
-            styles: { fontSize: 11 },
-            columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' } }
+            headStyles: {
+                fillColor: primaryColor as [number, number, number],
+                fontSize: 12,
+                halign: 'center'
+            },
+            styles: {
+                fontSize: 11,
+                cellPadding: 3
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold' },
+                1: { halign: 'right' }
+            }
         });
 
         // Payment Schedule
@@ -194,34 +213,44 @@ const PaymentPlanGenerator = () => {
             startY: finalY + 5,
             head: [['Milestone', 'Amount']],
             body: scheduleData,
-            theme: 'striped',
-            headStyles: { fillColor: [50, 50, 50] },
-            styles: { fontSize: 10 },
-            columnStyles: { 1: { halign: 'right' } }
+            theme: 'grid', // Changed to grid
+            headStyles: {
+                fillColor: primaryColor as [number, number, number],
+                fontSize: 12,
+                halign: 'center'
+            },
+            styles: {
+                fontSize: 11,
+                cellPadding: 3
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold' },
+                1: { halign: 'right' }
+            }
         });
 
-        // Note Section
-        const noteY = (doc as any).lastAutoTable.finalY + 10;
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        const noteText = "Note: This is a proposed payment plan. Prices and availability are subject to change. Possession charges are payable at the time of possession.";
-        doc.text(doc.splitTextToSize(noteText, 170), 20, noteY);
-
         // Signatures
-        const sigY = 240;
+        const sigY = 250; // Pushed down further
 
-        // Stamp
-        doc.addImage(stamp, 'PNG', 135, sigY - 15, 40, 40);
-        // Signature
-        doc.addImage(signature, 'PNG', 130, sigY - 10, 40, 16);
+        doc.addImage(stamp, 'PNG', 130, sigY - 20, 35, 35); // Moved slightly left
+        doc.addImage(signature, 'PNG', 140, sigY - 10, 40, 16);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
 
         doc.setDrawColor(0, 0, 0);
-        doc.line(20, sigY + 10, 80, sigY + 10);
-        doc.text("Client Signature", 20, sigY + 15);
+        doc.line(20, sigY + 10, 70, sigY + 10);
+        doc.text("Client Signature", 20, sigY + 15); // Changed to "Client Key" or "Client Signature" based on doc? Keeping Signature.
 
-        doc.line(130, sigY + 10, 190, sigY + 10);
-        doc.text("Authorized Signature", 130, sigY + 15);
-        doc.text("Abdullah Shah (CEO)", 130, sigY + 20);
+        doc.line(140, sigY + 10, 190, sigY + 10);
+        doc.text("Authorized Signature", 140, sigY + 15);
+        doc.text("B&B Builders", 140, sigY + 20);
+
+        // Note Section
+        const noteY = 280;
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text("Note: This is a proposed payment plan. Prices subject to change.", 105, noteY, { align: 'center' });
 
         doc.save(`Payment_Plan_${clientName.replace(/\s+/g, '_')}.pdf`);
         toast.success("Payment Plan PDF Generated");
