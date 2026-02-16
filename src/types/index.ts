@@ -12,6 +12,7 @@ export interface Customer {
   contact: string;
   email?: string;
   address?: string;
+  cnic?: string;
 }
 
 export interface Sale {
@@ -43,10 +44,10 @@ export interface LedgerEntry {
   due_date: string;
   entry_type: 'downpayment' | 'installment' | 'possession';
   amount: number;
-  is_paid: boolean;
-  payment_date?: string;
-  balance_remaining: number;
-  notes?: string;
+  status: 'pending' | 'paid' | 'overdue';
+  paid_amount: number;
+  paid_date?: string;
+  description?: string;
   created_at: string;
   updated_at: string;
 }

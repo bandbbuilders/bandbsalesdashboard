@@ -30,8 +30,10 @@ import {
   Plus,
   Download,
   Trash2,
-  Coins
+  Coins,
+  FileText
 } from "lucide-react";
+import { generateMembershipLetter } from "@/lib/membershipLetter";
 import { CommissionDialog } from "@/components/crm/CommissionDialog";
 import { AgentSalesSummary } from "@/components/sales/AgentSalesSummary";
 import {
@@ -132,7 +134,7 @@ const SalesList = () => {
       "e91f0415-7d0e-4fa3-9be3-e965b0a0a3cf",
       "e91f0415-009a-4712-97e1-c70d1c29e6f9",
     ];
-    
+
     // Zain Sarwar (COO) user ID
     const zainSarwarId = "fab190bd-59c4-4cd2-9d53-3fc0e7b5af95";
 
@@ -171,7 +173,7 @@ const SalesList = () => {
             Manage all sales records and customer information
           </p>
         </div>
-        
+
         {(user?.role === "admin" || user?.role === "agent") && (
           <div className="flex gap-2">
             <Button variant="outline">
@@ -199,7 +201,7 @@ const SalesList = () => {
                 className="pl-9"
               />
             </div>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full md:w-auto">
@@ -346,14 +348,33 @@ const SalesList = () => {
                             <Coins className="mr-2 h-4 w-4" />
                             Commission
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => {
+                            try {
+                              const { data: entries, error } = await supabase
+                                .from('ledger_entries')
+                                .select('*')
+                                .eq('sale_id', sale.id)
+                                .order('due_date', { ascending: true });
+
+                              if (error) throw error;
+                              if (entries) {
+                                await generateMembershipLetter(sale, entries as any);
+                              }
+                            } catch (error) {
+                              console.error('Error generating membership letter:', error);
+                            }
+                          }}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Membership Letter
+                          </DropdownMenuItem>
                           {canEdit(sale) && (
                             <>
                               <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}/edit`)}>
                                 <Edit className="mr-2 h-4 w-4" />
-                                Edit Sale
+                                <span className="ml-2">Edit Sale</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDeleteSale(sale.id)}
                                 className="text-destructive focus:text-destructive"
                               >
@@ -370,13 +391,13 @@ const SalesList = () => {
               </TableBody>
             </Table>
           </div>
-          
+
           {filteredSales.length === 0 && (
             <div className="text-center py-10">
               <p className="text-muted-foreground">No sales found matching your criteria.</p>
               {(user?.role === "admin" || user?.role === "agent") && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="mt-4"
                   onClick={() => navigate("/sales/new")}
                 >
@@ -401,7 +422,7 @@ const SalesList = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

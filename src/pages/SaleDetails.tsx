@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Edit, Calendar, User, MapPin, Phone, Mail, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Calendar, User, MapPin, Phone, Mail, Trash2, FileText } from "lucide-react";
+import { generateMembershipLetter } from "@/lib/membershipLetter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,9 +61,9 @@ const SaleDetails = () => {
           // Determine agent from either internal profile or external sales_agent
           const internalAgent = saleData.agent as any;
           const externalAgent = saleData.external_agent as any;
-          
+
           let agentData: UserType | undefined;
-          
+
           if (internalAgent) {
             agentData = {
               id: internalAgent.user_id,
@@ -158,7 +159,7 @@ const SaleDetails = () => {
         title: "Success",
         description: "Sale deleted successfully",
       });
-      
+
       navigate("/sales");
     } catch (error) {
       console.error('Error deleting sale:', error);
@@ -182,8 +183,8 @@ const SaleDetails = () => {
     return (
       <div className="text-center py-10">
         <p className="text-muted-foreground">Sale not found</p>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="mt-4"
           onClick={() => navigate("/sales")}
         >
@@ -199,8 +200,8 @@ const SaleDetails = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => navigate("/sales")}
           >
@@ -213,22 +214,52 @@ const SaleDetails = () => {
             </p>
           </div>
         </div>
-        
-        {canEdit(sale) && (
-          <div className="flex gap-2">
+
+        <div className="flex gap-2">
+          {canEdit(sale) && (
             <Button onClick={() => navigate(`/sales/${sale.id}/edit`)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit Sale
             </Button>
-            <Button 
-              variant="destructive" 
+          )}
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (!sale) return;
+              try {
+                const { data: entries, error } = await supabase
+                  .from('ledger_entries')
+                  .select('*')
+                  .eq('sale_id', sale.id)
+                  .order('due_date', { ascending: true });
+
+                if (error) throw error;
+                if (entries) {
+                  await generateMembershipLetter(sale, entries as any);
+                }
+              } catch (error) {
+                console.error('Error generating membership letter:', error);
+                toast({
+                  title: "Error",
+                  description: "Failed to generate membership letter",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Membership Letter
+          </Button>
+          {canEdit(sale) && (
+            <Button
+              variant="destructive"
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -289,9 +320,9 @@ const SaleDetails = () => {
                 <p className="font-medium">{sale.agent?.name || 'N/A'}</p>
               </div>
             </div>
-            
+
             <Separator />
-            
+
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Created</p>
@@ -333,7 +364,7 @@ const SaleDetails = () => {
                   )}
                 </div>
               )}
-              
+
               {sale.payment_plan.monthly_installment && (
                 <div className="space-y-2">
                   <h4 className="font-semibold">Monthly Installment</h4>
@@ -347,7 +378,7 @@ const SaleDetails = () => {
                   )}
                 </div>
               )}
-              
+
               {sale.payment_plan.possession_amount && (
                 <div className="space-y-2">
                   <h4 className="font-semibold">Possession Amount</h4>
