@@ -29,8 +29,17 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
         pageDoc.addImage(letterhead, 'PNG', 0, 0, 210, 297);
     };
 
+    // --- Monkey Patch addPage to automatically add background ---
+    // This ensures that pages added by autoTable also get the background
+    const originalAddPage = doc.addPage.bind(doc);
+    doc.addPage = function (format?: string | number[], orientation?: "p" | "portrait" | "l" | "landscape") {
+        const result = originalAddPage(format, orientation);
+        addBackground(this);
+        return result;
+    };
+
     // --- PAGE 1: Purchase Confirmation ---
-    addBackground(doc);
+    addBackground(doc); // Manually add for first page
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
@@ -84,7 +93,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
 
     // --- PAGE 2: Payment Ledger ---
     doc.addPage();
-    addBackground(doc);
+    // Background added automatically by patched addPage
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -122,7 +131,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
 
     // --- PAGE 3: Terms and Conditions ---
     doc.addPage();
-    addBackground(doc);
+    // Background added automatically
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -154,7 +163,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
         // Check if term fits on page, if not add new page with background
         if (termY + splitTerm.length * 5 > pageHeight - 40) {
             doc.addPage();
-            addBackground(doc);
+            // Background added automatically
             termY = 60; // Reset Y for new page
         }
         doc.text(splitTerm, 20, termY);
@@ -179,7 +188,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     if (signatureStartY + signatureBlockHeight > pageHeight - 10) {
         // Doesn't fit, MUST add new page based on content
         doc.addPage();
-        addBackground(doc);
+        // Background added automatically
         signatureStartY = 60; // Top of new page
     }
 
