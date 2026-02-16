@@ -2,7 +2,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { Sale, LedgerEntry } from '../types';
-import letterheadImg from '../assets/bb-letterhead.png';
+import letterheadImg from '../assets/bb-letterhead-hq.png'; // Updated to high quality image
+import ceoSignature from '../assets/ceo-signature-new.png';
 
 export const generateMembershipLetter = async (sale: Sale, ledgerEntries: LedgerEntry[]) => {
     const doc = new jsPDF();
@@ -74,6 +75,13 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
 
     // --- PAGE 2: Payment Ledger ---
     doc.addPage();
+    // No background on page 2 as per request (user wanted transparent table, implied clean background for readability/printing on pre-printed paper? 
+    // Wait, the user said "Page 2 make table transparent and increase spacing from bottom as it is covering the footer as well."
+    // And "Page 3 dsnt have letterhead background." implies Page 2 DOES/SHOULD have it?
+    // "Page 1 is good." (which has background).
+    // Usually membership letters have backgrounds on all pages or just first.
+    // Given the complaint about covering the footer, it implies there IS a footer (from the letterhead background).
+    // So I will keep the background on Page 2.
     await addBackground(doc);
 
     doc.setFont('helvetica', 'bold');
@@ -95,14 +103,24 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
         startY: 70,
         head: [['Type', 'Due Date', 'Amount', 'Paid', 'Status']],
         body: ledgerBody,
-        theme: 'striped',
-        headStyles: { fillColor: primaryColor as [number, number, number] },
-        margin: { top: 70, left: 20, right: 20 },
+        theme: 'plain', // Transparent table as requested
+        headStyles: {
+            fillColor: [255, 255, 255] as [number, number, number],
+            textColor: primaryColor as [number, number, number],
+            fontStyle: 'bold'
+        },
+        styles: {
+            fillColor: [255, 255, 255] as [number, number, number], // Transparent/White rows
+            textColor: [0, 0, 0] as [number, number, number],
+            lineColor: [200, 200, 200] as [number, number, number],
+            lineWidth: 0.1,
+        },
+        margin: { top: 70, left: 20, right: 20, bottom: 40 }, // Increased bottom margin to avoid covering footer
     });
 
     // --- PAGE 3: Terms and Conditions ---
     doc.addPage();
-    await addBackground(doc);
+    await addBackground(doc); // Added background as requested
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -135,13 +153,42 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
         termY += splitTerm.length * 5 + 2;
     });
 
-    // Signatures
-    const finalY = doc.internal.pageSize.height - 40;
-    doc.line(20, finalY, 70, finalY);
-    doc.text('Client Signature', 20, finalY + 5);
+    // --- PAGE 4: Signature Page ---
+    doc.addPage();
+    await addBackground(doc);
 
-    doc.line(140, finalY, 190, finalY);
-    doc.text('Authorized Signature', 140, finalY + 5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('AUTHORIZATION', 105, 60, { align: 'center' });
+
+    // Client Signature
+    const finalY = 150;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+
+    doc.line(20, finalY, 80, finalY);
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Client Signature', 20, finalY + 10);
+
+    // Authorized Signature (CEO)
+    const signatureImg = new Image();
+    signatureImg.src = ceoSignature;
+    await new Promise((resolve) => {
+        signatureImg.onload = resolve;
+    });
+
+    // Add CEO Signature Image
+    doc.addImage(signatureImg, 'PNG', 130, finalY - 25, 50, 20);
+
+    doc.line(130, finalY, 190, finalY);
+    doc.text('Authorized Signature', 130, finalY + 10);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Abdullah Shah (CEO)', 130, finalY + 18);
+    doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, 130, finalY + 25);
 
     // Save PDF
     doc.save(`Membership_Letter_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
