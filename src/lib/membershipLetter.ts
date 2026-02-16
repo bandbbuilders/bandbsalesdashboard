@@ -163,11 +163,11 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
 
     // --- Signatures Section ---
     // Calculate required space for Signatures block
-    // Gap (20) + Signatures (50) = ~70 units
-    const signatureBlockHeight = 70;
-    const bottomStatsY = pageHeight - 80; // Preferred startY for bottom alignment
+    // Gap (10) + Signatures (40) = ~50 units (Reduced size)
+    const signatureBlockHeight = 50;
+    const bottomStatsY = pageHeight - 60; // Preferred startY for bottom alignment (moved down)
 
-    let signatureStartY = termY + 20; // Default: float after terms
+    let signatureStartY = termY + 10; // Default: float after terms (reduced gap)
 
     // If there is enough space to align to bottom, do it
     if (signatureStartY < bottomStatsY) {
@@ -175,7 +175,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     }
 
     // Check if the calculated startY + block fits on the page
-    // Using pageHeight - 10 to allow very close to edge if needed
+    // Using pageHeight - 10 to allow very close to edge
     if (signatureStartY + signatureBlockHeight > pageHeight - 10) {
         // Doesn't fit, MUST add new page based on content
         doc.addPage();
@@ -184,28 +184,26 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     }
 
     // Signatures position
-    // We removed the 'AUTHORIZATION' title, so signatures start directly at signatureStartY
-
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
 
     // Client Signature
     doc.line(20, signatureStartY, 80, signatureStartY);
-    doc.setFontSize(12);
+    doc.setFontSize(11); // Reduced font size
     doc.setTextColor(0, 0, 0);
-    doc.text('Client Signature', 20, signatureStartY + 10);
+    doc.text('Client Signature', 20, signatureStartY + 8);
 
     // Add CEO Signature Image
-    doc.addImage(signature, 'PNG', 130, signatureStartY - 25, 50, 20);
+    doc.addImage(signature, 'PNG', 130, signatureStartY - 20, 40, 16); // Reduced image size
 
     // Authorized Signature line
     doc.line(130, signatureStartY, 190, signatureStartY);
-    doc.text('Authorized Signature', 130, signatureStartY + 10);
+    doc.text('Authorized Signature', 130, signatureStartY + 8);
 
-    doc.setFontSize(10);
+    doc.setFontSize(9); // Reduced font size
     doc.setFont('helvetica', 'normal');
-    doc.text('Abdullah Shah (CEO)', 130, signatureStartY + 18);
-    doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, 130, signatureStartY + 25);
+    doc.text('Abdullah Shah (CEO)', 130, signatureStartY + 14);
+    // Date removed as requested
 
     // Save PDF
     doc.save(`Membership_Letter_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
