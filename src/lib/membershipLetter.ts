@@ -161,22 +161,34 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
         termY += splitTerm.length * 5 + 2;
     });
 
-    // --- PAGE 4: Authorization Page ---
-    doc.addPage();
-    addBackground(doc);
+    // --- Authorization Section ---
+    // Check if we need a new page for Authorization
+    // We need space for "AUTHORIZATION" title and to ensure it doesn't overlap with signatures
+    // Signatures are at the bottom (pageHeight - 60)
+    // We want "AUTHORIZATION" title to have some clearance
+
+    let authHeaderY = termY + 20;
+    const signaturesStartY = pageHeight - 60;
+
+    // If the header would be too close to the signatures (or off page), add a new page
+    // 30 units buffer for title and spacing
+    if (authHeaderY > signaturesStartY - 30) {
+        doc.addPage();
+        addBackground(doc);
+        authHeaderY = 60;
+    }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('AUTHORIZATION', 105, 60, { align: 'center' });
+    doc.text('AUTHORIZATION', 105, authHeaderY, { align: 'center' });
 
-    // Signatures at the bottom
-    const finalY = pageHeight - 60; // 60 units from bottom
+    // Client Signature
+    const finalY = signaturesStartY;
 
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
 
-    // Client Signature
     doc.line(20, finalY, 80, finalY);
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
