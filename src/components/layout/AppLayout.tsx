@@ -22,7 +22,8 @@ import {
   CheckSquare,
   Home,
   PenTool,
-  Share2
+  Share2,
+  Calculator
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -118,7 +119,7 @@ export const AppLayout = () => {
     { name: "Reports", href: "/sales/reports", icon: FileText, roles: ["admin", "manager"] },
     { name: "Users", href: "/sales/users", icon: Users, roles: ["admin"] },
     { name: "Inventory", href: "/sales/inventory", icon: Building2, roles: ["admin", "agent", "manager"] },
-    { name: "Social Media", href: "/social", icon: Share2, roles: ["admin", "manager"] },
+    { name: "Payment Plan Generator", href: "/sales/payment-plan", icon: Calculator, roles: ["admin", "agent", "manager"] },
   ];
 
   const filteredNavigation = navigation.filter(item =>

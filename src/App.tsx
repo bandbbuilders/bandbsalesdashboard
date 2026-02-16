@@ -20,6 +20,7 @@ import PaymentLedger from "./pages/PaymentLedger";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Inventory from "./pages/Inventory";
+import PaymentPlanGenerator from "./pages/PaymentPlanGenerator";
 import CrmDashboard from "./pages/crm/CrmDashboard";
 import LeadsList from "./pages/crm/LeadsList";
 import NewLead from "./pages/crm/NewLead";
@@ -91,6 +92,7 @@ const App = () => (
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
             <Route path="inventory" element={<Inventory />} />
+            <Route path="payment-plan" element={<PaymentPlanGenerator />} />
           </Route>
           <Route path="/crm/*" element={
             <AuthGuard>
