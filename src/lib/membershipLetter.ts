@@ -8,20 +8,29 @@ import ceoSignature from '../assets/ceo-signature-new.png';
 export const generateMembershipLetter = async (sale: Sale, ledgerEntries: LedgerEntry[]) => {
     const doc = new jsPDF();
     const primaryColor = [180, 2, 2]; // #B40202
+    const pageHeight = doc.internal.pageSize.height;
+
+    // Load images once
+    const letterhead = new Image();
+    letterhead.src = letterheadImg;
+    await new Promise((resolve) => {
+        letterhead.onload = resolve;
+    });
+
+    const signature = new Image();
+    signature.src = ceoSignature;
+    await new Promise((resolve) => {
+        signature.onload = resolve;
+    });
 
     // Function to add background to current page
-    const addBackground = async (pageDoc: jsPDF) => {
-        const img = new Image();
-        img.src = letterheadImg;
-        await new Promise((resolve) => {
-            img.onload = resolve;
-        });
+    const addBackground = (pageDoc: jsPDF) => {
         // Letterhead background (A4 size is approx 210x297mm)
-        pageDoc.addImage(img, 'PNG', 0, 0, 210, 297);
+        pageDoc.addImage(letterhead, 'PNG', 0, 0, 210, 297);
     };
 
     // --- PAGE 1: Purchase Confirmation ---
-    await addBackground(doc);
+    addBackground(doc);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
@@ -75,14 +84,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
 
     // --- PAGE 2: Payment Ledger ---
     doc.addPage();
-    // No background on page 2 as per request (user wanted transparent table, implied clean background for readability/printing on pre-printed paper? 
-    // Wait, the user said "Page 2 make table transparent and increase spacing from bottom as it is covering the footer as well."
-    // And "Page 3 dsnt have letterhead background." implies Page 2 DOES/SHOULD have it?
-    // "Page 1 is good." (which has background).
-    // Usually membership letters have backgrounds on all pages or just first.
-    // Given the complaint about covering the footer, it implies there IS a footer (from the letterhead background).
-    // So I will keep the background on Page 2.
-    await addBackground(doc);
+    addBackground(doc);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -120,7 +122,7 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
 
     // --- PAGE 3: Terms and Conditions ---
     doc.addPage();
-    await addBackground(doc); // Added background as requested
+    addBackground(doc);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -149,39 +151,41 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     let termY = 70;
     terms.forEach((term, index) => {
         const splitTerm = doc.splitTextToSize(term, 170);
+        // Check if term fits on page, if not add new page with background
+        if (termY + splitTerm.length * 5 > pageHeight - 40) {
+            doc.addPage();
+            addBackground(doc);
+            termY = 60; // Reset Y for new page
+        }
         doc.text(splitTerm, 20, termY);
         termY += splitTerm.length * 5 + 2;
     });
 
-    // --- PAGE 4: Signature Page ---
+    // --- PAGE 4: Authorization Page ---
     doc.addPage();
-    await addBackground(doc);
+    addBackground(doc);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.text('AUTHORIZATION', 105, 60, { align: 'center' });
 
-    // Client Signature
-    const finalY = 150;
+    // Signatures at the bottom
+    const finalY = pageHeight - 60; // 60 units from bottom
+
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
 
+    // Client Signature
     doc.line(20, finalY, 80, finalY);
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.text('Client Signature', 20, finalY + 10);
 
-    // Authorized Signature (CEO)
-    const signatureImg = new Image();
-    signatureImg.src = ceoSignature;
-    await new Promise((resolve) => {
-        signatureImg.onload = resolve;
-    });
-
     // Add CEO Signature Image
-    doc.addImage(signatureImg, 'PNG', 130, finalY - 25, 50, 20);
+    doc.addImage(signature, 'PNG', 130, finalY - 25, 50, 20);
 
+    // Authorized Signature line
     doc.line(130, finalY, 190, finalY);
     doc.text('Authorized Signature', 130, finalY + 10);
 
