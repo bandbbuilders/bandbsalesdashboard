@@ -162,49 +162,58 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     });
 
     // --- Authorization Section ---
-    // Check if we need a new page for Authorization
-    // We need space for "AUTHORIZATION" title and to ensure it doesn't overlap with signatures
-    // Signatures are at the bottom (pageHeight - 60)
-    // We want "AUTHORIZATION" title to have some clearance
+    // Calculate required space for Authorization block
+    // Header (10) + Gap (10) + Signatures (50) = ~70 units
+    const authBlockHeight = 70;
+    const bottomStatsY = pageHeight - 80; // Preferred startY for bottom alignment
 
-    let authHeaderY = termY + 20;
-    const signaturesStartY = pageHeight - 60;
+    let authStartY = termY + 20; // Default: float after terms
 
-    // If the header would be too close to the signatures (or off page), add a new page
-    // 30 units buffer for title and spacing
-    if (authHeaderY > signaturesStartY - 30) {
+    // If there is enough space to align to bottom, do it
+    if (authStartY < bottomStatsY) {
+        authStartY = bottomStatsY;
+    }
+
+    // Check if the calculated startY + block fits on the page
+    // Using pageHeight - 10 to allow very close to edge if needed, preventing Page 5
+    if (authStartY + authBlockHeight > pageHeight - 10) {
+        // Doesn't fit, MUST add new page based on content
         doc.addPage();
         addBackground(doc);
-        authHeaderY = 60;
+        authStartY = 60; // Top of new page
+
+        // If on new page, we can align to bottom again if we want, or just top.
+        // Let's stick to top/float behavior for new page to be safe.
     }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('AUTHORIZATION', 105, authHeaderY, { align: 'center' });
+    doc.text('AUTHORIZATION', 105, authStartY, { align: 'center' });
 
-    // Client Signature
-    const finalY = signaturesStartY;
+    // Signatures position relative to header
+    const signaturesY = authStartY + 30; // 30 units below header
 
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
 
-    doc.line(20, finalY, 80, finalY);
+    // Client Signature
+    doc.line(20, signaturesY, 80, signaturesY);
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text('Client Signature', 20, finalY + 10);
+    doc.text('Client Signature', 20, signaturesY + 10);
 
     // Add CEO Signature Image
-    doc.addImage(signature, 'PNG', 130, finalY - 25, 50, 20);
+    doc.addImage(signature, 'PNG', 130, signaturesY - 25, 50, 20);
 
     // Authorized Signature line
-    doc.line(130, finalY, 190, finalY);
-    doc.text('Authorized Signature', 130, finalY + 10);
+    doc.line(130, signaturesY, 190, signaturesY);
+    doc.text('Authorized Signature', 130, signaturesY + 10);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Abdullah Shah (CEO)', 130, finalY + 18);
-    doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, 130, finalY + 25);
+    doc.text('Abdullah Shah (CEO)', 130, signaturesY + 18);
+    doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, 130, signaturesY + 25);
 
     // Save PDF
     doc.save(`Membership_Letter_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
