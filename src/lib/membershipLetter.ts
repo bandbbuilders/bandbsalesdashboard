@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Sale, LedgerEntry } from '../types';
 import letterheadImg from '../assets/bb-letterhead-hq.png'; // Updated to high quality image
 import ceoSignature from '../assets/ceo-signature-new.png';
+import stampImage from '../assets/bb-stamp.png';
 
 export const generateMembershipLetter = async (sale: Sale, ledgerEntries: LedgerEntry[]) => {
     const doc = new jsPDF();
@@ -21,6 +22,12 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     signature.src = ceoSignature;
     await new Promise((resolve) => {
         signature.onload = resolve;
+    });
+
+    const stampImg = new Image();
+    stampImg.src = stampImage;
+    await new Promise((resolve) => {
+        stampImg.onload = resolve;
     });
 
     // Function to add background to current page
@@ -90,6 +97,33 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
     const welcomeMsg = `Dear ${sale.customer.name},\n\nWe would like to express our deepest gratitude for choosing B&B Builders for your property investment. It is an honor to have you as part of our community. This letter serves as the official document of your purchase confirmation for Unit ${sale.unit_number}.\n\nWe are committed to delivering excellence and ensuring a smooth journey as we build your dreams together. Should you have any questions, our dedicated team is always here to assist you.\n\nThank you for your trust and confidence in our vision.`;
     const splitWelcome = doc.splitTextToSize(welcomeMsg, 160);
     doc.text(splitWelcome, 25, msgY + 10);
+
+    // --- Page 1: Authorized Signature & Stamp ---
+    const page1SignatureY = 240; // Bottom area of Page 1
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+
+    // Stamp (Centered behind/over signature)
+    // Assuming stamp is roughly square, 30x30 or 40x40
+    doc.addImage(stampImg, 'PNG', 135, page1SignatureY - 15, 40, 40);
+
+    // Signature Image
+    doc.addImage(signature, 'PNG', 130, page1SignatureY - 10, 40, 16);
+
+    // Line and Text
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(130, page1SignatureY + 10, 190, page1SignatureY + 10);
+
+    doc.setTextColor(0, 0, 0);
+    doc.text('Authorized Signature', 130, page1SignatureY + 18);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Abdullah Shah (CEO)', 130, page1SignatureY + 24);
+
 
     // --- PAGE 2: Payment Ledger ---
     doc.addPage();
@@ -170,49 +204,37 @@ export const generateMembershipLetter = async (sale: Sale, ledgerEntries: Ledger
         termY += splitTerm.length * 5 + 2;
     });
 
-    // --- Signatures Section ---
-    // Calculate required space for Signatures block
-    // Gap (10) + Signatures (40) = ~50 units (Reduced size)
-    const signatureBlockHeight = 50;
-    const bottomStatsY = pageHeight - 60; // Preferred startY for bottom alignment (moved down)
+    // --- Signatures Section (Page 4) ---
+    // Only Client Signature here now
 
-    let signatureStartY = termY + 10; // Default: float after terms (reduced gap)
+    // Calculate required space for Signatures block
+    // Gap (10) + Signatures (30) = ~40 units (Reduced size further)
+    const signatureBlockHeight = 40;
+    const bottomStatsY = pageHeight - 50;
+
+    let signatureStartY = termY + 10;
 
     // If there is enough space to align to bottom, do it
     if (signatureStartY < bottomStatsY) {
         signatureStartY = bottomStatsY;
     }
 
-    // Check if the calculated startY + block fits on the page
-    // Using pageHeight - 10 to allow very close to edge
+    // Check if fit
     if (signatureStartY + signatureBlockHeight > pageHeight - 10) {
-        // Doesn't fit, MUST add new page based on content
         doc.addPage();
         // Background added automatically
-        signatureStartY = 60; // Top of new page
+        signatureStartY = 60;
     }
 
     // Signatures position
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
 
-    // Client Signature
+    // Client Signature ONLY
     doc.line(20, signatureStartY, 80, signatureStartY);
-    doc.setFontSize(11); // Reduced font size
+    doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
     doc.text('Client Signature', 20, signatureStartY + 8);
-
-    // Add CEO Signature Image
-    doc.addImage(signature, 'PNG', 130, signatureStartY - 20, 40, 16); // Reduced image size
-
-    // Authorized Signature line
-    doc.line(130, signatureStartY, 190, signatureStartY);
-    doc.text('Authorized Signature', 130, signatureStartY + 8);
-
-    doc.setFontSize(9); // Reduced font size
-    doc.setFont('helvetica', 'normal');
-    doc.text('Abdullah Shah (CEO)', 130, signatureStartY + 14);
-    // Date removed as requested
 
     // Save PDF
     doc.save(`Membership_Letter_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
