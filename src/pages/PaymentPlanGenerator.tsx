@@ -10,13 +10,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { format } from "date-fns";
-import { Building2, Calculator, FileText, Share2 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import letterheadImg from "@/assets/bb-letterhead-hq.png";
-import stampImg from "@/assets/bb-stamp.png";
-import ceoSignature from "@/assets/ceo-signature-new.png";
+import { format, addMonths } from "date-fns";
+import { FileText } from "lucide-react";
 import {
     getStandardRate,
     UNIT_CATEGORIES,
@@ -27,6 +22,8 @@ import {
     FacingType
 } from "@/data/standardPricing";
 import { toast } from "sonner";
+import { generatePaymentPlanPDF } from "@/lib/paymentPlanGenerator";
+import { Separator } from "@/components/ui/separator";
 
 const PaymentPlanGenerator = () => {
     // UI State
@@ -35,15 +32,29 @@ const PaymentPlanGenerator = () => {
     const [floorType, setFloorType] = useState<FloorType>("2nd to 6th Floor");
     const [facingType, setFacingType] = useState<FacingType>("General");
     const [area, setArea] = useState<number>(0);
+    const [unitNumber, setUnitNumber] = useState("");
+
+    // Options
+    const [showDetailedSchedule, setShowDetailedSchedule] = useState(true);
 
     // Custom Plan State
     const [bookingAmount, setBookingAmount] = useState<number>(0);
+    const [bookingDate, setBookingDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [downPayment, setDownPayment] = useState<number>(0);
-    const [monthlyInstallment, setMonthlyInstallment] = useState<number>(0);
-    const [possessionAmount, setPossessionAmount] = useState<number>(0);
+    const [downPaymentDate, setDownPaymentDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
-    // Calculated Values
+    // Installments
+    const [installmentMonths, setInstallmentMonths] = useState<number>(36);
+    const [monthlyInstallment, setMonthlyInstallment] = useState<number>(0);
+    const [installmentStartDate, setInstallmentStartDate] = useState<string>(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
+
+    // Possession
+    const [possessionAmount, setPossessionAmount] = useState<number>(0);
+    const [possessionDate, setPossessionDate] = useState<string>(format(addMonths(new Date(), 36), 'yyyy-MM-dd'));
+
+    // Calculated Values & Rates
     const [standardRate, setStandardRate] = useState<number>(0);
+    const [customRate, setCustomRate] = useState<number>(0);
     const [standardTotal, setStandardTotal] = useState<number>(0);
     const [customTotal, setCustomTotal] = useState<number>(0);
     const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -53,23 +64,34 @@ const PaymentPlanGenerator = () => {
     useEffect(() => {
         const rate = getStandardRate(unitCategory, floorType, unitCategory === 'Shop' ? facingType : undefined);
         setStandardRate(rate);
+
+        // Only update custom rate if it hasn't been manually set, or if we want to reset it on category change
+        if (customRate === 0) {
+            setCustomRate(rate);
+        }
+
         setStandardTotal(rate * (area || 0));
     }, [unitCategory, floorType, facingType, area]);
 
-    // Update Custom Total and Discount
+    // Update Totals when Custom Rate or Area changes
     useEffect(() => {
-        const total = (bookingAmount || 0) + (downPayment || 0) + ((monthlyInstallment || 0) * 36) + (possessionAmount || 0);
-        setCustomTotal(total);
+        if (area > 0 && customRate > 0) {
+            const total = area * customRate;
+            setCustomTotal(total);
+        }
+    }, [area, customRate]);
 
-        if (standardTotal > 0) {
-            const discount = standardTotal - total;
+    // Calculate Discount based on Standard total vs Custom Total
+    useEffect(() => {
+        if (standardTotal > 0 && customTotal > 0) {
+            const discount = standardTotal - customTotal;
             setDiscountAmount(discount);
             setDiscountPercentage((discount / standardTotal) * 100);
         } else {
             setDiscountAmount(0);
             setDiscountPercentage(0);
         }
-    }, [bookingAmount, downPayment, monthlyInstallment, possessionAmount, standardTotal]);
+    }, [standardTotal, customTotal]);
 
 
     const generatePDF = async () => {
@@ -78,216 +100,111 @@ const PaymentPlanGenerator = () => {
             return;
         }
 
-        const doc = new jsPDF();
-        const primaryColor = [180, 2, 2]; // #B40202
+        const totalSum = bookingAmount + downPayment + (monthlyInstallment * installmentMonths) + possessionAmount;
 
-        // Load Images
-        const letterhead = new Image();
-        letterhead.src = letterheadImg;
-        await new Promise(r => letterhead.onload = r);
-
-        const stamp = new Image();
-        stamp.src = stampImg;
-        await new Promise(r => stamp.onload = r);
-
-        const signature = new Image();
-        signature.src = ceoSignature;
-        await new Promise(r => signature.onload = r);
-
-        // Background Helper
-        const addBackground = (pageDoc: jsPDF) => {
-            pageDoc.addImage(letterhead, 'PNG', 0, 0, 210, 297);
-        };
-
-        // Monkey Patch addPage
-        const originalAddPage = doc.addPage.bind(doc);
-        doc.addPage = function (format?: string | number[], orientation?: "p" | "portrait" | "l" | "landscape") {
-            const result = originalAddPage(format, orientation);
-            addBackground(this);
-            return result;
-        };
-
-        // Page 1
-        addBackground(doc);
-
-        // Title Section
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(24);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text('B&B BUILDERS', 105, 50, { align: 'center' });
-
-        doc.setFontSize(16);
-        doc.text('PAYMENT PLAN', 105, 60, { align: 'center' });
-        doc.text('(3 YEARS PLAN)', 105, 68, { align: 'center' });
-
-        // Client & Unit Details (Grid Layout)
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-
-        // Calculate Unit Description
-        let unitDesc = "";
-        if (unitCategory === 'Apartment') {
-            const floorDesc = floorType === '1st Floor' ? '1st Floor' : '2-5 Floors';
-            unitDesc = `Apartment (${floorDesc}) - ${area} sq.ft.`;
-        } else {
-            unitDesc = `Shop (${floorType}, ${facingType}) - ${area} sq.ft.`;
+        // Validation: Sum must equal Custom Total
+        // Allow a small margin of error for floating point arithmetic
+        if (Math.abs(totalSum - customTotal) > 100) {
+            toast.error(`Validation Error: Sum of parts (${totalSum.toLocaleString()}) does not match Total Amount (${customTotal.toLocaleString()})`);
+            return;
         }
 
-        // Grid Layout for Details
-        const startY = 80;
-        const col1X = 20;
-        const col2X = 120;
-
-        // Row 1
-        doc.setFont('helvetica', 'bold');
-        doc.text(unitDesc, col1X, startY);
-
-        // Line under top section
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(0, 0, 0);
-        doc.line(col1X, startY + 2, 190, startY + 2);
-
-        const detailsY = startY + 10;
-
-        // Client Name
-        doc.setFont('helvetica', 'bold');
-        doc.text('Client Name:', col1X, detailsY);
-        doc.setFont('helvetica', 'normal');
-        doc.text(clientName, col1X + 30, detailsY);
-
-        // Date
-        doc.setFont('helvetica', 'bold');
-        doc.text('Date:', col2X, detailsY);
-        doc.setFont('helvetica', 'normal');
-        doc.text(format(new Date(), "dd/MM/yyyy"), col2X + 15, detailsY);
-
-        // Category
-        const detailsY2 = detailsY + 8;
-        doc.setFont('helvetica', 'bold');
-        doc.text('CATEGORY:', col1X, detailsY2);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${unitCategory} - ${floorType}`, col1X + 30, detailsY2);
-
-        // Financial Breakdown Table
-        let tableY = detailsY2 + 15;
-
-        const financialData = [
-            ['Total Standard Price', `PKR ${standardTotal.toLocaleString()}`],
-            ...(discountAmount !== 0 ? [['Discount/Premium', `${discountPercentage.toFixed(2)}% (PKR ${Math.abs(discountAmount).toLocaleString()})`]] : []),
-            ['Net Payable Price', `PKR ${customTotal.toLocaleString()}`],
-        ];
-
-        autoTable(doc, {
-            startY: tableY,
-            head: [['Description', 'Amount']],
-            body: financialData,
-            theme: 'grid',
-            headStyles: {
-                fillColor: primaryColor as [number, number, number],
-                fontSize: 12,
-                halign: 'center'
+        // Mock Sale Object for the generator
+        const mockSale: any = {
+            customer: {
+                name: clientName,
             },
-            styles: {
-                fontSize: 11,
-                cellPadding: 3
-            },
-            columnStyles: {
-                0: { fontStyle: 'bold' },
-                1: { halign: 'right' }
-            }
-        });
+            unit_number: unitNumber || "TBD",
+            unit_total_price: standardTotal, // Original price before discount
+        };
 
-        // Payment Schedule
-        const finalY = (doc as any).lastAutoTable.finalY + 15;
-        doc.text('PROPOSED PAYMENT SCHEDULE', 20, finalY);
+        // Params
+        const params = {
+            totalAmount: customTotal,
+            downPayment: downPayment,
+            downPaymentDate: new Date(downPaymentDate),
+            monthlyInstallment: monthlyInstallment,
+            installmentMonths: installmentMonths,
+            installmentStartDate: new Date(installmentStartDate),
+            possessionAmount: possessionAmount,
+            possessionDate: new Date(possessionDate),
+            discount: discountAmount > 0 ? discountAmount : 0, // Only pass positive discount
+            bookingAmount: bookingAmount,
+            bookingDate: new Date(bookingDate),
+            totalSqf: area,
+            ratePerSqf: customRate,
+            showDetailedSchedule: showDetailedSchedule
+        };
 
-        const scheduleData = [
-            ['Booking Amount', `PKR ${bookingAmount.toLocaleString()}`],
-            ['Down Payment', `PKR ${downPayment.toLocaleString()}`],
-            ['36 Monthly Installments', `PKR ${monthlyInstallment.toLocaleString()} x 36 = PKR ${(monthlyInstallment * 36).toLocaleString()}`],
-            ['Possession Amount', `PKR ${possessionAmount.toLocaleString()}`],
-            ['TOTAL', `PKR ${customTotal.toLocaleString()}`]
-        ];
-
-        autoTable(doc, {
-            startY: finalY + 5,
-            head: [['Milestone', 'Amount']],
-            body: scheduleData,
-            theme: 'grid', // Changed to grid
-            headStyles: {
-                fillColor: primaryColor as [number, number, number],
-                fontSize: 12,
-                halign: 'center'
-            },
-            styles: {
-                fontSize: 11,
-                cellPadding: 3
-            },
-            columnStyles: {
-                0: { fontStyle: 'bold' },
-                1: { halign: 'right' }
-            }
-        });
-
-        // Signatures
-        const sigY = 250; // Pushed down further
-
-        doc.addImage(stamp, 'PNG', 130, sigY - 20, 35, 35); // Moved slightly left
-        doc.addImage(signature, 'PNG', 140, sigY - 10, 40, 16);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-
-        doc.setDrawColor(0, 0, 0);
-        doc.line(20, sigY + 10, 70, sigY + 10);
-        doc.text("Client Signature", 20, sigY + 15); // Changed to "Client Key" or "Client Signature" based on doc? Keeping Signature.
-
-        doc.line(140, sigY + 10, 190, sigY + 10);
-        doc.text("Authorized Signature", 140, sigY + 15);
-        doc.text("B&B Builders", 140, sigY + 20);
-
-        // Note Section
-        const noteY = 280;
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Note: This is a proposed payment plan. Prices subject to change.", 105, noteY, { align: 'center' });
-
-        doc.save(`Payment_Plan_${clientName.replace(/\s+/g, '_')}.pdf`);
+        await generatePaymentPlanPDF(mockSale, params);
         toast.success("Payment Plan PDF Generated");
     };
 
+    const formatCurrency = (amount: number) => `PKR ${amount.toLocaleString()}`;
+
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in p-6">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-primary">Payment Plan Generator</h1>
-                    <p className="text-muted-foreground mt-2">Generate custom payment plans with discount analysis.</p>
+                    <p className="text-muted-foreground mt-2">Generate custom payment plans with rate customization and validation.</p>
                 </div>
-                <Button onClick={generatePDF} className="gap-2">
-                    <FileText className="h-4 w-4" />
-                    Generate PDF
-                </Button>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            id="detailedSchedule"
+                            checked={showDetailedSchedule}
+                            onChange={(e) => setShowDetailedSchedule(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor="detailedSchedule" className="cursor-pointer text-sm">Generate Payment Ledger (Detailed)</Label>
+                    </div>
+                    <Button onClick={generatePDF} className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        Generate PDF
+                    </Button>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Input Section */}
-                <Card className="h-fit">
+            <div className="grid grid-cols-1 gap-6">
+                {/* Unit Section */}
+                <Card>
                     <CardHeader>
                         <CardTitle>Unit & Client Details</CardTitle>
-                        <CardDescription>Enter the details to derive standard pricing</CardDescription>
+                        <CardDescription>Configure unit params to derive pricing</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label>Client Name</Label>
-                            <Input
-                                value={clientName}
-                                onChange={(e) => setClientName(e.target.value)}
-                                placeholder="Enter client name"
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label>Client Name *</Label>
+                                <Input
+                                    value={clientName}
+                                    onChange={(e) => setClientName(e.target.value)}
+                                    placeholder="Enter client name"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Unit Number (Optional)</Label>
+                                <Input
+                                    value={unitNumber}
+                                    onChange={(e) => setUnitNumber(e.target.value)}
+                                    placeholder="e.g. A-101"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Area (Square Feet) *</Label>
+                                <Input
+                                    type="number"
+                                    value={area || ''}
+                                    onChange={(e) => setArea(Number(e.target.value))}
+                                    placeholder="e.g. 1000"
+                                />
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
                                 <Label>Unit Category</Label>
                                 <Select value={unitCategory} onValueChange={(v: UnitCategory) => {
                                     setUnitCategory(v);
@@ -302,7 +219,7 @@ const PaymentPlanGenerator = () => {
                                 </Select>
                             </div>
 
-                            <div className="grid gap-2">
+                            <div className="space-y-2">
                                 <Label>Floor Type</Label>
                                 <Select value={floorType} onValueChange={(v: FloorType) => setFloorType(v)}>
                                     <SelectTrigger>
@@ -313,106 +230,167 @@ const PaymentPlanGenerator = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
-                        {unitCategory === 'Shop' && (
-                            <div className="grid gap-2">
-                                <Label>Facing</Label>
-                                <Select value={facingType} onValueChange={(v: FacingType) => setFacingType(v)}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {FACING_TYPES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        <div className="grid gap-2">
-                            <Label>Area (Square Feet)</Label>
-                            <Input
-                                type="number"
-                                value={area || ''}
-                                onChange={(e) => setArea(Number(e.target.value))}
-                                placeholder="e.g. 1000"
-                            />
-                        </div>
-
-                        <div className="bg-muted p-4 rounded-lg mt-4 space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span>Standard Rate:</span>
-                                <span className="font-semibold">PKR {standardRate.toLocaleString()}/sqft</span>
-                            </div>
-                            <div className="flex justify-between text-base font-bold text-primary">
-                                <span>Standard Total Price:</span>
-                                <span>PKR {standardTotal.toLocaleString()}</span>
-                            </div>
+                            {unitCategory === 'Shop' && (
+                                <div className="space-y-2">
+                                    <Label>Facing</Label>
+                                    <Select value={facingType} onValueChange={(v: FacingType) => setFacingType(v)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {FACING_TYPES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Custom Plan Section */}
-                <Card className="h-fit">
+                {/* Pricing & Plan Section */}
+                <Card>
                     <CardHeader>
-                        <CardTitle>Custom Payment Schedule</CardTitle>
-                        <CardDescription>Adjust amounts to see discount impact</CardDescription>
+                        <CardTitle>Pricing & Payment Schedule</CardTitle>
+                        <CardDescription>Set rates and define payment milestones. All parts must sum to Total Amount.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
+                    <CardContent className="space-y-6">
+                        {/* Rates Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg border">
+                            <div className="space-y-2">
+                                <Label>Standard Rate</Label>
+                                <div className="p-2 bg-muted rounded text-sm text-muted-foreground">
+                                    PKR {standardRate.toLocaleString()}/sqft
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Standard Total</Label>
+                                <div className="p-2 bg-muted rounded text-sm text-muted-foreground">
+                                    PKR {standardTotal.toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-primary font-semibold">Custom Rate (Per SQF)</Label>
+                                <Input
+                                    type="number"
+                                    value={customRate}
+                                    onChange={(e) => setCustomRate(Number(e.target.value))}
+                                    className="border-primary/20"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-primary font-semibold">Custom Total Amount</Label>
+                                <div className="p-2 bg-primary/5 border border-primary/20 rounded font-bold text-primary">
+                                    PKR {customTotal.toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Payment Breakdown */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Booking */}
+                            <div className="space-y-2">
                                 <Label>Booking Amount</Label>
                                 <Input
                                     type="number"
-                                    value={bookingAmount || ''}
+                                    value={bookingAmount}
                                     onChange={(e) => setBookingAmount(Number(e.target.value))}
                                 />
                             </div>
-                            <div className="grid gap-2">
+                            <div className="space-y-2">
+                                <Label>Booking Date</Label>
+                                <Input
+                                    type="date"
+                                    value={bookingDate}
+                                    onChange={(e) => setBookingDate(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Down Payment */}
+                            <div className="space-y-2">
                                 <Label>Down Payment</Label>
                                 <Input
                                     type="number"
-                                    value={downPayment || ''}
+                                    value={downPayment}
                                     onChange={(e) => setDownPayment(Number(e.target.value))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>DP Due Date</Label>
+                                <Input
+                                    type="date"
+                                    value={downPaymentDate}
+                                    onChange={(e) => setDownPaymentDate(e.target.value)}
                                 />
                             </div>
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label>Monthly Installment (x36)</Label>
-                            <Input
-                                type="number"
-                                value={monthlyInstallment || ''}
-                                onChange={(e) => setMonthlyInstallment(Number(e.target.value))}
-                            />
-                            <p className="text-xs text-muted-foreground text-right">
-                                Total Installments: PKR {((monthlyInstallment || 0) * 36).toLocaleString()}
-                            </p>
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label>Possession Amount</Label>
-                            <Input
-                                type="number"
-                                value={possessionAmount || ''}
-                                onChange={(e) => setPossessionAmount(Number(e.target.value))}
-                            />
-                        </div>
-
-                        <div className={`p-4 rounded-lg mt-4 space-y-2 border ${discountAmount > 0 ? 'bg-green-50/50 border-green-200' : 'bg-muted border-transparent'}`}>
-                            <div className="flex justify-between text-sm">
-                                <span>Custom Total Price:</span>
-                                <span className="font-semibold">PKR {customTotal.toLocaleString()}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Installments */}
+                            <div className="space-y-2">
+                                <Label>Installment Months</Label>
+                                <Input
+                                    type="number"
+                                    value={installmentMonths}
+                                    onChange={(e) => setInstallmentMonths(Number(e.target.value))}
+                                />
                             </div>
-                            {discountAmount !== 0 && (
-                                <div className={`flex justify-between text-sm font-medium ${discountAmount > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                    <span>{discountAmount > 0 ? 'Discount' : 'Premium'}:</span>
-                                    <span>
-                                        {Math.abs(discountPercentage).toFixed(2)}%
-                                        (PKR {Math.abs(discountAmount).toLocaleString()})
-                                    </span>
+                            <div className="space-y-2">
+                                <Label>Monthly Installment</Label>
+                                <Input
+                                    type="number"
+                                    value={monthlyInstallment}
+                                    onChange={(e) => setMonthlyInstallment(Number(e.target.value))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Start Date</Label>
+                                <Input
+                                    type="date"
+                                    value={installmentStartDate}
+                                    onChange={(e) => setInstallmentStartDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Installment Total</Label>
+                                <div className="p-2 bg-muted rounded text-sm">
+                                    PKR {(monthlyInstallment * installmentMonths).toLocaleString()}
                                 </div>
-                            )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Possession */}
+                            <div className="space-y-2">
+                                <Label>Possession Amount</Label>
+                                <Input
+                                    type="number"
+                                    value={possessionAmount}
+                                    onChange={(e) => setPossessionAmount(Number(e.target.value))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Possession Date</Label>
+                                <Input
+                                    type="date"
+                                    value={possessionDate}
+                                    onChange={(e) => setPossessionDate(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Validation Display */}
+                            <div className="col-span-2 space-y-2">
+                                <Label>Validation Check</Label>
+                                <div className={`p-2 border rounded-md text-sm font-medium flex justify-between items-center ${Math.abs((bookingAmount + downPayment + (monthlyInstallment * installmentMonths) + possessionAmount) - customTotal) < 100
+                                    ? "bg-green-100 text-green-800 border-green-200"
+                                    : "bg-red-100 text-red-800 border-red-200"
+                                    }`}>
+                                    <span>Sum: {formatCurrency(bookingAmount + downPayment + (monthlyInstallment * installmentMonths) + possessionAmount)}</span>
+                                    <span>Target: {formatCurrency(customTotal)}</span>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

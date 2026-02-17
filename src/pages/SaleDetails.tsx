@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Edit, Calendar, User, MapPin, Phone, Mail, Trash2, FileText } from "lucide-react";
 import { generateMembershipLetter } from "@/lib/membershipLetter";
+import { generatePaymentPlanPDF } from "@/lib/paymentPlanGenerator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calculator } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Sale, Customer, User as UserType } from "@/types";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const SaleDetails = () => {
@@ -29,6 +33,23 @@ const SaleDetails = () => {
   const [user, setUser] = useState<UserType | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
+
+  // Custom Payment Plan State
+  const [customPlan, setCustomPlan] = useState({
+    totalAmount: 0,
+    downPayment: 0,
+    downPaymentDate: format(new Date(), 'yyyy-MM-dd'),
+    monthlyInstallment: 0,
+    installmentMonths: 12,
+    installmentStartDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
+    possessionAmount: 0,
+    possessionDate: format(addMonths(new Date(), 12), 'yyyy-MM-dd'),
+    discount: 0,
+    totalSqf: 0,
+    ratePerSqf: 0,
+    bookingAmount: 0,
+    bookingDate: format(new Date(), 'yyyy-MM-dd'),
+  });
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -121,13 +142,30 @@ const SaleDetails = () => {
     fetchSaleDetails();
   }, [id, toast]);
 
+  useEffect(() => {
+    if (sale) {
+      setCustomPlan(prev => ({
+        ...prev,
+        totalAmount: sale.unit_total_price,
+        monthlyInstallment: sale.payment_plan?.monthly_installment || 0,
+        installmentMonths: sale.payment_plan?.installment_months || 12,
+        possessionAmount: sale.payment_plan?.possession_amount || 0,
+        discount: 0,
+        totalSqf: 0,
+        ratePerSqf: 0,
+        bookingAmount: 0,
+        bookingDate: format(new Date(), 'yyyy-MM-dd'),
+      }));
+    }
+  }, [sale]);
+
   const formatCurrency = (amount: number) => {
     if (amount >= 10000000) {
-      return `₹${(amount / 10000000).toFixed(1)}Cr`;
+      return `PKR ${(amount / 10000000).toFixed(1)}Cr`;
     } else if (amount >= 100000) {
-      return `₹${(amount / 100000).toFixed(1)}L`;
+      return `PKR ${(amount / 100000).toFixed(1)}L`;
     } else {
-      return `₹${amount.toLocaleString()}`;
+      return `PKR ${amount.toLocaleString()}`;
     }
   };
 
@@ -396,6 +434,202 @@ const SaleDetails = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Custom Payment Plan Generator */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5" />
+            Custom Payment Plan Generator
+          </CardTitle>
+          <CardDescription>
+            Generate a custom payment plan PDF for this client.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Rate & Size Configuration */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 p-4 border rounded-md bg-muted/20">
+            <div className="space-y-2">
+              <Label>Unit Size (SQF)</Label>
+              <Input
+                type="number"
+                value={customPlan.totalSqf}
+                onChange={(e) => {
+                  const sqf = Number(e.target.value);
+                  const newTotal = sqf * customPlan.ratePerSqf;
+                  setCustomPlan({ ...customPlan, totalSqf: sqf, totalAmount: newTotal > 0 ? newTotal : customPlan.totalAmount });
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rate (Per SQF)</Label>
+              <Input
+                type="number"
+                value={customPlan.ratePerSqf}
+                onChange={(e) => {
+                  const rate = Number(e.target.value);
+                  const newTotal = rate * customPlan.totalSqf;
+                  setCustomPlan({ ...customPlan, ratePerSqf: rate, totalAmount: newTotal > 0 ? newTotal : customPlan.totalAmount });
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Total Amount</Label>
+              <Input
+                type="number"
+                value={customPlan.totalAmount}
+                onChange={(e) => setCustomPlan({ ...customPlan, totalAmount: Number(e.target.value) })}
+              />
+              <p className="text-xs text-muted-foreground">
+                {customPlan.totalSqf > 0 && customPlan.ratePerSqf > 0
+                  ? `Calculated: ${formatCurrency(customPlan.totalSqf * customPlan.ratePerSqf)}`
+                  : 'Manual Entry'}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Discount Amount</Label>
+              <Input
+                type="number"
+                value={customPlan.discount}
+                onChange={(e) => setCustomPlan({ ...customPlan, discount: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Payment Schedule Inputs */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label>Booking Amount</Label>
+              <Input
+                type="number"
+                value={customPlan.bookingAmount}
+                onChange={(e) => setCustomPlan({ ...customPlan, bookingAmount: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Booking Date</Label>
+              <Input
+                type="date"
+                value={customPlan.bookingDate}
+                onChange={(e) => setCustomPlan({ ...customPlan, bookingDate: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Down Payment</Label>
+              <Input
+                type="number"
+                value={customPlan.downPayment}
+                onChange={(e) => setCustomPlan({ ...customPlan, downPayment: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>DP Due Date</Label>
+              <Input
+                type="date"
+                value={customPlan.downPaymentDate}
+                onChange={(e) => setCustomPlan({ ...customPlan, downPaymentDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label>Installment Months</Label>
+              <Input
+                type="number"
+                value={customPlan.installmentMonths}
+                onChange={(e) => setCustomPlan({ ...customPlan, installmentMonths: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Monthly Installment</Label>
+              <Input
+                type="number"
+                value={customPlan.monthlyInstallment}
+                onChange={(e) => setCustomPlan({ ...customPlan, monthlyInstallment: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input
+                type="date"
+                value={customPlan.installmentStartDate}
+                onChange={(e) => setCustomPlan({ ...customPlan, installmentStartDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Installment Total</Label>
+              <div className="p-2 border rounded-md bg-muted text-sm font-medium">
+                {formatCurrency(customPlan.monthlyInstallment * customPlan.installmentMonths)}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label>Possession Amount</Label>
+              <Input
+                type="number"
+                value={customPlan.possessionAmount}
+                onChange={(e) => setCustomPlan({ ...customPlan, possessionAmount: Number(e.target.value) })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Possession Date</Label>
+              <Input
+                type="date"
+                value={customPlan.possessionDate}
+                onChange={(e) => setCustomPlan({ ...customPlan, possessionDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Validation Check</Label>
+              <div className={`p-2 border rounded-md text-sm font-medium flex justify-between ${(customPlan.bookingAmount + customPlan.downPayment + (customPlan.monthlyInstallment * customPlan.installmentMonths) + customPlan.possessionAmount) === (customPlan.totalAmount - customPlan.discount)
+                ? "bg-green-100 text-green-800 border-green-200"
+                : "bg-red-100 text-red-800 border-red-200"
+                }`}>
+                <span>Sum: {formatCurrency(customPlan.bookingAmount + customPlan.downPayment + (customPlan.monthlyInstallment * customPlan.installmentMonths) + customPlan.possessionAmount)}</span>
+                <span>Target: {formatCurrency(customPlan.totalAmount - customPlan.discount)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={() => {
+                if (!sale) return;
+
+                const totalSum = customPlan.bookingAmount + customPlan.downPayment + (customPlan.monthlyInstallment * customPlan.installmentMonths) + customPlan.possessionAmount;
+                const targetTotal = customPlan.totalAmount - customPlan.discount;
+
+                if (Math.abs(totalSum - targetTotal) > 100) { // Allow small float margin
+                  toast({
+                    title: "Validation Error",
+                    description: `Total amount mismatch! Sum of parts (${formatCurrency(totalSum)}) does not equal Total Amount - Discount (${formatCurrency(targetTotal)})`,
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                generatePaymentPlanPDF(sale, {
+                  ...customPlan,
+                  downPaymentDate: new Date(customPlan.downPaymentDate),
+                  installmentStartDate: new Date(customPlan.installmentStartDate),
+                  possessionDate: new Date(customPlan.possessionDate),
+                  bookingDate: new Date(customPlan.bookingDate),
+                  showDetailedSchedule: true,
+                });
+              }}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Plan PDF
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

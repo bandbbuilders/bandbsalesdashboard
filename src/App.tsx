@@ -35,6 +35,7 @@ import TAccountsPage from "./pages/accounting/TAccountsPage";
 import PnLPage from "./pages/accounting/PnLPage";
 import BalanceSheetPage from "./pages/accounting/BalanceSheetPage";
 import CashFlowPage from "./pages/accounting/CashFlowPage";
+import SalesHeatmap from "./pages/SalesHeatmap";
 import { CreateAccount } from "./components/accounting/CreateAccount";
 import ContentDashboard from "./pages/content/ContentDashboard";
 import ContentBoard from "./pages/content/ContentBoard";
@@ -86,13 +87,13 @@ const App = () => (
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="new" element={<NewSale />} />
             <Route path="list" element={<SalesList />} />
+            <Route path="users" element={<Users />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="heatmap" element={<SalesHeatmap />} />
+            <Route path="payment-plan" element={<PaymentPlanGenerator />} />
             <Route path=":id" element={<SaleDetails />} />
             <Route path=":id/edit" element={<EditSale />} />
             <Route path=":saleId/ledger" element={<PaymentLedger />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="users" element={<Users />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="payment-plan" element={<PaymentPlanGenerator />} />
           </Route>
           <Route path="/crm/*" element={
             <AuthGuard>
