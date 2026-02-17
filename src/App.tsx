@@ -54,6 +54,7 @@ import PayrollManagement from "./pages/hr/PayrollManagement";
 import PerformanceManagement from "./pages/hr/PerformanceManagement";
 import DocumentsManagement from "./pages/hr/DocumentsManagement";
 import HrFines from "./pages/hr/Fines";
+import PolicyManagement from "./pages/hr/PolicyManagement";
 import SocialLayout from "./components/layout/SocialLayout";
 import SocialDashboard from "./pages/social/SocialDashboard";
 import SocialLeads from "./pages/social/SocialLeads";
@@ -159,6 +160,7 @@ const App = () => (
             <Route path="performance" element={<PerformanceManagement />} />
             <Route path="documents" element={<DocumentsManagement />} />
             <Route path="fines" element={<HrFines />} />
+            <Route path="policies" element={<PolicyManagement />} />
           </Route>
 
           <Route path="/social/*" element={

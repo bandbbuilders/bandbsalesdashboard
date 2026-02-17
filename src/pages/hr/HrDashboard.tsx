@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Calendar, DollarSign, TrendingUp, Clock, AlertCircle, CheckCircle, UserPlus } from "lucide-react";
+import { Users, Calendar, DollarSign, TrendingUp, Clock, AlertCircle, CheckCircle, UserPlus, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -138,6 +138,12 @@ const HrDashboard = () => {
           <Link to="/hr/payroll">
             <DollarSign className="h-4 w-4 mr-2" />
             Process Payroll
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link to="/hr/policies">
+            <FileText className="h-4 w-4 mr-2" />
+            Manage Policies
           </Link>
         </Button>
       </div>

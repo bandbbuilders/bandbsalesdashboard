@@ -42,6 +42,7 @@ import { AttendanceStatusCard } from "@/components/dashboard/AttendanceStatusCar
 import { ApplyLeaveDialog } from "@/components/leave/ApplyLeaveDialog";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { PersonalAttendanceCard } from "@/components/dashboard/PersonalAttendanceCard";
+import { PolicyList } from "@/components/dashboard/PolicyList";
 
 interface Profile {
   id: string;
@@ -1157,6 +1158,9 @@ const UserDashboard = () => {
             </Card>
           )
         }
+
+        {/* Company Policies Section */}
+        <PolicyList />
 
         {/* Today's Tasks */}
         <Card>

@@ -20,7 +20,7 @@ const HrLayout = () => {
           .select("full_name")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        
+
         setCurrentUser({
           id: session.user.id,
           name: profile?.full_name ?? session.user.email ?? "User"
@@ -38,6 +38,7 @@ const HrLayout = () => {
     { to: "/hr/performance", icon: TrendingUp, label: "Performance" },
     { to: "/hr/documents", icon: FileText, label: "Documents" },
     { to: "/hr/fines", icon: AlertTriangle, label: "Fines" },
+    { to: "/hr/policies", icon: FileText, label: "Policies" },
   ];
 
   const isActive = (path: string, exact: boolean = false) => {
