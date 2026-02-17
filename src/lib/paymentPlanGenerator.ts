@@ -93,7 +93,7 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
 
         // Column 2: Down Payment
         setFont('label', 9);
-        doc.text("Down Payment (15%)", margin + 5 + colWidth, cardY);
+        doc.text(isCustom ? "Down Payment" : "Down Payment (15%)", margin + 5 + colWidth, cardY);
         setFont('value', 9);
         doc.text(`PKR ${dp.toLocaleString()}`, margin + 5 + colWidth, cardY + 6);
 
@@ -105,12 +105,13 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
 
         // Column 4: Possession
         setFont('label', 9);
-        doc.text("Possession (15%)", margin + 5 + (colWidth * 3), cardY);
+        doc.text(isCustom ? "Possession" : "Possession (15%)", margin + 5 + (colWidth * 3), cardY);
         setFont('value', 9);
         doc.text(`PKR ${poss.toLocaleString()}`, margin + 5 + (colWidth * 3), cardY + 6);
 
         return y + height + 10;
     };
+
 
     // --- 1. Logo (Centered) ---
     try {
@@ -201,16 +202,15 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
     }
 
     // --- 6. Custom Payment Plan Card ---
-    const customInst = plan.monthlyInstallment;
     currentY = drawPricingCard(
         currentY,
         "Custom Payment Plan",
         plan.totalAmount,
         plan.ratePerSqf,
-        plan.totalAmount * 0.15,
-        customInst,
+        plan.downPayment + plan.bookingAmount,
+        plan.monthlyInstallment,
         plan.installmentMonths,
-        plan.totalAmount * 0.15,
+        plan.possessionAmount,
         true
     );
 
