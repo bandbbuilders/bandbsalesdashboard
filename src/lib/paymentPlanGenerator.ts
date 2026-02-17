@@ -127,73 +127,44 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
 
     // --- 3. One-line Details ---
     currentY += 15;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
 
-    // Constructing centered text with bold labels
-    const clientX = margin + 10;
-    doc.text('Client:', clientX, currentY);
-    doc.setFont('helvetica', 'normal');
-    const clientValX = clientX + doc.getTextWidth('Client: ') + 2;
-    doc.text(sale.customer.name, clientValX, currentY);
+    // First calculate total width for centering
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    const labelW = (label: string) => doc.getTextWidth(label);
+    const valW = (val: string) => { doc.setFont('helvetica', 'normal'); const w = doc.getTextWidth(val); doc.setFont('helvetica', 'bold'); return w; };
 
-    const divider1X = clientValX + doc.getTextWidth(sale.customer.name) + 5;
-    doc.text('|', divider1X, currentY);
+    const clientName = sale.customer.name;
+    const unitNum = sale.unit_number || 'TBD';
+    const areaVal = `${plan.totalSqf} SQF`;
+    const dateVal = format(new Date(), 'dd MMM yyyy');
 
-    const unitX = divider1X + 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Unit:', unitX, currentY);
-    doc.setFont('helvetica', 'normal');
-    const unitValX = unitX + doc.getTextWidth('Unit: ') + 2;
-    doc.text(sale.unit_number || 'TBD', unitValX, currentY);
+    const totalLineWidth =
+        labelW('Client: ') + valW(clientName) + 10 +
+        labelW('Unit: ') + valW(unitNum) + 10 +
+        labelW('Area: ') + valW(areaVal) + 10 +
+        labelW('Date: ') + valW(dateVal);
 
-    const divider2X = unitValX + doc.getTextWidth(sale.unit_number || 'TBD') + 5;
-    doc.text('|', divider2X, currentY);
+    let runningX = (pageWidth - totalLineWidth) / 2;
 
-    const areaX = divider2X + 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Area:', areaX, currentY);
-    doc.setFont('helvetica', 'normal');
-    const areaValX = areaX + doc.getTextWidth('Area: ') + 2;
-    doc.text(`${plan.totalSqf} SQF`, areaValX, currentY);
+    // Draw Client
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+    doc.text('Client:', runningX, currentY); runningX += labelW('Client: ') + 1;
+    doc.setFont('helvetica', 'normal'); doc.text(clientName, runningX, currentY); runningX += valW(clientName) + 5;
+    doc.text('|', runningX, currentY); runningX += 5;
 
-    const divider3X = areaValX + doc.getTextWidth(`${plan.totalSqf} SQF`) + 5;
-    doc.text('|', divider3X, currentY);
+    // Draw Unit
+    doc.setFont('helvetica', 'bold'); doc.text('Unit:', runningX, currentY); runningX += labelW('Unit: ') + 1;
+    doc.setFont('helvetica', 'normal'); doc.text(unitNum, runningX, currentY); runningX += valW(unitNum) + 5;
+    doc.text('|', runningX, currentY); runningX += 5;
 
-    const dateX = divider3X + 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Date:', dateX, currentY);
-    doc.setFont('helvetica', 'normal');
-    const dateValX = dateX + doc.getTextWidth('Date: ') + 2;
-    doc.text(format(new Date(), 'dd MMM yyyy'), dateValX, currentY);
+    // Draw Area
+    doc.setFont('helvetica', 'bold'); doc.text('Area:', runningX, currentY); runningX += labelW('Area: ') + 1;
+    doc.setFont('helvetica', 'normal'); doc.text(areaVal, runningX, currentY); runningX += valW(areaVal) + 5;
+    doc.text('|', runningX, currentY); runningX += 5;
 
-    // Centering the whole line
-    const totalLineWidth = dateValX + doc.getTextWidth(format(new Date(), 'dd MMM yyyy')) - clientX;
-    const startShift = (pageWidth - totalLineWidth) / 2 - clientX;
-    // We can't easily "shift" drawn text, but the above was for planning.
-    // Let's just use a simpler approach: one centered string with different parts is hard in jsPDF.
-    // Approach: Single string for now, it's easier to center accurately.
-    currentY += 0; // use same Y but re-render
-    doc.clearRect(0, currentY - 10, pageWidth, 20); // clean previous attempts
-
-    const fullLine = `Client: ${sale.customer.name}  |  Unit: ${sale.unit_number || 'TBD'}  |  Area: ${plan.totalSqf} SQF  |  Date: ${format(new Date(), 'dd MMM yyyy')}`;
-    // Harder to bold parts, so let's stick to the manual layout above but with correct centering math.
-    const startX = (pageWidth - totalLineWidth) / 2;
-
-    // Re-draw with startX
-    let runningX = startX;
-    doc.setFont('helvetica', 'bold'); doc.text('Client:', runningX, currentY); runningX += doc.getTextWidth('Client: ') + 1;
-    doc.setFont('helvetica', 'normal'); doc.text(sale.customer.name, runningX, currentY); runningX += doc.getTextWidth(sale.customer.name) + 4;
-    doc.text('|', runningX, currentY); runningX += 4;
-    doc.setFont('helvetica', 'bold'); doc.text('Unit:', runningX, currentY); runningX += doc.getTextWidth('Unit: ') + 1;
-    doc.setFont('helvetica', 'normal'); doc.text(sale.unit_number || 'TBD', runningX, currentY); runningX += doc.getTextWidth(sale.unit_number || 'TBD') + 4;
-    doc.text('|', runningX, currentY); runningX += 4;
-    doc.setFont('helvetica', 'bold'); doc.text('Area:', runningX, currentY); runningX += doc.getTextWidth('Area: ') + 1;
-    doc.setFont('helvetica', 'normal'); doc.text(`${plan.totalSqf} SQF`, runningX, currentY); runningX += doc.getTextWidth(`${plan.totalSqf} SQF`) + 4;
-    doc.text('|', runningX, currentY); runningX += 4;
-    doc.setFont('helvetica', 'bold'); doc.text('Date:', runningX, currentY); runningX += doc.getTextWidth('Date: ') + 1;
-    doc.setFont('helvetica', 'normal'); doc.text(format(new Date(), 'dd MMM yyyy'), runningX, currentY);
+    // Draw Date
+    doc.setFont('helvetica', 'bold'); doc.text('Date:', runningX, currentY); runningX += labelW('Date: ') + 1;
+    doc.setFont('helvetica', 'normal'); doc.text(dateVal, runningX, currentY);
 
     // --- 4. Standard Pricing Card ---
     currentY += 15;
