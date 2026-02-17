@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
-import { format } from 'date-fns';
+import autoTable from 'jspdf-autotable';
+import { format, addMonths } from 'date-fns';
 import { Sale } from '../types';
 
 interface PaymentPlanParams {
@@ -230,6 +231,48 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
     doc.setFontSize(9);
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
     doc.text(disclaimer, pageWidth / 2, pageHeight - 15, { align: 'center' });
+
+    // --- 9. Detailed Schedule (Optional Page 2) ---
+    if (plan.showDetailedSchedule) {
+        doc.addPage();
+
+        // Header
+        setFont('heading', 18);
+        doc.text('Detailed Payment Schedule', pageWidth / 2, 20, { align: 'center' });
+
+        const scheduleData: any[][] = [];
+
+        // 1. Booking
+        if (plan.bookingAmount > 0) {
+            scheduleData.push(['Booking Amount', format(plan.bookingDate, 'dd MMM yyyy'), `PKR ${plan.bookingAmount.toLocaleString()}`]);
+        }
+
+        // 2. Down Payment
+        if (plan.downPayment > 0) {
+            scheduleData.push(['Down Payment', format(plan.downPaymentDate, 'dd MMM yyyy'), `PKR ${plan.downPayment.toLocaleString()}`]);
+        }
+
+        // 3. Installments
+        for (let i = 1; i <= plan.installmentMonths; i++) {
+            const dueDate = addMonths(plan.installmentStartDate, i - 1);
+            scheduleData.push([`Installment #${i}`, format(dueDate, 'dd MMM yyyy'), `PKR ${plan.monthlyInstallment.toLocaleString()}`]);
+        }
+
+        // 4. Possession
+        if (plan.possessionAmount > 0) {
+            scheduleData.push(['Possession Amount', format(plan.possessionDate, 'dd MMM yyyy'), `PKR ${plan.possessionAmount.toLocaleString()}`]);
+        }
+
+        autoTable(doc, {
+            startY: 30,
+            head: [['Milestone', 'Due Date', 'Amount']],
+            body: scheduleData,
+            theme: 'striped',
+            headStyles: { fillColor: colors.primary as [number, number, number] },
+            styles: { fontSize: 9 },
+            margin: { bottom: 20 }
+        });
+    }
 
     doc.save(`Payment_Plan_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
 };
