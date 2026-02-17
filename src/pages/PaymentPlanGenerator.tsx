@@ -33,6 +33,14 @@ const PaymentPlanGenerator = () => {
     const [facingType, setFacingType] = useState<FacingType>("General");
     const [area, setArea] = useState<number>(0);
     const [unitNumber, setUnitNumber] = useState("");
+    const [user, setUser] = useState<{ name: string } | null>(null);
+
+    useEffect(() => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            setUser(JSON.parse(userData));
+        }
+    }, []);
 
     // Options
     const [showDetailedSchedule, setShowDetailedSchedule] = useState(true);
@@ -133,7 +141,9 @@ const PaymentPlanGenerator = () => {
             bookingDate: new Date(bookingDate),
             totalSqf: area,
             ratePerSqf: customRate,
-            showDetailedSchedule: showDetailedSchedule
+            standardRate: standardRate,
+            showDetailedSchedule: showDetailedSchedule,
+            preparedBy: user?.name
         };
 
         await generatePaymentPlanPDF(mockSale, params);

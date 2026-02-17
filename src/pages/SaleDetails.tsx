@@ -621,6 +621,8 @@ const SaleDetails = () => {
                   possessionDate: new Date(customPlan.possessionDate),
                   bookingDate: new Date(customPlan.bookingDate),
                   showDetailedSchedule: true,
+                  standardRate: customPlan.totalSqf > 0 ? (sale.unit_total_price / customPlan.totalSqf) : 0,
+                  preparedBy: user?.name
                 });
               }}
             >
