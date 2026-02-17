@@ -50,9 +50,11 @@ import { User } from "@/types";
 import { format } from "date-fns";
 import { useSales } from "@/hooks/useSales";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const SalesList = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [appRole, setAppRole] = useState<string | null>(null);
@@ -359,9 +361,18 @@ const SalesList = () => {
                               if (error) throw error;
                               if (entries) {
                                 await generateMembershipLetter(sale, entries as any);
+                                toast({
+                                  title: "Success",
+                                  description: "Membership letter generated successfully",
+                                });
                               }
                             } catch (error) {
                               console.error('Error generating membership letter:', error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to generate membership letter",
+                                variant: "destructive",
+                              });
                             }
                           }}>
                             <FileText className="mr-2 h-4 w-4" />
