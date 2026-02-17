@@ -115,8 +115,11 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
 
     // --- 1. Logo (Centered) ---
     try {
-        // Logo size: 40x25? Reference looks vertically taller than previous 40x10
-        doc.addImage('/WHITE LOGO.png', 'PNG', (pageWidth / 2) - 20, 10, 40, 25);
+        // Image aspect ratio (2938x2463) is approx 1.19
+        // Using 30mm width, height should be ~25.2mm
+        const logoWidth = 30;
+        const logoHeight = 25.2;
+        doc.addImage('/WHITE LOGO.png', 'PNG', (pageWidth / 2) - (logoWidth / 2), 10, logoWidth, logoHeight);
     } catch (e) {
         console.error("Logo failed", e);
     }
