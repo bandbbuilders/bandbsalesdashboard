@@ -80,46 +80,9 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
         doc.text(value, x, y + 6);
     };
 
-
-
-    // --- Header & Title Section ---
-    let currentY = 20;
-
-    // Add Logo in top right
-    try {
-        // Since we moved it to public, it's served at /WHITE LOGO.png
-        doc.addImage('/WHITE LOGO.png', 'PNG', pageWidth - margin - 40, 10, 40, 15);
-    } catch (e) {
-        console.error("Logo not found", e);
-    }
-
-    setFont('heading');
-    doc.text('Payment Plan Proposal', margin, currentY);
-
-    // New Introduction Text
-    currentY += 10;
-    setFont('body', 10);
-    doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-    const introText = "This tailored payment structure has been thoughtfully designed around your specific requirements to give you maximum flexibility and ease.";
-    const introText2 = "Please note, this is a provisional plan; once you confirm, it will be forwarded for formal approval and final confirmation.";
-
-    const splitIntro = doc.splitTextToSize(introText, contentWidth);
-    doc.text(splitIntro, margin, currentY);
-    currentY += (splitIntro.length * 5) + 2;
-
-    const splitIntro2 = doc.splitTextToSize(introText2, contentWidth);
-    doc.text(splitIntro2, margin, currentY);
-    currentY += (splitIntro2.length * 5) + 10;
-
-    // --- One-line Header Details ---
-    const headerLine = `Client: ${sale.customer.name}  |  Unit: ${sale.unit_number}  |  Area: ${plan.totalSqf} SQF  |  Date: ${format(new Date(), 'dd MMM yyyy')}`;
-    setFont('label', 10);
-    doc.text(headerLine, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 10;
-
-    // Helper: Pricing Breakdown Section (Updated for per-month installment)
+    // Helper: Pricing Breakdown Section (Updated for single-line with dividers)
     const drawPricingSection = (y: number, title: string, rate: number, total: number, isCustom: boolean) => {
-        const height = 45;
+        const height = 35; // Thinner card for one-line breakdown
         const bgColor = isCustom ? colors.primaryBg : colors.bgMuted;
         const borderColor = isCustom ? [254, 202, 202] : colors.border;
 
@@ -134,28 +97,54 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
         const totalText = `PKR ${total.toLocaleString()}`;
         doc.text(totalText, pageWidth - margin - 5, sectionY, { align: 'right' });
 
+        // Divider Line
         sectionY += 5;
         doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
         doc.line(margin, sectionY, pageWidth - margin, sectionY);
 
+        // Single line breakdown
         sectionY += 10;
-        const colWidth = contentWidth / 4;
-
-        // Col 1: Rate
-        drawField(isCustom ? "Custom Rate" : "Standard Rate", `PKR ${rate.toLocaleString()}/sqft`, margin + 5, sectionY);
-
-        // Col 2: Down Payment
-        drawField("Down Payment (15%)", `PKR ${(total * 0.15).toLocaleString()}`, margin + 5 + colWidth, sectionY);
-
-        // Col 3: Installments (Updated)
         const monthlyAmount = isCustom ? plan.monthlyInstallment : (total * 0.70) / plan.installmentMonths;
-        drawField(`Inst. per month (${plan.installmentMonths})`, `PKR ${Math.round(monthlyAmount).toLocaleString()}`, margin + 5 + (colWidth * 2), sectionY);
+        const rateLabel = isCustom ? "Custom Rate" : "Standard Rate";
+        const breakdownLine = `${rateLabel}: PKR ${rate.toLocaleString()}/sqft  |  DP (15%): PKR ${(total * 0.15).toLocaleString()}  |  Inst. (${plan.installmentMonths}x): PKR ${Math.round(monthlyAmount).toLocaleString()}  |  Possession (15%): PKR ${(total * 0.15).toLocaleString()}`;
 
-        // Col 4: Possession
-        drawField("Possession (15%)", `PKR ${(total * 0.15).toLocaleString()}`, margin + 5 + (colWidth * 3), sectionY);
+        setFont('value', 9);
+        doc.text(breakdownLine, pageWidth / 2, sectionY, { align: 'center' });
 
         return y + height + 10;
     };
+
+
+    // --- Header & Title Section ---
+    let currentY = 20;
+
+    // Add Logo in top right - adjusted dimensions to prevent stretching
+    try {
+        // Using a more standard logo aspect ratio
+        doc.addImage('/WHITE LOGO.png', 'PNG', pageWidth - margin - 35, 10, 35, 10);
+    } catch (e) {
+        console.error("Logo not found", e);
+    }
+
+    setFont('heading');
+    doc.text('Payment Plan Proposal', margin, currentY);
+
+    // Introduction Text
+    currentY += 10;
+    setFont('body', 10);
+    doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+    const introText = "This tailored payment structure has been thoughtfully designed around your specific requirements to give you maximum flexibility and ease.";
+
+    const splitIntro = doc.splitTextToSize(introText, contentWidth);
+    doc.text(splitIntro, margin, currentY);
+    currentY += (splitIntro.length * 5) + 10;
+
+    // --- One-line Header Details ---
+    const headerLine = `Client: ${sale.customer.name}  |  Unit: ${sale.unit_number}  |  Area: ${plan.totalSqf} SQF  |  Date: ${format(new Date(), 'dd MMM yyyy')}`;
+    setFont('label', 10);
+    doc.text(headerLine, pageWidth / 2, currentY, { align: 'center' });
+    currentY += 15;
+
 
     // --- Section 2: Standard Pricing ---
     if (plan.standardRate && plan.standardRate > 0) {
@@ -181,12 +170,20 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
     // --- Section 4: Custom Pricing ---
     currentY = drawPricingSection(currentY, "Custom Payment Plan", plan.ratePerSqf, plan.totalAmount, true);
 
-    // Totals Summary (Instead of table)
+    // Totals Summary
     currentY += 5;
-    const finalTotal = plan.totalAmount;
-    setFont('label', 14);
+    const finalTotal = plan.totalAmount || 0;
+    setFont('label', 16);
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
     doc.text(`Total Payable: PKR ${finalTotal.toLocaleString()}`, pageWidth - margin - 5, currentY, { align: 'right' });
+
+    // Footer Text
+    currentY += 20;
+    setFont('body', 10);
+    doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+    const footerText = "Please note, this is a provisional plan; once you confirm, it will be forwarded for formal approval and final confirmation.";
+    const splitFooter = doc.splitTextToSize(footerText, contentWidth);
+    doc.text(splitFooter, pageWidth / 2, currentY, { align: 'center' });
 
     doc.save(`Payment_Plan_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
 };
