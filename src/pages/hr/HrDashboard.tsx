@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Users, Calendar, DollarSign, TrendingUp, Clock, AlertCircle, CheckCircle, UserPlus, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
+import { AddPolicyDialog } from "@/components/hr/AddPolicyDialog";
+import { Plus } from "lucide-react";
 
 interface DashboardStats {
   totalEmployees: number;
@@ -30,6 +32,7 @@ const HrDashboard = () => {
   const [recentLeaves, setRecentLeaves] = useState<any[]>([]);
   const [recentEmployees, setRecentEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -146,7 +149,20 @@ const HrDashboard = () => {
             Manage Policies
           </Link>
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => setIsPolicyDialogOpen(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Policy
+        </Button>
       </div>
+
+      <AddPolicyDialog
+        open={isPolicyDialogOpen}
+        onOpenChange={setIsPolicyDialogOpen}
+        onSuccess={() => { }}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

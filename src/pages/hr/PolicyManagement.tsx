@@ -42,10 +42,26 @@ const PolicyManagement = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const { isCeoCoo, role } = useUserRole();
+    const [profile, setProfile] = useState<any>(null);
 
     useEffect(() => {
         fetchPolicies();
+        fetchProfile();
     }, []);
+
+    const fetchProfile = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .single();
+            setProfile(data);
+        }
+    };
+
+    const canConfirm = isCeoCoo || profile?.position === 'CEO/COO' || profile?.department === 'Management';
 
     const fetchPolicies = async () => {
         try {
@@ -182,7 +198,7 @@ const PolicyManagement = () => {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right space-x-2">
-                                                {isCeoCoo && policy.status === 'pending' && (
+                                                {canConfirm && policy.status === 'pending' && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
