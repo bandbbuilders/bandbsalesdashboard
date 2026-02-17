@@ -24,174 +24,177 @@ interface PaymentPlanParams {
 
 export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams) => {
     const doc = new jsPDF();
-    const primaryColor = [180, 2, 2]; // #B40202
-    const lightGray = [240, 240, 240];
-    const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
 
-    // Helper to draw rounded rect with text
-    const drawRoundedBox = (x: number, y: number, w: number, h: number, fillColor: [number, number, number] | null, strokeColor: [number, number, number], title?: string, text?: string) => {
-        doc.setDrawColor(strokeColor[0], strokeColor[1], strokeColor[2]);
-        if (fillColor) {
-            doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
-            doc.roundedRect(x, y, w, h, 3, 3, 'FD');
-        } else {
-            doc.roundedRect(x, y, w, h, 3, 3, 'S');
-        }
+    // Colors
+    const colors = {
+        primary: [180, 2, 2], // #B40202
+        primaryBg: [254, 242, 242], // #FEF2F2
+        text: [17, 24, 39], // #111827 (Gray-900)
+        textMuted: [107, 114, 128], // #6B7280 (Gray-500)
+        border: [229, 231, 235], // #E5E7EB (Gray-200)
+        bgMuted: [249, 250, 251], // #F9FAFB (Gray-50)
+        white: [255, 255, 255]
+    };
 
-        if (title) {
+    // Typography
+    const setFont = (type: 'heading' | 'body' | 'label' | 'value', size?: number) => {
+        if (type === 'heading') {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-            doc.text(title, x + 5, y + 15);
-        }
-        if (text) {
+            doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+            doc.setFontSize(size || 22);
+        } else if (type === 'label') {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+            doc.setFontSize(size || 10);
+        } else if (type === 'value') {
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            doc.text(text, x + 5, y + 25);
+            doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
+            doc.setFontSize(size || 10);
+        } else {
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+            doc.setFontSize(size || 10);
         }
     };
 
-    // Helper to draw price breakdown box
-    const drawPriceBox = (x: number, y: number, w: number, title: string, rate: number, totalAmount: number) => {
-        const boxHeight = 45;
-        doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(x, y, w, boxHeight, 3, 3, 'S');
+    // Helper: Draw Card
+    const drawCard = (y: number, height: number, bgColor: number[] | null = null, borderColor: number[] = colors.border) => {
+        doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+        if (bgColor) {
+            doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+            doc.roundedRect(margin, y, contentWidth, height, 3, 3, 'FD');
+        } else {
+            doc.roundedRect(margin, y, contentWidth, height, 3, 3, 'S');
+        }
+    };
 
-        // Title Background
-        doc.setFillColor(245, 245, 245);
-        doc.roundedRect(x, y, w, 10, 3, 3, 'F');
-        // Fix bottom corners of title bg (make them square to not look weird with the rest of the box)
-        doc.rect(x, y + 5, w, 5, 'F');
+    // Helper: Detail Field
+    const drawField = (label: string, value: string, x: number, y: number) => {
+        setFont('label');
+        doc.text(label, x, y);
+        setFont('value');
+        doc.text(value, x, y + 6);
+    };
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.text(title, x + (w / 2), y + 7, { align: 'center' });
+    // Helper: Pricing Breakdown Section
+    const drawPricingSection = (y: number, title: string, rate: number, total: number, isCustom: boolean) => {
+        const height = 45;
+        const bgColor = isCustom ? colors.primaryBg : colors.bgMuted;
+        const borderColor = isCustom ? [254, 202, 202] : colors.border; // lighter red for custom border
 
-        // Content
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(50, 50, 50);
+        drawCard(y, height, bgColor, borderColor);
 
-        const leftX = x + 5;
-        const rightX = x + w - 5;
-        let currentY = y + 16;
-        const lineHeight = 6;
+        // Header Row inside card
+        let currentY = y + 10;
+        setFont('label', 12);
+        if (isCustom) doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+        doc.text(title, margin + 5, currentY);
+
+        setFont('label', 12);
+        if (isCustom) doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+        const totalText = `PKR ${total.toLocaleString()}`;
+        doc.text(totalText, pageWidth - margin - 5, currentY, { align: 'right' });
+
+        // Divider
+        currentY += 5;
+        doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+        doc.line(margin, currentY, pageWidth - margin, currentY);
+
+        // Columns
+        currentY += 10;
+        const colWidth = contentWidth / 4;
 
         // Rate
-        doc.text(`Rate / SQF:`, leftX, currentY);
-        doc.text(`PKR ${rate.toLocaleString()}`, rightX, currentY, { align: 'right' });
-        currentY += lineHeight;
+        drawField(isCustom ? "Custom Rate (Per SQF)" : "Standard Rate", `PKR ${rate.toLocaleString()}/sqft`, margin + 5, currentY);
 
-        const breakdownTotal = totalAmount; // Assuming totalAmount matches rate * sqf logic
+        // Breakdown Math
+        // If total is 0, breakdown is 0
+        const breakdownTotal = total;
 
         // Down Payment (15%)
-        doc.text(`Down Payment (15%):`, leftX, currentY);
-        doc.text(`PKR ${(breakdownTotal * 0.15).toLocaleString()}`, rightX, currentY, { align: 'right' });
-        currentY += lineHeight;
+        drawField("Down Payment (15%)", `PKR ${(breakdownTotal * 0.15).toLocaleString()}`, margin + 5 + colWidth, currentY);
 
         // Installments (70%)
-        doc.text(`Installments (70%):`, leftX, currentY);
-        doc.text(`PKR ${(breakdownTotal * 0.70).toLocaleString()}`, rightX, currentY, { align: 'right' });
-        currentY += lineHeight;
+        drawField("Installments (70%)", `PKR ${(breakdownTotal * 0.70).toLocaleString()}`, margin + 5 + (colWidth * 2), currentY);
 
         // Possession (15%)
-        doc.text(`Possession (15%):`, leftX, currentY);
-        doc.text(`PKR ${(breakdownTotal * 0.15).toLocaleString()}`, rightX, currentY, { align: 'right' });
+        drawField("Possession (15%)", `PKR ${(breakdownTotal * 0.15).toLocaleString()}`, margin + 5 + (colWidth * 3), currentY);
 
-        // Total Line
-        doc.setDrawColor(220, 220, 220);
-        doc.line(x, y + boxHeight - 8, x + w, y + boxHeight - 8);
-
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Total Amount:`, leftX, y + boxHeight - 2);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text(`PKR ${totalAmount.toLocaleString()}`, rightX, y + boxHeight - 2, { align: 'right' });
+        return y + height + 10; // Return next Y
     };
 
-    // --- Header Section ---
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('PAYMENT PLAN PROPOSAL', pageWidth / 2, 20, { align: 'center' });
+    // --- Title ---
+    let currentY = 20;
+    setFont('heading');
+    doc.text('Payment Plan Proposal', margin, currentY);
 
-    // Header Details Box
-    const headerBoxY = 30;
-    const headerBoxH = 35;
+    setFont('value');
+    doc.text('Generate custom payment plans with rate customization and validation.', margin, currentY + 8);
 
-    doc.setDrawColor(200, 200, 200);
-    doc.roundedRect(15, headerBoxY, pageWidth - 30, headerBoxH, 3, 3, 'S');
+    // --- Section 1: Unit & Client Details ---
+    currentY += 20;
+    const detailsHeight = 50;
+    drawCard(currentY, detailsHeight, null, colors.border);
 
-    doc.setFont('helvetica', 'bold'); // Lighter bold
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
+    // Header
+    doc.setFontSize(14);
+    setFont('label', 12);
+    doc.text('Unit & Client Details', margin + 5, currentY + 10);
+    setFont('value');
+    doc.text('Configure unit params to derive pricing', margin + 5, currentY + 16);
 
-    // Left Column
-    doc.text(`Client Name:`, 20, headerBoxY + 10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(sale.customer.name, 50, headerBoxY + 10);
+    // fields
+    let fieldsY = currentY + 30;
+    const colWidth = contentWidth / 3;
 
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Unit Number:`, 20, headerBoxY + 20);
-    doc.setFont('helvetica', 'normal');
-    doc.text(sale.unit_number, 50, headerBoxY + 20);
+    drawField('Client Name', sale.customer.name, margin + 5, fieldsY);
+    drawField('Unit Number', sale.unit_number, margin + 5 + colWidth, fieldsY);
+    drawField('Area (Square Feet)', `${plan.totalSqf} SQF`, margin + 5 + (colWidth * 2), fieldsY);
 
-    if (plan.totalSqf > 0) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Unit Size:`, 20, headerBoxY + 30);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${plan.totalSqf} SQF`, 50, headerBoxY + 30);
-    }
+    fieldsY += 15; // Second row
 
-    // Right Column
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Date:`, 120, headerBoxY + 10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(), 'dd MMM yyyy'), 150, headerBoxY + 10);
+    drawField('Date', format(new Date(), 'dd MMM yyyy'), margin + 5, fieldsY);
 
     if (plan.preparedBy) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Prepared By:`, 120, headerBoxY + 20);
-        doc.setFont('helvetica', 'normal');
-        doc.text(plan.preparedBy, 150, headerBoxY + 20);
+        drawField('Prepared By', plan.preparedBy, margin + 5 + colWidth, fieldsY);
     }
 
-    // --- Pricing Breakdown Section ---
-    const boxY = 75;
-    const boxWidth = (pageWidth - 40) / 2; // Split space
 
-    // 1. Original Price Box
+    // --- Section 2: Standard Pricing ---
+    currentY += detailsHeight + 10;
+
     if (plan.standardRate && plan.standardRate > 0) {
         const standardTotal = plan.standardRate * plan.totalSqf;
-        drawPriceBox(15, boxY, boxWidth, "ORIGINAL PRICE (Standard)", plan.standardRate, standardTotal);
+        currentY = drawPricingSection(currentY, "Standard Pricing", plan.standardRate, standardTotal, false);
     }
 
-    // 2. Custom Plan Box
-    drawPriceBox(15 + boxWidth + 10, boxY, boxWidth, "CUSTOM PAYMENT PLAN", plan.ratePerSqf, plan.totalAmount);
-
-    // --- Discount Section ---
-    let tableStartY = 135;
-
-    // Check if there is a discount to show
+    // --- Section 3: Discount ---
     if (plan.discount > 0) {
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.roundedRect(15, 125, pageWidth - 30, 20, 3, 3, 'F');
+        drawCard(currentY, 25, colors.primaryBg, [254, 202, 202]);
 
-        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
-        const savingsText = `TOTAL SAVINGS / DISCOUNT:   PKR ${plan.discount.toLocaleString()}`;
-        doc.text(savingsText, pageWidth / 2, 137, { align: 'center' });
+        doc.text("TOTAL SAVINGS / DISCOUNT", pageWidth / 2, currentY + 10, { align: 'center' });
 
-        tableStartY = 155;
+        doc.setFontSize(16);
+        doc.text(`PKR ${plan.discount.toLocaleString()}`, pageWidth / 2, currentY + 18, { align: 'center' });
+
+        currentY += 35;
     }
 
-    // --- Schedule Table ---
+    // --- Section 4: Custom Pricing ---
+    currentY = drawPricingSection(currentY, "Custom Payment Plan", plan.ratePerSqf, plan.totalAmount, true);
+
+
+    // --- Table ---
+    // Schedule Table
     const scheduleData = [];
 
-    // 1. Booking Amount
     if (plan.bookingAmount > 0) {
         scheduleData.push([
             'Booking Amount',
@@ -200,14 +203,12 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
         ]);
     }
 
-    // 2. Down Payment
     scheduleData.push([
         'Down Payment',
         format(plan.downPaymentDate, 'dd/MM/yyyy'),
         `PKR ${plan.downPayment.toLocaleString()}`
     ]);
 
-    // 3. Installments
     if (plan.showDetailedSchedule) {
         for (let i = 0; i < plan.installmentMonths; i++) {
             const dueDate = addMonths(plan.installmentStartDate, i);
@@ -226,7 +227,6 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
         ]);
     }
 
-    // 4. Possession
     if (plan.possessionAmount > 0) {
         scheduleData.push([
             'Possession',
@@ -235,22 +235,21 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
         ]);
     }
 
-    // Totals
     const baseTotal = plan.bookingAmount + plan.downPayment + (plan.monthlyInstallment * plan.installmentMonths) + plan.possessionAmount;
 
     autoTable(doc, {
-        startY: tableStartY,
+        startY: currentY,
         head: [['Milestone', 'Due Date', 'Amount']],
         body: scheduleData,
         foot: [['Total Payable', '', `PKR ${baseTotal.toLocaleString()}`]],
-        theme: 'grid', // Cleaner grid
+        theme: 'grid',
         headStyles: {
-            fillColor: [245, 245, 245] as [number, number, number], // Light gray header
-            textColor: [0, 0, 0],
+            fillColor: colors.bgMuted as [number, number, number],
+            textColor: colors.text as [number, number, number],
             fontStyle: 'bold',
-            halign: 'center',
+            halign: 'left',
             lineWidth: 0.1,
-            lineColor: [200, 200, 200]
+            lineColor: colors.border as [number, number, number]
         },
         columnStyles: {
             0: { halign: 'left' },
@@ -258,20 +257,18 @@ export const generatePaymentPlanPDF = async (sale: Sale, plan: PaymentPlanParams
             2: { halign: 'right' }
         },
         footStyles: {
-            fillColor: [250, 250, 250] as [number, number, number],
-            textColor: primaryColor as [number, number, number],
+            fillColor: colors.bgMuted as [number, number, number],
+            textColor: colors.primary as [number, number, number],
             fontStyle: 'bold',
             halign: 'right'
         },
         styles: {
-            lineColor: [220, 220, 220] as [number, number, number],
+            lineColor: colors.border as [number, number, number],
             lineWidth: 0.1,
-            cellPadding: 3,
-            textColor: [50, 50, 50]
+            cellPadding: 4,
+            textColor: colors.text as [number, number, number]
         },
     });
-
-    // NOTE: Signatures removed as per request
 
     doc.save(`Payment_Plan_${sale.customer.name.replace(/\s+/g, '_')}.pdf`);
 };
