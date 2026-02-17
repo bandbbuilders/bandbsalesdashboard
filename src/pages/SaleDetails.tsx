@@ -587,13 +587,23 @@ const SaleDetails = () => {
             </div>
             <div className="space-y-2 col-span-2">
               <Label>Validation Check</Label>
-              <div className={`p-2 border rounded-md text-sm font-medium flex justify-between ${(customPlan.bookingAmount + customPlan.downPayment + (customPlan.monthlyInstallment * customPlan.installmentMonths) + customPlan.possessionAmount) === (customPlan.totalAmount - customPlan.discount)
-                ? "bg-green-100 text-green-800 border-green-200"
-                : "bg-red-100 text-red-800 border-red-200"
-                }`}>
-                <span>Sum: {formatCurrency(customPlan.bookingAmount + customPlan.downPayment + (customPlan.monthlyInstallment * customPlan.installmentMonths) + customPlan.possessionAmount)}</span>
-                <span>Target: {formatCurrency(customPlan.totalAmount - customPlan.discount)}</span>
-              </div>
+              {(() => {
+                const totalSum = Number(customPlan.bookingAmount) + Number(customPlan.downPayment) + (Number(customPlan.monthlyInstallment) * Number(customPlan.installmentMonths)) + Number(customPlan.possessionAmount);
+                const targetTotal = Number(customPlan.totalAmount) - Number(customPlan.discount);
+                const balance = totalSum - targetTotal;
+                const isBalanced = Math.abs(balance) < 1; // Handling potential float issues
+
+                return (
+                  <div className={`p-2 border rounded-md text-sm font-medium grid grid-cols-3 gap-2 ${isBalanced
+                    ? "bg-green-100 text-green-800 border-green-200"
+                    : "bg-red-100 text-red-800 border-red-200"
+                    }`}>
+                    <span className="text-left">Sum: {formatCurrency(totalSum)}</span>
+                    <span className="text-center">Target: {formatCurrency(targetTotal)}</span>
+                    <span className="text-right">Balance: {formatCurrency(balance)}</span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

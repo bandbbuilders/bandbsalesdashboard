@@ -393,13 +393,23 @@ const PaymentPlanGenerator = () => {
                             {/* Validation Display */}
                             <div className="col-span-2 space-y-2">
                                 <Label>Validation Check</Label>
-                                <div className={`p-2 border rounded-md text-sm font-medium flex justify-between items-center ${Math.abs((bookingAmount + downPayment + (monthlyInstallment * installmentMonths) + possessionAmount) - customTotal) < 100
-                                    ? "bg-green-100 text-green-800 border-green-200"
-                                    : "bg-red-100 text-red-800 border-red-200"
-                                    }`}>
-                                    <span>Sum: {formatCurrency(bookingAmount + downPayment + (monthlyInstallment * installmentMonths) + possessionAmount)}</span>
-                                    <span>Target: {formatCurrency(customTotal)}</span>
-                                </div>
+                                {(() => {
+                                    const sum = bookingAmount + downPayment + (monthlyInstallment * installmentMonths) + possessionAmount;
+                                    const target = customTotal;
+                                    const balance = sum - target;
+                                    const isBalanced = Math.abs(balance) < 1;
+
+                                    return (
+                                        <div className={`p-2 border rounded-md text-sm font-medium grid grid-cols-3 gap-2 ${isBalanced
+                                            ? "bg-green-100 text-green-800 border-green-200"
+                                            : "bg-red-100 text-red-800 border-red-200"
+                                            }`}>
+                                            <span className="text-left">Sum: {formatCurrency(sum)}</span>
+                                            <span className="text-center">Target: {formatCurrency(target)}</span>
+                                            <span className="text-right">Balance: {formatCurrency(balance)}</span>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </CardContent>
