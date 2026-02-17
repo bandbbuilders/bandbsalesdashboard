@@ -67,15 +67,15 @@ const PolicyManagement = () => {
         try {
             setIsLoading(true);
             const { data, error } = await supabase
-                .from('policies' as any)
+                .from('policies')
                 .select(`
           *,
-          profiles:created_by (full_name)
+          profiles:policies_created_by_fkey(full_name)
         `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setPolicies((data as any) || []);
+            setPolicies((data as unknown as Policy[]) || []);
         } catch (error: any) {
             console.error('Error fetching policies:', error);
             toast.error('Failed to load policies');
@@ -90,7 +90,7 @@ const PolicyManagement = () => {
             if (!session) return;
 
             const { error } = await supabase
-                .from('policies' as any)
+                .from('policies')
                 .update({
                     status: 'confirmed',
                     confirmed_by: session.user.id,
@@ -112,7 +112,7 @@ const PolicyManagement = () => {
 
         try {
             const { error } = await supabase
-                .from('policies' as any)
+                .from('policies')
                 .delete()
                 .eq('id', id);
 
