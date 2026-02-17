@@ -74,17 +74,23 @@ const PolicyManagement = () => {
             if (error) throw error;
 
             if (data && data.length > 0) {
-                const creatorIds = Array.from(new Set(data.map((p: any) => p.created_by)));
-                const { data: profilesData } = await supabase
+                const creatorIds = Array.from(new Set(data.map((p: any) => p.created_by).filter(id => !!id)));
+                const { data: profilesData, error: profilesError } = await supabase
                     .from('profiles')
                     .select('id, full_name')
                     .in('id', creatorIds);
 
-                const enrichedPolicies = data.map((policy: any) => ({
-                    ...policy,
-                    profiles: profilesData?.find(p => p.id === policy.created_by)
-                }));
-                setPolicies(enrichedPolicies as Policy[]);
+                if (profilesError) {
+                    console.error('Error fetching profiles:', profilesError);
+                    // Continue with policies even if profiles fail
+                    setPolicies(data as unknown as Policy[]);
+                } else {
+                    const enrichedPolicies = data.map((policy: any) => ({
+                        ...policy,
+                        profiles: profilesData?.find(p => p.id === policy.created_by)
+                    }));
+                    setPolicies(enrichedPolicies as Policy[]);
+                }
             } else {
                 setPolicies([]);
             }
