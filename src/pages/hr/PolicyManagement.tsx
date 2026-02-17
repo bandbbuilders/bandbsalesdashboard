@@ -67,18 +67,30 @@ const PolicyManagement = () => {
         try {
             setIsLoading(true);
             const { data, error } = await supabase
-                .from('policies')
-                .select(`
-          *,
-          profiles:policies_created_by_fkey(full_name)
-        `)
+                .from('policies' as any)
+                .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setPolicies((data as unknown as Policy[]) || []);
+
+            if (data && data.length > 0) {
+                const creatorIds = Array.from(new Set(data.map((p: any) => p.created_by)));
+                const { data: profilesData } = await supabase
+                    .from('profiles')
+                    .select('id, full_name')
+                    .in('id', creatorIds);
+
+                const enrichedPolicies = data.map((policy: any) => ({
+                    ...policy,
+                    profiles: profilesData?.find(p => p.id === policy.created_by)
+                }));
+                setPolicies(enrichedPolicies as Policy[]);
+            } else {
+                setPolicies([]);
+            }
         } catch (error: any) {
             console.error('Error fetching policies:', error);
-            toast.error('Failed to load policies');
+            toast.error(`Failed to load policies: ${error.message || 'Unknown error'}`);
         } finally {
             setIsLoading(false);
         }
