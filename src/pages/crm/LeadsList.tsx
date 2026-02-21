@@ -82,7 +82,7 @@ const LeadsList = () => {
 
   useEffect(() => {
     filterLeads();
-  }, [leads, searchTerm]);
+  }, [leads, searchTerm, filterLeads]);
 
   const fetchLeads = async () => {
     try {
@@ -164,38 +164,38 @@ const LeadsList = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Leads</h1>
-          <p className="text-muted-foreground">Manage your sales leads and prospects</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Leads</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Manage your sales leads</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => navigate('/crm/leads/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Lead
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button onClick={() => navigate('/crm/leads/new')} size="sm" className="flex-1 sm:flex-none h-9 md:h-10">
+            <Plus className="h-4 w-4 mr-1 md:mr-2" />
+            New Lead
           </Button>
-          <Button variant="outline" onClick={() => setShowStageManager(true)}>
-            Add Stage
+          <Button variant="outline" size="sm" onClick={() => setShowStageManager(true)} className="flex-1 sm:flex-none h-9 md:h-10">
+            Stages
           </Button>
         </div>
       </div>
 
       {/* Search and View Toggle */}
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 md:gap-4 items-center">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search leads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-9 md:h-10"
           />
         </div>
-        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'list' | 'kanban')}>
-          <TabsList>
-            <TabsTrigger value="list">List View</TabsTrigger>
-            <TabsTrigger value="kanban">
-              <Columns className="h-4 w-4 mr-2" />
+        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'list' | 'kanban')} className="w-full sm:w-auto">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="kanban" className="flex items-center gap-1 md:gap-2">
+              <Columns className="h-3 w-3 md:h-4 md:w-4" />
               Kanban
             </TabsTrigger>
           </TabsList>
@@ -204,9 +204,9 @@ const LeadsList = () => {
 
       {/* Content */}
       {viewMode === 'kanban' ? (
-        <KanbanBoard 
-          leads={filteredLeads} 
-          stages={stages} 
+        <KanbanBoard
+          leads={filteredLeads}
+          stages={stages}
           onLeadUpdate={fetchLeads}
           onStageUpdate={fetchStages}
         />
@@ -241,7 +241,7 @@ const LeadsList = () => {
                     <p className="text-sm">
                       <span className="font-medium">Source:</span> {lead.source || 'N/A'}
                     </p>
-                    
+
                     {/* Lead Tags */}
                     {getLeadTags(lead.id).length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-2">
@@ -253,18 +253,18 @@ const LeadsList = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => navigate(`/crm/leads/${lead.id}`)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => navigate(`/crm/leads/${lead.id}/edit`)}
                     >
@@ -286,7 +286,7 @@ const LeadsList = () => {
       )}
 
       {/* Stage Manager Dialog */}
-      <StageManager 
+      <StageManager
         open={showStageManager}
         onOpenChange={setShowStageManager}
         stages={stages}

@@ -107,14 +107,14 @@ export default function Attendance() {
       fetchProfiles(); // Can be optimized to run once
       fetchFines();
     }
-  }, [selectedDate, activeTab]);
+  }, [selectedDate, activeTab, fetchAttendance, fetchProfiles, fetchFines]);
 
   // Fetch monthly data when month changes
   useEffect(() => {
     if (activeTab === 'monthly') {
       fetchMonthlyAttendance();
     }
-  }, [selectedMonth, activeTab]);
+  }, [selectedMonth, activeTab, fetchMonthlyAttendance]);
 
   const checkEditPermission = async () => {
     try {

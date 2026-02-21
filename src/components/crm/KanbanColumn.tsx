@@ -37,7 +37,7 @@ export const KanbanColumn = ({ stage, leads, onLeadClick, onLeadEdit }: KanbanCo
   });
 
   return (
-    <div className="flex-shrink-0 w-80">
+    <div className="flex-shrink-0 w-[280px] md:w-80">
       <Card className="h-full">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">

@@ -86,7 +86,7 @@ const PaymentLedger = () => {
   const [selectedEntryForReceipt, setSelectedEntryForReceipt] = useState<any>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [paymentType, setPaymentType] = useState('');
-
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const sale = sales.find(s => s.id === saleId);
   const saleEntries = ledgerEntries.filter(entry => entry.sale_id === saleId);
 
@@ -210,6 +210,7 @@ const PaymentLedger = () => {
     await updateLedgerEntry(editingEntry.id, updateData);
 
     setEditingEntry(null);
+    setIsEditDialogOpen(false);
     setEditAmount("");
     setEditDueDate("");
     setEditPaidDate("");
@@ -706,7 +707,11 @@ const PaymentLedger = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-10 w-10 p-0">
+                          <Button
+                            variant="outline"
+                            className="h-10 w-10 p-0"
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-5 w-5" />
                           </Button>
@@ -719,6 +724,7 @@ const PaymentLedger = () => {
                               setEditAmount(entry.amount.toString());
                               setEditDueDate(entry.due_date);
                               setEditType(entry.entry_type);
+                              setIsEditDialogOpen(true);
                             }}
                           >
                             <Edit className="mr-2 h-4 w-4" /> Edit Details
@@ -788,6 +794,87 @@ const PaymentLedger = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Payment Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Payment</DialogTitle>
+            <DialogDescription>
+              Modify the payment details. If amount is reduced, the difference will be redistributed to remaining installments.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Type</label>
+              <Select value={editType} onValueChange={setEditType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="downpayment">Downpayment</SelectItem>
+                  <SelectItem value="installment">Installment</SelectItem>
+                  <SelectItem value="possession">Possession</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Amount (PKR)</label>
+              <Input
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                placeholder="Enter amount"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Due Date</label>
+              <Input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Paid Date (optional)</label>
+              <Input
+                type="date"
+                value={editPaidDate}
+                onChange={(e) => setEditPaidDate(e.target.value)}
+                placeholder="Select paid date"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Set paid date only to mark payment as paid. Leave empty to keep current status.
+              </p>
+            </div>
+            {editingEntry?.status === 'paid' && (
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
+                <span className="text-sm font-medium">Mark as Unpaid</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditPaidDate("");
+                    handleStatusChange(editingEntry.id, 'pending');
+                    setIsEditDialogOpen(false);
+                    setEditingEntry(null);
+                  }}
+                >
+                  Mark Unpaid
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditEntry}>
+              Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Generate Receiving Dialog */}
       <Dialog open={generateReceivingOpen} onOpenChange={setGenerateReceivingOpen}>
@@ -863,7 +950,7 @@ const PaymentLedger = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 };
 

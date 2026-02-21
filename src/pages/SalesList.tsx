@@ -330,7 +330,11 @@ const SalesList = () => {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-10 w-10 p-0">
+                          <Button
+                            variant="outline"
+                            className="h-10 w-10 p-0"
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

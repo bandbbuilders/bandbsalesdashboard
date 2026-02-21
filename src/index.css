@@ -27,10 +27,10 @@
 
   .dark,
   [data-theme="dark"] {
-    --background: 0 0% 0%;
+    --background: 240 10% 4%;
     --foreground: 210 40% 98%;
-    --card: 0 0% 0%;
-    --popover: 0 0% 0%;
+    --card: 240 10% 4%;
+    --popover: 240 10% 4%;
     --primary: 0 58% 38%;
     --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
@@ -54,8 +54,9 @@
     @apply bg-background text-foreground antialiased;
   }
 
-  .dark body {
-    background-color: hsl(0 0% 0%);
+  .dark body,
+  [data-theme="dark"] body {
+    background-color: hsl(240 10% 4%);
     color: hsl(210 40% 98%);
   }
 }

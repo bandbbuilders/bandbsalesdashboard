@@ -578,7 +578,11 @@ const CommissionManagement = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-10 w-10 p-0">
+                          <Button
+                            variant="outline"
+                            className="h-10 w-10 p-0"
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-5 w-5" />
                           </Button>

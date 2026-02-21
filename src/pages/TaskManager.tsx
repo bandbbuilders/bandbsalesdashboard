@@ -128,7 +128,7 @@ export default function TaskManager() {
       fetchTasks();
     };
     init();
-  }, [fetchDepartments, fetchTasks]);
+  }, [fetchDepartments, fetchTasks, selectedDepartment]);
 
   const filteredTasks = tasks.filter(task => {
     const matchesDepartment = selectedDepartment === "all" || task.department_id === selectedDepartment;
