@@ -29,19 +29,19 @@ export const MonthlyInstallmentChart = ({ ledgerEntries, sales }: MonthlyInstall
   const getMonthlyInstallments = () => {
     const months = [];
     const currentDate = new Date();
-    
-    for (let i = 0; i < 12; i++) {
+
+    for (let i = 0; i < 1; i++) {
       const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
       const monthStart = startOfMonth(monthDate);
       const monthEnd = endOfMonth(monthDate);
-      
+
       // Filter installments for this month
       const monthlyInstallments = ledgerEntries.filter(entry => {
         if (entry.entry_type !== 'installment') return false;
         const dueDate = parseISO(entry.due_date);
         return isWithinInterval(dueDate, { start: monthStart, end: monthEnd });
       });
-      
+
       // Calculate totals
       const totalReceivable = monthlyInstallments.reduce((sum, entry) => sum + entry.amount, 0);
       const totalReceived = monthlyInstallments
@@ -50,7 +50,7 @@ export const MonthlyInstallmentChart = ({ ledgerEntries, sales }: MonthlyInstall
       const pendingCount = monthlyInstallments.filter(entry => entry.status === 'pending').length;
       const receivedCount = monthlyInstallments.filter(entry => entry.status === 'paid').length;
       const overdueCount = monthlyInstallments.filter(entry => entry.status === 'overdue').length;
-      
+
       months.push({
         month: format(monthDate, 'MMM yyyy'),
         date: monthDate,
@@ -70,7 +70,7 @@ export const MonthlyInstallmentChart = ({ ledgerEntries, sales }: MonthlyInstall
         collectionRate: totalReceivable > 0 ? (totalReceived / totalReceivable) * 100 : 0
       });
     }
-    
+
     return months;
   };
 
@@ -112,7 +112,7 @@ export const MonthlyInstallmentChart = ({ ledgerEntries, sales }: MonthlyInstall
           Monthly Installment Receivables
         </CardTitle>
         <CardDescription>
-          Track which installments are due each month and collection status
+          Track which installments are due this month and collection status
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -135,7 +135,7 @@ export const MonthlyInstallmentChart = ({ ledgerEntries, sales }: MonthlyInstall
                   )}
                 </div>
               </div>
-              
+
               {/* Summary Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
                 <div className="text-center">

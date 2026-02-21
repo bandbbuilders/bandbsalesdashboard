@@ -216,25 +216,22 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
               value={departmentId}
               onValueChange={setDepartmentId}
               required
-              disabled={!roleLoading && !isCeoCoo && !!departmentId}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                {departments
-                  .filter(dept => isCeoCoo || dept.id === departmentId)
-                  .map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: dept.color }}
-                        />
-                        {dept.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: dept.color }}
+                      />
+                      {dept.name}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

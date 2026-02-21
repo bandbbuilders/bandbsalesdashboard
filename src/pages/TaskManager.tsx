@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,51 @@ export default function TaskManager() {
   const { isCeoCoo, isLoading: roleLoading } = useUserRole(authUserId || undefined);
   const { toast } = useToast();
 
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load departments",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const query = supabase
+        .from('tasks')
+        .select(`
+          *,
+          department:departments(*)
+        `);
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load tasks",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -83,57 +128,7 @@ export default function TaskManager() {
       fetchTasks();
     };
     init();
-  }, []);
-
-  const fetchDepartments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setDepartments(data || []);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load departments",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      let query = supabase
-        .from('tasks')
-        .select(`
-          *,
-          department:departments(*)
-        `);
-
-      // If not CEO/COO, only show tasks for their department
-      if (!roleLoading && !isCeoCoo && userDeptId) {
-        query = query.eq('department_id', userDeptId);
-      }
-
-      const { data, error } = await query
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load tasks",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchDepartments, fetchTasks]);
 
   const filteredTasks = tasks.filter(task => {
     const matchesDepartment = selectedDepartment === "all" || task.department_id === selectedDepartment;
@@ -183,7 +178,6 @@ export default function TaskManager() {
       {/* Department Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {getDepartmentStats()
-          .filter(dept => isCeoCoo || dept.id === userDeptId)
           .map((dept) => (
             <Card key={dept.id} className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => setSelectedDepartment(dept.id)}>
@@ -223,17 +217,15 @@ export default function TaskManager() {
                 />
               </div>
             </div>
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={!isCeoCoo}>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
-                {isCeoCoo && <SelectItem value="all">All Departments</SelectItem>}
-                {departments
-                  .filter(dept => isCeoCoo || dept.id === userDeptId)
-                  .map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                  ))}
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
