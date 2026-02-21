@@ -42,6 +42,8 @@ interface Task {
   tags: string[];
   created_at: string;
   updated_at: string;
+  assignment_status?: string | null;
+  review_comment?: string | null;
   department?: Department;
 }
 
@@ -84,7 +86,7 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ 
+        .update({
           status: 'done',
           completed_at: new Date().toISOString()
         })
@@ -202,11 +204,26 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
                       <Badge className={priorityColors[task.priority]} variant="secondary">
                         {task.priority}
                       </Badge>
-                      
+                      {/* Assignment status */}
+                      {task.assigned_to && (
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${task.assignment_status === 'accepted' ? 'border-green-300 text-green-700 bg-green-50' :
+                              task.assignment_status === 'rejected' ? 'border-red-300 text-red-700 bg-red-50' :
+                                task.assignment_status === 'review_requested' ? 'border-blue-300 text-blue-700 bg-blue-50' :
+                                  'border-yellow-300 text-yellow-700 bg-yellow-50'
+                            }`}
+                        >
+                          {task.assignment_status === 'accepted' ? '✓ Accepted' :
+                            task.assignment_status === 'rejected' ? '✗ Rejected' :
+                              task.assignment_status === 'review_requested' ? '💬 Review Requested' :
+                                '⏳ Awaiting Response'}
+                        </Badge>
+                      )}
+
                       {task.due_date && (
-                        <div className={`flex items-center gap-1 text-sm ${
-                          isOverdue(task.due_date, task.status) ? 'text-red-600' : 'text-muted-foreground'
-                        }`}>
+                        <div className={`flex items-center gap-1 text-sm ${isOverdue(task.due_date, task.status) ? 'text-red-600' : 'text-muted-foreground'
+                          }`}>
                           <Calendar className="h-4 w-4" />
                           Due: {formatDate(task.due_date)}
                         </div>
@@ -243,7 +260,7 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
                         {task.assigned_to ? task.assigned_to[0]?.toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="flex gap-1">
                       {(isManager || isCeoCoo) && task.assigned_to && (
                         <Button
@@ -266,8 +283,8 @@ export const TaskList = ({ tasks, departments, onTaskUpdate }: TaskListProps) =>
                           <CheckCircle className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => setEditingTask(task)}
                         title="Edit task"

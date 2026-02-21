@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Filter, Search, Calendar, Users, BarChart3 } from "lucide-react";
+import { Plus, Filter, Search, Calendar, Users, BarChart3, MessageSquare, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,8 @@ interface Task {
   tags: string[];
   created_at: string;
   updated_at: string;
+  assignment_status?: string | null;
+  review_comment?: string | null;
   department?: Department;
 }
 
@@ -174,6 +176,42 @@ export default function TaskManager() {
           Create Task
         </Button>
       </div>
+
+      {/* Review Requests & Rejections Banner */}
+      {(() => {
+        const reviewTasks = filteredTasks.filter(t => t.assignment_status === 'review_requested' || t.assignment_status === 'rejected');
+        if (reviewTasks.length === 0) return null;
+        return (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-4 space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="h-4 w-4 text-blue-600" />
+              <span className="font-semibold text-blue-800 dark:text-blue-200 text-sm">
+                {reviewTasks.length} task{reviewTasks.length > 1 ? 's' : ''} need{reviewTasks.length === 1 ? 's' : ''} your attention
+              </span>
+            </div>
+            {reviewTasks.slice(0, 5).map(task => (
+              <div key={task.id} className={`flex items-start gap-3 rounded-md p-2 ${task.assignment_status === 'rejected'
+                ? 'bg-red-50 dark:bg-red-950/30 border border-red-200'
+                : 'bg-white dark:bg-blue-950/40 border border-blue-200'
+                }`}>
+                {task.assignment_status === 'rejected'
+                  ? <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  : <MessageSquare className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">{task.assigned_to}</span>
+                    {task.assignment_status === 'rejected' ? ' rejected this task' : ' requested a review'}
+                  </p>
+                  {task.review_comment && (
+                    <p className="text-xs italic text-muted-foreground mt-0.5 line-clamp-2">"{task.review_comment}"</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Department Stats */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">

@@ -38,6 +38,7 @@ import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAc
 import { cn } from "@/lib/utils";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
+import { MyAssignedTasks } from "@/components/tasks/MyAssignedTasks";
 import { useAutoAttendance } from "@/hooks/useAutoAttendance";
 import { AttendanceStatusCard } from "@/components/dashboard/AttendanceStatusCard";
 import { ApplyLeaveDialog } from "@/components/leave/ApplyLeaveDialog";
@@ -85,6 +86,8 @@ interface Task {
   priority: string;
   due_date: string | null;
   assigned_to: string | null;
+  assignment_status?: string | null;
+  review_comment?: string | null;
   created_at?: string | null;
 }
 
@@ -892,6 +895,14 @@ const UserDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* My Assigned Tasks - Accept/Reject/Review Workflow */}
+        {profile?.full_name && (
+          <MyAssignedTasks
+            userName={profile.full_name}
+            onTasksChange={refetchTasks}
+          />
+        )}
 
         {/* Attendance & Fines Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

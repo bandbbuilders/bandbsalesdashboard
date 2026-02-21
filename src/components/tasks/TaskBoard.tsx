@@ -42,6 +42,8 @@ interface Task {
   tags: string[];
   created_at: string;
   updated_at: string;
+  assignment_status?: string | null;
+  review_comment?: string | null;
   department?: Department;
 }
 
@@ -238,6 +240,25 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
                             {task.title}
                           </CardTitle>
                           <div className="flex items-center gap-1">
+                            {/* Assignment status badge */}
+                            {task.assignment_status && task.assignment_status !== 'pending' && (
+                              <span
+                                className={`text-[9px] px-1 py-0.5 rounded font-medium ${task.assignment_status === 'accepted' ? 'bg-green-100 text-green-700' :
+                                    task.assignment_status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                      'bg-blue-100 text-blue-700'
+                                  }`}
+                                title={task.review_comment || undefined}
+                              >
+                                {task.assignment_status === 'accepted' ? '✓ Accepted' :
+                                  task.assignment_status === 'rejected' ? '✗ Rejected' :
+                                    '💬 Review'}
+                              </span>
+                            )}
+                            {(!task.assignment_status || task.assignment_status === 'pending') && task.assigned_to && (
+                              <span className="text-[9px] px-1 py-0.5 rounded font-medium bg-yellow-100 text-yellow-700">
+                                ⏳ Pending
+                              </span>
+                            )}
                             <div
                               className="w-3 h-3 rounded-full flex-shrink-0"
                               style={{ backgroundColor: getDepartmentColor(task.department_id) }}

@@ -145,7 +145,9 @@ export const CreateTaskDialog = ({ isOpen, onClose, departments, onTaskCreated }
           estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
           tags: tags.length > 0 ? tags : null,
           created_by: currentUserName || null,
-          assigned_to: assignedTo || null
+          assigned_to: assignedTo || null,
+          // @ts-ignore - assignment_status column added via migration
+          assignment_status: 'pending'
         });
 
       if (error) throw error;
