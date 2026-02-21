@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./components/theme-provider";
 import { LoginForm } from "./components/auth/LoginForm";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -66,123 +67,126 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Auth />} />
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/user-dashboard" element={
-            <AuthGuard>
-              <UserDashboard />
-            </AuthGuard>
-          } />
-          <Route path="/sales/*" element={
-            <AuthGuard>
-              <AppLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="new" element={<NewSale />} />
-            <Route path="list" element={<SalesList />} />
-            <Route path="users" element={<Users />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="heatmap" element={<SalesHeatmap />} />
-            <Route path="payment-plan" element={<PaymentPlanGenerator />} />
-            <Route path=":id" element={<SaleDetails />} />
-            <Route path=":id/edit" element={<EditSale />} />
-            <Route path=":saleId/ledger" element={<PaymentLedger />} />
-          </Route>
-          <Route path="/crm/*" element={
-            <AuthGuard>
-              <CrmLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<CrmDashboard />} />
-            <Route path="leads" element={<LeadsList />} />
-            <Route path="leads/new" element={<NewLead />} />
-            <Route path="leads/:id" element={<LeadDetails />} />
-            <Route path="leads/:id/edit" element={<EditLead />} />
-            <Route path="reminders" element={<RemindersPage />} />
-          </Route>
-          <Route path="/tasks" element={
-            <AuthGuard>
-              <TaskLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<TaskManager />} />
-          </Route>
-          <Route path="/accounting/*" element={
-            <AuthGuard>
-              <AccountingLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<AccountingDashboardPage />} />
-            <Route path="journal" element={<Journal />} />
-            <Route path="create-account" element={<CreateAccount />} />
-            <Route path="taccounts" element={<TAccountsPage />} />
-            <Route path="pnl" element={<PnLPage />} />
-            <Route path="balance" element={<BalanceSheetPage />} />
-            <Route path="cashflow" element={<CashFlowPage />} />
-          </Route>
-          <Route path="/content/*" element={
-            <AuthGuard>
-              <ContentLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<ContentDashboard />} />
-            <Route path="board" element={<ContentBoard />} />
-            <Route path="generator" element={<AIGenerator />} />
-            <Route path="scheduler" element={<Scheduler />} />
-            <Route path="analytics" element={<Analytics />} />
-          </Route>
-          <Route path="/attendance" element={
-            <AuthGuard>
-              <AttendanceLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<Attendance />} />
-          </Route>
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Auth />} />
+            <Route path="/login" element={<LoginForm />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/user-dashboard" element={
+              <AuthGuard>
+                <UserDashboard />
+              </AuthGuard>
+            } />
+            <Route path="/sales/*" element={
+              <AuthGuard>
+                <AppLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="new" element={<NewSale />} />
+              <Route path="list" element={<SalesList />} />
+              <Route path="users" element={<Users />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="heatmap" element={<SalesHeatmap />} />
+              <Route path="payment-plan" element={<PaymentPlanGenerator />} />
+              <Route path=":id" element={<SaleDetails />} />
+              <Route path=":id/edit" element={<EditSale />} />
+              <Route path=":saleId/ledger" element={<PaymentLedger />} />
+            </Route>
+            <Route path="/crm/*" element={
+              <AuthGuard>
+                <CrmLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<CrmDashboard />} />
+              <Route path="leads" element={<LeadsList />} />
+              <Route path="leads/new" element={<NewLead />} />
+              <Route path="leads/:id" element={<LeadDetails />} />
+              <Route path="leads/:id/edit" element={<EditLead />} />
+              <Route path="reminders" element={<RemindersPage />} />
+            </Route>
+            <Route path="/tasks" element={
+              <AuthGuard>
+                <TaskLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<TaskManager />} />
+            </Route>
+            <Route path="/accounting/*" element={
+              <AuthGuard>
+                <AccountingLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<AccountingDashboardPage />} />
+              <Route path="journal" element={<Journal />} />
+              <Route path="create-account" element={<CreateAccount />} />
+              <Route path="taccounts" element={<TAccountsPage />} />
+              <Route path="pnl" element={<PnLPage />} />
+              <Route path="balance" element={<BalanceSheetPage />} />
+              <Route path="cashflow" element={<CashFlowPage />} />
+            </Route>
+            <Route path="/content/*" element={
+              <AuthGuard>
+                <ContentLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<ContentDashboard />} />
+              <Route path="board" element={<ContentBoard />} />
+              <Route path="generator" element={<AIGenerator />} />
+              <Route path="scheduler" element={<Scheduler />} />
+              <Route path="analytics" element={<Analytics />} />
+            </Route>
+            <Route path="/attendance" element={
+              <AuthGuard>
+                <AttendanceLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<Attendance />} />
+            </Route>
 
-          {/* HR Management */}
-          <Route path="/hr/*" element={
-            <AuthGuard>
-              <HrLayout />
-            </AuthGuard>
-          }>
-            <Route index element={<HrDashboard />} />
-            <Route path="employees" element={<EmployeesList />} />
-            <Route path="leave" element={<LeaveManagement />} />
-            <Route path="payroll" element={<PayrollManagement />} />
-            <Route path="performance" element={<PerformanceManagement />} />
-            <Route path="documents" element={<DocumentsManagement />} />
-            <Route path="fines" element={<HrFines />} />
-            <Route path="policies" element={<PolicyManagement />} />
-          </Route>
+            {/* HR Management */}
+            <Route path="/hr/*" element={
+              <AuthGuard>
+                <HrLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<HrDashboard />} />
+              <Route path="employees" element={<EmployeesList />} />
+              <Route path="leave" element={<LeaveManagement />} />
+              <Route path="payroll" element={<PayrollManagement />} />
+              <Route path="performance" element={<PerformanceManagement />} />
+              <Route path="documents" element={<DocumentsManagement />} />
+              <Route path="fines" element={<HrFines />} />
+              <Route path="policies" element={<PolicyManagement />} />
+            </Route>
 
-          <Route path="/social/*" element={
-            <AuthGuard>
-              <div className="container max-w-7xl mx-auto p-4 md:p-6 pb-20">
-                <SocialLayout />
-              </div>
-            </AuthGuard>
-          }>
-            <Route index element={<SocialDashboard />} />
-            <Route path="leads" element={<SocialLeads />} />
-            <Route path="accounts" element={<SocialAccounts />} />
-            <Route path="conversations" element={<SocialConversations />} />
-            <Route path="callback" element={<SocialCallback />} />
-          </Route>
+            <Route path="/social/*" element={
+              <AuthGuard>
+                <div className="container max-w-7xl mx-auto p-4 md:p-6 pb-20">
+                  <SocialLayout />
+                </div>
+              </AuthGuard>
+            }>
+              <Route index element={<SocialDashboard />} />
+              <Route path="leads" element={<SocialLeads />} />
+              <Route path="accounts" element={<SocialAccounts />} />
+              <Route path="conversations" element={<SocialConversations />} />
+              <Route path="callback" element={<SocialCallback />} />
+            </Route>
 
-          {/* Commission Management - Standalone with password protection */}
-          <Route path="/commission-management" element={<CommissionManagement />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+            {/* Commission Management - Standalone with password protection */}
+            <Route path="/commission-management" element={<CommissionManagement />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
+
 
 export default App;
