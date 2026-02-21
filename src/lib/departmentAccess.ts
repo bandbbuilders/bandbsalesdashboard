@@ -23,8 +23,8 @@ export const DEPARTMENT_MODULE_MAP: Record<string, string[]> = {
   "sales": ["sales", "attendance", "hr", "inventory", "social"],
   "operations": ["tasks", "attendance", "crm", "hr", "social"],
   "hr": ["hr", "tasks", "attendance", "social"],
-  "management": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social"],
-  "ceo/coo": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social"],
+  "management": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social", "reporting"],
+  "ceo/coo": ["sales", "crm", "tasks", "accounting", "content", "attendance", "commission-management", "hr", "inventory", "social", "reporting"],
 };
 
 // All available modules in the system
@@ -39,6 +39,7 @@ export const ALL_MODULES: ModuleAccess[] = [
   { id: "hr", title: "HR Management", path: "/hr" },
   { id: "inventory", title: "Inventory", path: "/sales/inventory" },
   { id: "social", title: "Social Media", path: "/social" },
+  { id: "reporting", title: "Reporting & Analytics", path: "/reporting" },
 ];
 
 // User-specific module overrides (by user_id)

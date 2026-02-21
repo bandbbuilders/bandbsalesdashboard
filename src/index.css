@@ -25,9 +25,12 @@
     --warning-foreground: 222.2 84% 4.9%;
   }
 
-  .dark {
+  .dark,
+  [data-theme="dark"] {
     --background: 0 0% 0%;
     --foreground: 210 40% 98%;
+    --card: 0 0% 0%;
+    --popover: 0 0% 0%;
     --primary: 0 58% 38%;
     --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
@@ -50,6 +53,11 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  .dark body {
+    background-color: hsl(0 0% 0%);
+    color: hsl(210 40% 98%);
+  }
 }
 
 .glass-card {
@@ -61,9 +69,12 @@
 }
 
 @keyframes pulse-subtle {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.8;
   }

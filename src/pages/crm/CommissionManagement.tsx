@@ -7,9 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, TrendingUp, Users, DollarSign, Home, Calendar, CheckCircle, FileText } from "lucide-react";
+import { Lock, TrendingUp, Users, DollarSign, Home, Calendar, CheckCircle, FileText, MoreHorizontal } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format } from "date-fns";
 import jsPDF from "jspdf";
@@ -567,17 +575,37 @@ const CommissionManagement = () => {
                       ) : '-'}
                     </TableCell>
                     <TableCell><Badge className={s.color}>{s.label}</Badge></TableCell>
-                    <TableCell>
-                      {outstanding > 0 && (
-                        <Button size="sm" variant="outline" onClick={() => {
-                          setSelectedCommission(c);
-                          setPaymentAmount("");
-                          setPaymentDate(new Date().toISOString().split('T')[0]);
-                          setPaymentDialogOpen(true);
-                        }}>
-                          Paid
-                        </Button>
-                      )}
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-10 w-10 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          {outstanding > 0 && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedCommission(c);
+                                setPaymentAmount("");
+                                setPaymentDate(new Date().toISOString().split('T')[0]);
+                                setPaymentDialogOpen(true);
+                              }}
+                            >
+                              <DollarSign className="mr-2 h-4 w-4" /> Record Payment
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedCommission(c);
+                            // We can use the already existing logic or navigate if needed
+                            navigate(`/sales/${c.sale_id}/ledger`);
+                          }}>
+                            <FileText className="mr-2 h-4 w-4" /> View Ledger
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

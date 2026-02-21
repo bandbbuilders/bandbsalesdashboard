@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { format, isToday, formatDistanceToNow, differenceInHours, isPast, isTomorrow } from "date-fns";
 import { getAllowedModules, ModuleAccess, ALL_MODULES } from "@/lib/departmentAccess";
+import { cn } from "@/lib/utils";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useAutoAttendance } from "@/hooks/useAutoAttendance";
@@ -679,6 +680,7 @@ const UserDashboard = () => {
       case 'hr': return 'bg-teal-500';
       case 'inventory': return 'bg-emerald-500';
       case 'social': return 'bg-sky-500';
+      case 'reporting': return 'bg-indigo-600';
       default: return 'bg-gray-500';
     }
   };
@@ -700,40 +702,40 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
+      <header className="border-b bg-card sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+            <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center">
+              <User className="h-4 w-4 md:h-5 md:w-5 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold">{profile?.full_name}</h1>
+                <h1 className="text-base md:text-xl font-semibold truncate">{profile?.full_name}</h1>
                 {roleBadge && !roleLoading && (
-                  <Badge className={roleBadge.color}>
+                  <Badge className={cn("hidden xs:flex", roleBadge.color)}>
                     <roleBadge.icon className="h-3 w-3 mr-1" />
                     {roleBadge.label}
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {profile?.position} • {profile?.department}
+              <p className="text-xs md:text-sm text-muted-foreground truncate">
+                {profile?.position} <span className="hidden xs:inline">• {profile?.department}</span>
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <NotificationBell userName={profile?.full_name} userId={userId || undefined} />
             <ThemeToggle />
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+            <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 md:h-10">
+              <LogOut className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6 md:space-y-8">
 
         {/* COO Business Overview - Only for CEO/COO */}
         {isSuperAdmin && businessStats && (
@@ -742,7 +744,7 @@ const UserDashboard = () => {
               <Building2 className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">Business Overview</h2>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
               <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
                 <CardContent className="pt-6">
                   <div className="flex flex-col">
@@ -822,7 +824,7 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {allowedModules.map((module) => {
                 const Icon = getModuleIcon(module.id);
                 return (
@@ -844,7 +846,7 @@ const UserDashboard = () => {
           )}
         </div>
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -1179,8 +1181,8 @@ const UserDashboard = () => {
                 {todayTasks.map(task => {
                   const dueInfo = formatDueTime(task.due_date);
                   return (
-                    <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
-                      <div className="flex-1">
+                    <div key={task.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 rounded-lg border bg-card transition-colors gap-3", getDeadlineClass(task.due_date))}>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{task.title}</h4>
                           {(isSuperAdmin || isManager) && task.assigned_to && (
@@ -1197,14 +1199,14 @@ const UserDashboard = () => {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                         <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
                         {task.status !== 'done' && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8"
+                            className="h-8 ml-auto sm:ml-0"
                             onClick={() => markTaskComplete(task.id)}
                           >
                             <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -1235,8 +1237,8 @@ const UserDashboard = () => {
                 {inProgressTasks.map(task => {
                   const dueInfo = formatDueTime(task.due_date);
                   return (
-                    <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
-                      <div className="flex-1">
+                    <div key={task.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 rounded-lg border bg-card transition-colors gap-3", getDeadlineClass(task.due_date))}>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{task.title}</h4>
                           {(isSuperAdmin || isManager) && task.assigned_to && (
@@ -1253,12 +1255,12 @@ const UserDashboard = () => {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8"
+                          className="h-8 ml-auto sm:ml-0"
                           onClick={() => markTaskComplete(task.id)}
                         >
                           <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -1293,8 +1295,8 @@ const UserDashboard = () => {
                     {tasks.filter(t => t.status !== 'done').map(task => {
                       const dueInfo = formatDueTime(task.due_date);
                       return (
-                        <div key={task.id} className={`flex items-center justify-between p-4 rounded-lg border bg-card transition-colors ${getDeadlineClass(task.due_date)}`}>
-                          <div className="flex-1">
+                        <div key={task.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 rounded-lg border bg-card transition-colors gap-3", getDeadlineClass(task.due_date))}>
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-medium">{task.title}</h4>
                               {task.assigned_to && (
@@ -1311,13 +1313,13 @@ const UserDashboard = () => {
                               </p>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                             <Badge className={getStatusColor(task.status)}>{task.status.replace('_', ' ')}</Badge>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8"
+                              className="h-8 ml-auto sm:ml-0"
                               onClick={() => markTaskComplete(task.id)}
                             >
                               <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -1362,7 +1364,7 @@ const UserDashboard = () => {
                       <h3 className="font-semibold text-sm">{dept}</h3>
                       <Badge variant="outline" className="text-xs">{members.length}</Badge>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {members.map(member => (
                         <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">
@@ -1405,7 +1407,7 @@ const UserDashboard = () => {
                 <Badge variant="secondary" className="ml-auto">{teamMembers.length} members</Badge>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {teamMembers.map(member => (
                     <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center relative">

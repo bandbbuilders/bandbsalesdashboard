@@ -13,7 +13,7 @@ export const InventoryStats = ({ items }: InventoryStatsProps) => {
     // Calculate reserved if needed, but the reference app mainly highlighted Available/Sold
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6">
             <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
                 <CardContent className="pt-6">
                     <div className="flex flex-col items-center">

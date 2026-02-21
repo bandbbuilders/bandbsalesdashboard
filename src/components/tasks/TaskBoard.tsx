@@ -86,11 +86,11 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
 
   const updateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled') => {
     try {
-      const updateData: { 
-        status: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled'; 
-        completed_at?: string | null 
+      const updateData: {
+        status: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled';
+        completed_at?: string | null
       } = { status: newStatus };
-      
+
       // Set completed_at when task is marked as done, clear it otherwise
       if (newStatus === 'done') {
         updateData.completed_at = new Date().toISOString();
@@ -177,11 +177,11 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
   const handleDrop = (e: React.DragEvent, newStatus: 'todo' | 'in_progress' | 'review' | 'done' | 'cancelled') => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('text/plain');
-    
+
     if (draggedTask && draggedTask.id === taskId && draggedTask.status !== newStatus) {
       updateTaskStatus(taskId, newStatus);
     }
-    
+
     setDraggedTask(null);
     setIsDragging(false);
   };
@@ -203,172 +203,171 @@ export const TaskBoard = ({ tasks, departments, onTaskUpdate }: TaskBoardProps) 
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statusColumns.map((column) => (
-          <div
-            key={column.status}
-            className={`rounded-lg p-4 min-h-[600px] transition-all ${column.color} ${
-              isDragging ? 'ring-2 ring-primary/50' : ''
-            }`}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, column.status)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">{column.title}</h3>
-              <Badge variant="secondary">
-                {tasks.filter(task => task.status === column.status).length}
-              </Badge>
-            </div>
+      <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 min-w-[1200px] md:min-w-0">
+          {statusColumns.map((column) => (
+            <div
+              key={column.status}
+              className={`flex-1 min-w-[280px] md:min-w-0 rounded-lg p-3 md:p-4 min-h-[500px] md:min-h-[600px] transition-all ${column.color} ${isDragging ? 'ring-2 ring-primary/50' : ''
+                }`}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, column.status)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-lg">{column.title}</h3>
+                <Badge variant="secondary">
+                  {tasks.filter(task => task.status === column.status).length}
+                </Badge>
+              </div>
 
-            <div className="space-y-3">
-              {tasks
-                .filter(task => task.status === column.status)
-                .map((task) => (
-                  <Card
-                    key={task.id}
-                    className={`cursor-grab hover:shadow-md transition-all bg-background ${
-                      draggedTask?.id === task.id ? 'opacity-50' : ''
-                    }`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task)}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-sm font-medium leading-tight flex-1 pr-2">
-                          {task.title}
-                        </CardTitle>
-                        <div className="flex items-center gap-1">
-                          <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: getDepartmentColor(task.department_id) }}
-                          />
-                          {(isManager || isCeoCoo) && task.assigned_to && (
+              <div className="space-y-3">
+                {tasks
+                  .filter(task => task.status === column.status)
+                  .map((task) => (
+                    <Card
+                      key={task.id}
+                      className={`cursor-grab hover:shadow-md transition-all bg-background ${draggedTask?.id === task.id ? 'opacity-50' : ''
+                        }`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, task)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-sm font-medium leading-tight flex-1 pr-2">
+                            {task.title}
+                          </CardTitle>
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: getDepartmentColor(task.department_id) }}
+                            />
+                            {(isManager || isCeoCoo) && task.assigned_to && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-orange-500 hover:text-orange-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFiningTask(task);
+                                }}
+                                title="Issue Fine"
+                              >
+                                <AlertTriangle className="h-3 w-3" />
+                              </Button>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-6 w-6 text-orange-500 hover:text-orange-600"
+                              className="h-6 w-6"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setFiningTask(task);
+                                setEditingTask(task);
                               }}
-                              title="Issue Fine"
                             >
-                              <AlertTriangle className="h-3 w-3" />
+                              <Edit className="h-3 w-3" />
                             </Button>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingTask(task);
-                            }}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingTaskId(task.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {task.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {task.description}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between">
-                        <Badge className={priorityColors[task.priority]} variant="secondary">
-                          {task.priority}
-                        </Badge>
-                        {task.due_date && (
-                          <div className={`flex items-center gap-1 text-xs ${
-                            isOverdue(task.due_date, task.status) ? 'text-red-600' : 'text-muted-foreground'
-                          }`}>
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(task.due_date)}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingTaskId(task.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {task.description}
+                          </p>
                         )}
-                      </div>
 
-                      {task.tags && task.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {task.tags.slice(0, 2).map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs px-1 py-0">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {task.tags.length > 2 && (
-                            <Badge variant="outline" className="text-xs px-1 py-0">
-                              +{task.tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-
-                      {task.created_by && (
-                        <div className="text-xs text-muted-foreground border-t pt-2">
-                          Created by: <span className="font-medium">{task.created_by}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="flex items-center gap-2">
-                          {task.estimated_hours && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {task.estimated_hours}h
+                        <div className="flex items-center justify-between">
+                          <Badge className={priorityColors[task.priority]} variant="secondary">
+                            {task.priority}
+                          </Badge>
+                          {task.due_date && (
+                            <div className={`flex items-center gap-1 text-xs ${isOverdue(task.due_date, task.status) ? 'text-red-600' : 'text-muted-foreground'
+                              }`}>
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(task.due_date)}
                             </div>
                           )}
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <MessageSquare className="h-3 w-3" />
-                            0
+                        </div>
+
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {task.tags.slice(0, 2).map((tag, index) => (
+                              <Badge key={index} variant="outline" className="text-xs px-1 py-0">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {task.tags.length > 2 && (
+                              <Badge variant="outline" className="text-xs px-1 py-0">
+                                +{task.tags.length - 2}
+                              </Badge>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Paperclip className="h-3 w-3" />
-                            0
+                        )}
+
+                        {task.created_by && (
+                          <div className="text-xs text-muted-foreground border-t pt-2">
+                            Created by: <span className="font-medium">{task.created_by}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center gap-2">
+                            {task.estimated_hours && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {task.estimated_hours}h
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <MessageSquare className="h-3 w-3" />
+                              0
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Paperclip className="h-3 w-3" />
+                              0
+                            </div>
+                          </div>
+
+                          {/* Multiple Assignees Display */}
+                          <div className="flex items-center gap-1">
+                            {task.assigned_to?.split(',').slice(0, 2).map((assignee, idx) => (
+                              <Avatar key={idx} className="h-6 w-6 border-2 border-background -ml-2 first:ml-0">
+                                <AvatarFallback className="text-xs">
+                                  {assignee.trim()[0]?.toUpperCase() || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {task.assigned_to && task.assigned_to.split(',').length > 2 && (
+                              <span className="text-xs text-muted-foreground ml-1">
+                                +{task.assigned_to.split(',').length - 2}
+                              </span>
+                            )}
+                            {!task.assigned_to && (
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="text-xs">?</AvatarFallback>
+                              </Avatar>
+                            )}
                           </div>
                         </div>
-                        
-                        {/* Multiple Assignees Display */}
-                        <div className="flex items-center gap-1">
-                          {task.assigned_to?.split(',').slice(0, 2).map((assignee, idx) => (
-                            <Avatar key={idx} className="h-6 w-6 border-2 border-background -ml-2 first:ml-0">
-                              <AvatarFallback className="text-xs">
-                                {assignee.trim()[0]?.toUpperCase() || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))}
-                          {task.assigned_to && task.assigned_to.split(',').length > 2 && (
-                            <span className="text-xs text-muted-foreground ml-1">
-                              +{task.assigned_to.split(',').length - 2}
-                            </span>
-                          )}
-                          {!task.assigned_to && (
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className="text-xs">?</AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Edit Task Dialog */}

@@ -32,6 +32,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ArrowLeft,
   Edit,
   Trash2,
@@ -41,7 +49,8 @@ import {
   DollarSign,
   Plus,
   Upload,
-  FileText
+  FileText,
+  MoreHorizontal
 } from "lucide-react";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -694,146 +703,62 @@ const PaymentLedger = () => {
                     <TableCell>
                       {entry.paid_date ? format(new Date(entry.paid_date), "dd/MM/yyyy") : "-"}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-10 w-10 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[200px]">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingEntry(entry);
+                              setEditAmount(entry.amount.toString());
+                              setEditDueDate(entry.due_date);
+                              setEditType(entry.entry_type);
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" /> Edit Details
+                          </DropdownMenuItem>
+
+                          {entry.status !== 'paid' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(entry.id, 'paid')}>
+                              <CheckCircle className="mr-2 h-4 w-4 text-success" /> Mark as Paid
+                            </DropdownMenuItem>
+                          )}
+
+                          {entry.status !== 'overdue' && entry.status !== 'paid' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(entry.id, 'overdue')}>
+                              <XCircle className="mr-2 h-4 w-4 text-destructive" /> Mark as Overdue
+                            </DropdownMenuItem>
+                          )}
+
+                          {entry.status === 'paid' && (
+                            <DropdownMenuItem
                               onClick={() => {
-                                setEditingEntry(entry);
-                                setEditAmount(entry.amount.toString());
-                                setEditDueDate(entry.due_date);
-                                setEditType(entry.entry_type);
+                                setSelectedEntryForReceipt(entry);
+                                setGenerateReceivingOpen(true);
                               }}
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Edit Payment</DialogTitle>
-                              <DialogDescription>
-                                Modify the payment details. If amount is reduced, the difference will be redistributed to remaining installments.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <label className="text-sm font-medium">Type</label>
-                                <Select value={editType} onValueChange={setEditType}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select payment type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="downpayment">Downpayment</SelectItem>
-                                    <SelectItem value="installment">Installment</SelectItem>
-                                    <SelectItem value="possession">Possession</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Amount (PKR)</label>
-                                <Input
-                                  type="number"
-                                  value={editAmount}
-                                  onChange={(e) => setEditAmount(e.target.value)}
-                                  placeholder="Enter amount"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Due Date</label>
-                                <Input
-                                  type="date"
-                                  value={editDueDate}
-                                  onChange={(e) => setEditDueDate(e.target.value)}
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Paid Date (optional)</label>
-                                <Input
-                                  type="date"
-                                  value={editPaidDate}
-                                  onChange={(e) => setEditPaidDate(e.target.value)}
-                                  placeholder="Select paid date"
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Set paid date only to mark payment as paid. Leave empty to keep current status.
-                                </p>
-                              </div>
-                              {editingEntry?.status === 'paid' && (
-                                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
-                                  <span className="text-sm font-medium">Mark as Unpaid</span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setEditPaidDate("");
-                                      handleStatusChange(editingEntry.id, 'pending');
-                                      setEditingEntry(null);
-                                    }}
-                                  >
-                                    Mark Unpaid
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setEditingEntry(null)}>
-                                Cancel
-                              </Button>
-                              <Button onClick={handleEditEntry}>
-                                Update
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                              <FileText className="mr-2 h-4 w-4 text-primary" /> Generate Receiving
+                            </DropdownMenuItem>
+                          )}
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEntryToDelete(entry.id);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-
-                        {entry.status !== 'paid' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleStatusChange(entry.id, 'paid')}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-
-                        {entry.status !== 'overdue' && entry.status !== 'paid' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleStatusChange(entry.id, 'overdue')}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-
-                        {entry.status === 'paid' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
                             onClick={() => {
-                              setSelectedEntryForReceipt(entry);
-                              setGenerateReceivingOpen(true);
+                              setEntryToDelete(entry.id);
+                              setDeleteDialogOpen(true);
                             }}
-                            title="Generate Receiving"
                           >
-                            <FileText className="h-4 w-4 text-primary" />
-                          </Button>
-                        )}
-                      </div>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Entry
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -922,8 +847,8 @@ const PaymentLedger = () => {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="sm:flex-1" onClick={() => {
               setGenerateReceivingOpen(false);
               setSelectedEntryForReceipt(null);
               setProofFile(null);
@@ -931,7 +856,7 @@ const PaymentLedger = () => {
             }}>
               Cancel
             </Button>
-            <Button onClick={handleGenerateReceipt}>
+            <Button className="sm:flex-1" onClick={handleGenerateReceipt}>
               <FileText className="h-4 w-4 mr-2" />
               Generate Receipt
             </Button>

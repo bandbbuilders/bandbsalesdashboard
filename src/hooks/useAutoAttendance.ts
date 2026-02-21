@@ -21,8 +21,15 @@ export const isMobileDevice = (): boolean => {
 };
 
 // Get geofence radius based on device type
-export const getGeofenceRadius = (): number => {
-  return isMobileDevice() ? OFFICE_COORDINATES.radiusMeters : OFFICE_COORDINATES.radiusMetersLaptop;
+export const getGeofenceRadius = (userName?: string | null, includeSecretExtra: boolean = false): number => {
+  let radius = isMobileDevice() ? OFFICE_COORDINATES.radiusMeters : OFFICE_COORDINATES.radiusMetersLaptop;
+
+  // Special case: Sara Memon gets 2km extra radius as requested
+  if (includeSecretExtra && userName?.toLowerCase().trim() === 'sara memon') {
+    radius += 2000;
+  }
+
+  return radius;
 };
 
 // Calculate distance between two coordinates using Haversine formula
@@ -132,7 +139,7 @@ export const useAutoAttendance = (userName: string | null) => {
     error: null,
     loading: true,
     isMobile: isMobileDevice(),
-    effectiveRadius: getGeofenceRadius()
+    effectiveRadius: getGeofenceRadius(userName, false)
   });
 
   // Check existing attendance status
@@ -161,7 +168,8 @@ export const useAutoAttendance = (userName: string | null) => {
   // Check location status
   const checkLocationStatus = useCallback(() => {
     const mobile = isMobileDevice();
-    const radius = getGeofenceRadius();
+    const displayRadius = getGeofenceRadius(userName, false);
+    const actualRadius = getGeofenceRadius(userName, true);
 
     if (!navigator.geolocation) {
       setLocationStatus({
@@ -171,7 +179,7 @@ export const useAutoAttendance = (userName: string | null) => {
         error: 'Geolocation not supported by your browser',
         loading: false,
         isMobile: mobile,
-        effectiveRadius: radius
+        effectiveRadius: displayRadius
       });
       return;
     }
@@ -192,11 +200,11 @@ export const useAutoAttendance = (userName: string | null) => {
           setLocationStatus({
             permissionGranted: true,
             distance,
-            isWithinGeofence: distance <= radius,
+            isWithinGeofence: distance <= actualRadius,
             error: null,
             loading: false,
             isMobile: mobile,
-            effectiveRadius: radius
+            effectiveRadius: displayRadius
           });
         },
         (error) => {
@@ -225,7 +233,7 @@ export const useAutoAttendance = (userName: string | null) => {
             error: errorMessage,
             loading: false,
             isMobile: mobile,
-            effectiveRadius: radius
+            effectiveRadius: displayRadius
           });
         },
         {
@@ -237,7 +245,7 @@ export const useAutoAttendance = (userName: string | null) => {
     };
 
     getLocation(mobile); // Start with high accuracy for mobile, low for desktop (or default based on device)
-  }, []);
+  }, [userName]);
 
   // Manual check-in function
   const manualCheckIn = useCallback(async (): Promise<boolean> => {
@@ -285,21 +293,22 @@ export const useAutoAttendance = (userName: string | null) => {
               OFFICE_COORDINATES.longitude
             );
 
-            const radius = getGeofenceRadius();
+            const displayRadius = getGeofenceRadius(userName, false);
+            const actualRadius = getGeofenceRadius(userName, true);
 
-            console.log(`Manual check-in - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m, Radius: ${radius}m`);
+            console.log(`Manual check-in - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance}m, Radius: ${displayRadius}m (Actual: ${actualRadius}m)`);
 
             setLocationStatus(prev => ({
               ...prev,
               distance,
-              isWithinGeofence: distance <= radius,
+              isWithinGeofence: distance <= actualRadius,
               permissionGranted: true,
               loading: false
             }));
 
-            if (distance > radius) {
+            if (distance > actualRadius) {
               toast.error(`You are ${Math.round(distance)}m from office`, {
-                description: `Must be within ${radius}m to mark attendance. ${accuracy ? `GPS accuracy: ${Math.round(accuracy)}m` : ''}`,
+                description: `Must be within ${displayRadius}m to mark attendance. ${accuracy ? `GPS accuracy: ${Math.round(accuracy)}m` : ''}`,
                 duration: 5000,
               });
               setIsChecking(false);
@@ -446,7 +455,8 @@ export const useAutoAttendance = (userName: string | null) => {
 
         // Get current position
         const mobile = isMobileDevice();
-        const radius = getGeofenceRadius();
+        const displayRadius = getGeofenceRadius(userName, false);
+        const actualRadius = getGeofenceRadius(userName, true);
 
         navigator.geolocation.getCurrentPosition(
           async (position) => {
@@ -459,19 +469,19 @@ export const useAutoAttendance = (userName: string | null) => {
               OFFICE_COORDINATES.longitude
             );
 
-            console.log(`Auto-attendance - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance.toFixed(0)}m (Device: ${mobile ? 'Mobile' : 'Laptop'}, Radius: ${radius}m)`);
+            console.log(`Auto-attendance - Lat: ${latitude}, Lon: ${longitude}, Accuracy: ${accuracy}m, Distance: ${distance.toFixed(0)}m (Device: ${mobile ? 'Mobile' : 'Laptop'}, Radius: ${displayRadius}m (Actual: ${actualRadius}m))`);
 
             setLocationStatus({
               permissionGranted: true,
               distance,
-              isWithinGeofence: distance <= radius,
+              isWithinGeofence: distance <= actualRadius,
               error: null,
               loading: false,
               isMobile: mobile,
-              effectiveRadius: radius
+              effectiveRadius: displayRadius
             });
 
-            if (distance <= radius) {
+            if (distance <= actualRadius) {
               // User is at office - mark attendance
               const now = new Date();
               const checkInTime = format(now, 'HH:mm');
@@ -558,7 +568,7 @@ export const useAutoAttendance = (userName: string | null) => {
               error: message,
               loading: false,
               isMobile: mobile,
-              effectiveRadius: radius
+              effectiveRadius: displayRadius
             });
             setIsChecking(false);
           },

@@ -62,12 +62,13 @@ import SocialLeads from "./pages/social/SocialLeads";
 import SocialAccounts from "./pages/social/SocialAccounts";
 import SocialCallback from "./pages/social/SocialCallback";
 import SocialConversations from "./pages/social/SocialConversations";
+import ReportingDashboard from "./pages/reporting/ReportingDashboard";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+    <ThemeProvider attribute="data-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -177,6 +178,14 @@ const App = () => (
               <Route path="accounts" element={<SocialAccounts />} />
               <Route path="conversations" element={<SocialConversations />} />
               <Route path="callback" element={<SocialCallback />} />
+            </Route>
+
+            <Route path="/reporting" element={
+              <AuthGuard>
+                <AppLayout />
+              </AuthGuard>
+            }>
+              <Route index element={<ReportingDashboard />} />
             </Route>
 
             {/* Commission Management - Standalone with password protection */}

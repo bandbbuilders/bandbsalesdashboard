@@ -372,18 +372,18 @@ export default function Attendance() {
   const todayFines = fines.filter(f => f.date === format(selectedDate, "yyyy-MM-dd"));
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Attendance Management</h1>
-          <p className="text-muted-foreground">Track team attendance and working hours</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Attendance</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Track team working hours</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="daily">Daily Attendance</TabsTrigger>
-          {canEdit && <TabsTrigger value="monthly">Monthly Report (Admin)</TabsTrigger>}
+        <TabsList className="w-full flex md:inline-flex">
+          <TabsTrigger value="daily" className="flex-1 md:flex-none">Daily</TabsTrigger>
+          {canEdit && <TabsTrigger value="monthly" className="flex-1 md:flex-none">Monthly</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="daily" className="space-y-6">
@@ -424,10 +424,12 @@ export default function Attendance() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Date Selection & Marking - Left Column */}
-            <Card className="lg:col-span-1">
-              <CardHeader><CardTitle>Select Date</CardTitle></CardHeader>
-              <CardContent>
-                <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} className="rounded-md border" />
+            <Card className="lg:col-span-1 border-none shadow-none md:border md:shadow-sm">
+              <CardHeader className="px-0 md:px-6"><CardTitle>Select Date</CardTitle></CardHeader>
+              <CardContent className="px-0 md:px-6">
+                <div className="flex justify-center md:block">
+                  <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} className="rounded-md border mx-auto" />
+                </div>
 
                 {canEdit ? (
                   <div className="mt-6 space-y-4">
@@ -468,26 +470,26 @@ export default function Attendance() {
                   <div className="text-center py-8 text-muted-foreground">No records for this date</div>
                 ) : (
                   todayAttendance.map((record) => (
-                    <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition">
-                      <div className="flex items-center gap-4">
-                        <Avatar>
+                    <div key={record.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 border rounded-lg hover:bg-accent/50 transition gap-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 md:h-10 md:w-10">
                           <AvatarFallback className={getStatusColor(record.status)}>{record.user_name[0]}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-semibold">{record.user_name}</p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <p className="font-semibold text-sm md:text-base">{record.user_name}</p>
+                          <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground">
                             {record.check_in && <span>In: {record.check_in}</span>}
                             {record.check_out && <span>Out: {record.check_out}</span>}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant={record.status === 'present' ? 'default' : 'destructive'}>
+                      <div className="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto">
+                        <Badge variant={record.status === 'present' ? 'default' : 'destructive'} className="text-[10px] md:text-sm">
                           {record.status} {record.is_late && '(Late)'}
                         </Badge>
                         {canEdit && (
-                          <Button variant="outline" size="sm" onClick={() => handleOpenEditDialog(record)}>
-                            <Pencil className="h-4 w-4 mr-1" /> Edit
+                          <Button variant="outline" size="sm" className="h-8" onClick={() => handleOpenEditDialog(record)}>
+                            <Pencil className="h-3 w-3 mr-1" /> Edit
                           </Button>
                         )}
                       </div>
@@ -499,11 +501,11 @@ export default function Attendance() {
           </div>
 
           {/* Summary & Fines */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader><CardTitle>Today's Summary</CardTitle></CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-3 gap-2 md:gap-4 text-center">
                   <div className="p-4 border rounded-lg">
                     <div className="text-2xl font-bold text-green-600">{todayAttendance.filter(r => r.status === 'present' || r.status === 'late').length}</div>
                     <div className="text-sm text-muted-foreground">Present</div>
@@ -528,23 +530,23 @@ export default function Attendance() {
                 ) : (
                   <div className="space-y-3">
                     {todayFines.map(fine => (
-                      <div key={fine.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-500/10">
-                        <div>
-                          <p className="font-semibold">{fine.user_name}</p>
-                          <p className="text-xs text-muted-foreground">{fine.reason}</p>
+                      <div key={fine.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg bg-orange-500/10 gap-2">
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm md:text-base">{fine.user_name}</p>
+                          <p className="text-[10px] md:text-xs text-muted-foreground">{fine.reason}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-orange-600">Rs {fine.amount}</p>
-                          <Badge variant={fine.status === 'approved' ? 'default' : fine.status === 'rejected' ? 'secondary' : 'destructive'} className="text-xs">
+                        <div className="flex items-center sm:block justify-between gap-2">
+                          <p className="font-bold text-sm md:text-lg text-orange-600">Rs {fine.amount}</p>
+                          <Badge variant={fine.status === 'approved' ? 'default' : fine.status === 'rejected' ? 'secondary' : 'destructive'} className="text-[10px]">
                             {fine.status}
                           </Badge>
-                          {canEdit && fine.status === 'pending' && (
-                            <div className="flex gap-2 mt-2 justify-end">
-                              <Button size="sm" className="bg-green-600 h-6 text-xs" onClick={() => handleAcceptFine(fine)}>Accept</Button>
-                              <Button size="sm" variant="destructive" className="h-6 text-xs" onClick={() => handleRejectFine(fine)}>Reject</Button>
-                            </div>
-                          )}
                         </div>
+                        {canEdit && fine.status === 'pending' && (
+                          <div className="flex gap-2 justify-end w-full sm:w-auto">
+                            <Button size="sm" className="bg-green-600 h-7 text-[10px] flex-1 sm:flex-none" onClick={() => handleAcceptFine(fine)}>Accept</Button>
+                            <Button size="sm" variant="destructive" className="h-7 text-[10px] flex-1 sm:flex-none" onClick={() => handleRejectFine(fine)}>Reject</Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -573,20 +575,22 @@ export default function Attendance() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="col-span-1">
-              <CardHeader><CardTitle>Select Month</CardTitle></CardHeader>
-              <CardContent>
-                <Calendar
-                  mode="single"
-                  selected={selectedMonth}
-                  onSelect={(d) => d && setSelectedMonth(d)}
-                  className="rounded-md border"
-                  initialFocus
-                />
+            <Card className="col-span-1 border-none shadow-none md:border md:shadow-sm">
+              <CardHeader className="px-0 md:px-6"><CardTitle>Select Month</CardTitle></CardHeader>
+              <CardContent className="px-0 md:px-6">
+                <div className="flex justify-center md:block">
+                  <Calendar
+                    mode="single"
+                    selected={selectedMonth}
+                    onSelect={(d) => d && setSelectedMonth(d)}
+                    className="rounded-md border mx-auto"
+                    initialFocus
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="col-span-2">
+            <Card className="col-span-1 md:col-span-2">
               <CardHeader>
                 <CardTitle>Team Performance - {format(selectedMonth, 'MMMM yyyy')}</CardTitle>
               </CardHeader>
@@ -596,23 +600,23 @@ export default function Attendance() {
                     <p className="text-center text-muted-foreground py-8">No data found for this month.</p>
                   ) : (
                     monthlyStats.map((stat) => (
-                      <div key={stat.user_name} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
+                      <div key={stat.user_name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 border rounded-lg gap-4">
+                        <div className="flex items-center gap-3 md:gap-4">
                           <Avatar>
                             <AvatarFallback>{stat.user_name[0]}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-bold text-lg">{stat.user_name}</p>
-                            <div className="flex gap-4 text-sm mt-1">
-                              <span className="text-green-600 font-medium">Present: {stat.present}</span>
-                              <span className="text-orange-500 font-medium">Late: {stat.late}</span>
-                              <span className="text-red-500 font-medium">Absent: {stat.absent}</span>
+                            <p className="font-bold text-base md:text-lg">{stat.user_name}</p>
+                            <div className="flex flex-wrap gap-2 md:gap-4 text-[10px] md:text-sm mt-1">
+                              <span className="text-green-600 font-medium">P: {stat.present}</span>
+                              <span className="text-orange-500 font-medium">L: {stat.late}</span>
+                              <span className="text-red-500 font-medium">A: {stat.absent}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Total Late Fines</p>
-                          <p className="text-xl font-bold text-destructive">Rs {stat.total_fines}</p>
+                        <div className="text-right border-t sm:border-none pt-2 sm:pt-0">
+                          <p className="text-[10px] md:text-sm text-muted-foreground uppercase tracking-wider font-semibold">Fines</p>
+                          <p className="text-lg md:text-xl font-bold text-destructive leading-none md:leading-normal">Rs {stat.total_fines}</p>
                         </div>
                       </div>
                     ))

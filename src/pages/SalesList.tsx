@@ -170,21 +170,21 @@ const SalesList = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Sales Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold">Sales Management</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Manage all sales records and customer information
           </p>
         </div>
 
         {(user?.role === "admin" || user?.role === "agent") && (
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
+            <Button variant="outline" size="sm" className="h-9 md:h-10">
+              <Download className="mr-1 h-4 w-4 md:mr-2" />
+              <span className="xs:inline md:inline">Export</span>
             </Button>
-            <Button onClick={() => navigate("/sales/new")}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Sale
+            <Button onClick={() => navigate("/sales/new")} size="sm" className="h-9 md:h-10">
+              <Plus className="mr-1 h-4 w-4 md:mr-2" />
+              <span className="xs:inline md:inline">New Sale</span>
             </Button>
           </div>
         )}
@@ -192,26 +192,26 @@ const SalesList = () => {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <CardContent className="p-3 md:p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by customer name, unit number, or contact..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-9 md:h-10"
               />
             </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full md:w-auto">
+                <Button variant="outline" className="w-full md:w-auto h-9 md:h-10">
                   <Filter className="mr-2 h-4 w-4" />
                   Status: {statusFilter === "all" ? "All" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setStatusFilter("all")}>
                   All Status
                 </DropdownMenuItem>
@@ -231,7 +231,7 @@ const SalesList = () => {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
@@ -287,8 +287,8 @@ const SalesList = () => {
             {filteredSales.length} of {sales.length} sales
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="p-0 sm:p-6">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -330,7 +330,7 @@ const SalesList = () => {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-10 w-10 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
