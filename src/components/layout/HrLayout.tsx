@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const HrLayout = () => {
   const location = useLocation();
@@ -58,6 +59,7 @@ const HrLayout = () => {
 
             <div className="flex items-center gap-2">
               <NotificationBell userName={currentUser?.name} userId={currentUser?.id} />
+              <ThemeToggle />
               <Button variant="outline" size="sm" asChild>
                 <Link to="/user-dashboard">
                   <Home className="h-4 w-4 mr-2" />

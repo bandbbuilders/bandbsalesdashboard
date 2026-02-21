@@ -43,6 +43,7 @@ import { ApplyLeaveDialog } from "@/components/leave/ApplyLeaveDialog";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { PersonalAttendanceCard } from "@/components/dashboard/PersonalAttendanceCard";
 import { PolicyList } from "@/components/dashboard/PolicyList";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Profile {
   id: string;
@@ -722,6 +723,7 @@ const UserDashboard = () => {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell userName={profile?.full_name} userId={userId || undefined} />
+            <ThemeToggle />
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout

@@ -9,6 +9,7 @@ import {
     MessageSquare,
     ArrowLeft
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function SocialLayout() {
     const navigate = useNavigate();
@@ -53,6 +54,9 @@ export default function SocialLayout() {
                             {item.name}
                         </Button>
                     ))}
+                    <div className="ml-2">
+                        <ThemeToggle />
+                    </div>
                 </div>
             </div>
             <div className="flex-1 overflow-auto">

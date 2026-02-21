@@ -14,6 +14,7 @@ import { FileText, LogOut, Menu, X, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type LayoutUser = {
   id: string;
@@ -96,7 +97,7 @@ export const TaskLayout = () => {
     <div className="min-h-screen bg-background">
       {/* Mobile menu overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -114,7 +115,7 @@ export const TaskLayout = () => {
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            
+
             <FileText className="h-6 w-6 text-primary" />
             <h1 className="text-lg font-semibold hidden sm:block">Task Manager</h1>
           </div>
@@ -124,7 +125,8 @@ export const TaskLayout = () => {
               <Home className="h-4 w-4" />
             </Button>
             <NotificationBell userName={user?.name} userId={user?.id} />
-            
+            <ThemeToggle />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">

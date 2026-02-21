@@ -2,22 +2,22 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  FileText, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  FileText,
+  TrendingUp,
+  DollarSign,
   Activity,
-  Bell, 
+  Bell,
   LogOut,
   Menu,
   X,
@@ -27,6 +27,7 @@ import {
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const AccountingLayout = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -123,7 +124,7 @@ export const AccountingLayout = () => {
     <div className="min-h-screen bg-background">
       {/* Mobile menu overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -141,7 +142,7 @@ export const AccountingLayout = () => {
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            
+
             <Calculator className="h-6 w-6 text-primary" />
             <h1 className="text-lg font-semibold hidden sm:block">Accounting</h1>
           </div>
@@ -153,7 +154,8 @@ export const AccountingLayout = () => {
             <Button variant="ghost" size="icon">
               <Bell className="h-4 w-4" />
             </Button>
-            
+            <ThemeToggle />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">

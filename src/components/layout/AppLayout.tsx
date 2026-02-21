@@ -29,6 +29,7 @@ import { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const AppLayout = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -168,6 +169,7 @@ export const AppLayout = () => {
               <Home className="h-4 w-4" />
             </Button>
             <NotificationBell userName={user?.name} userId={user?.id} />
+            <ThemeToggle />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
