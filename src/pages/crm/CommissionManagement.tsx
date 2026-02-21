@@ -575,13 +575,12 @@ const CommissionManagement = () => {
                       ) : '-'}
                     </TableCell>
                     <TableCell><Badge className={s.color}>{s.label}</Badge></TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center w-[60px]">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="outline"
-                            className="h-10 w-10 p-0"
-                            onPointerDown={(e) => e.stopPropagation()}
+                            className="h-10 w-10 p-0 flex items-center justify-center mx-auto"
                           >
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-5 w-5" />

@@ -43,6 +43,57 @@ interface AttendanceData {
     date: string;
 }
 
+interface SocialAccount {
+    id: string;
+    platform: string;
+}
+
+interface SocialMetric {
+    account_id: string;
+    follower_count: number;
+    recorded_at: string;
+}
+
+interface SocialPost {
+    account_id: string;
+    likes_count: number;
+    comments_count: number;
+    engagement_count: number;
+}
+
+interface SocialLead {
+    id: string;
+    platform: string;
+    captured_at: string;
+}
+
+interface Commission {
+    id: string;
+    recipient_name: string;
+    total_amount: number;
+    status_30_percent: string;
+    status_70_percent: string;
+    paid_amount: number;
+    created_at: string;
+}
+
+interface JournalEntry {
+    id: string;
+    date: string;
+    debit_account: string;
+    credit_account: string;
+    amount: number;
+}
+
+interface LedgerEntry {
+    id: string;
+    sale_id: string;
+    amount: number;
+    paid_amount: number;
+    status: string;
+    paid_date: string;
+}
+
 const ReportingDashboard = () => {
     const [sales, setSales] = useState<SalesData[]>([]);
     const [leads, setLeads] = useState<LeadData[]>([]);
@@ -51,6 +102,17 @@ const ReportingDashboard = () => {
     const [profiles, setProfiles] = useState<any[]>([]);
     const [selectedUser, setSelectedUser] = useState<string>("all");
     const [loading, setLoading] = useState(true);
+
+    // Additional state for new requirements
+    const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
+    const [socialMetrics, setSocialMetrics] = useState<SocialMetric[]>([]);
+    const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
+    const [socialLeads, setSocialLeads] = useState<SocialLead[]>([]);
+    const [commissions, setCommissions] = useState<Commission[]>([]);
+    const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+    const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
+    const [payroll, setPayroll] = useState<any[]>([]);
+
     const [dateRange, setDateRange] = useState({
         start: startOfMonth(subMonths(new Date(), 1)),
         end: endOfMonth(new Date())
@@ -68,13 +130,29 @@ const ReportingDashboard = () => {
                 { data: leadsData },
                 { data: tasksData },
                 { data: attendanceData },
-                { data: profilesData }
+                { data: profilesData },
+                { data: sAccData },
+                { data: sMetData },
+                { data: sPostData },
+                { data: sLeadData },
+                { data: commData },
+                { data: journalData },
+                { data: ledgerData },
+                { data: payrollData }
             ] = await Promise.all([
                 supabase.from('sales').select('id, unit_total_price, created_at, agent:profiles!sales_agent_id_fkey(full_name)'),
                 supabase.from('leads').select('id, stage, created_at'),
                 supabase.from('tasks').select('id, status, assigned_to'),
                 supabase.from('attendance').select('id, status, user_name, date'),
-                supabase.from('profiles').select('id, full_name, department, position')
+                supabase.from('profiles').select('id, full_name, department, position'),
+                supabase.from('social_accounts' as any).select('*'),
+                supabase.from('social_metrics' as any).select('*').order('recorded_at', { ascending: false }),
+                supabase.from('social_posts' as any).select('*'),
+                supabase.from('social_leads' as any).select('*'),
+                supabase.from('commissions').select('*'),
+                supabase.from('journal_entries').select('*'),
+                supabase.from('ledger_entries').select('*'),
+                supabase.from('payroll').select('*')
             ]);
 
             const formattedSales = (salesData || []).map((s: any) => ({
@@ -89,6 +167,14 @@ const ReportingDashboard = () => {
             setTasks(tasksData || []);
             setAttendance(attendanceData || []);
             setProfiles(profilesData || []);
+            setSocialAccounts(sAccData || []);
+            setSocialMetrics(sMetData || []);
+            setSocialPosts(sPostData || []);
+            setSocialLeads(sLeadData || []);
+            setCommissions(commData || []);
+            setJournalEntries(journalData || []);
+            setLedgerEntries(ledgerData || []);
+            setPayroll(payrollData || []);
         } catch (error) {
             console.error('Error fetching reporting data:', error);
             toast.error("Failed to load reporting data");
@@ -146,6 +232,62 @@ const ReportingDashboard = () => {
         return acc;
     }, []).sort((a, b) => b.value - a.value).slice(0, 5);
 
+    // New Calculations
+    const socialStats = socialAccounts.map(acc => {
+        const platformMetrics = socialMetrics.filter(m => m.account_id === acc.id);
+        const platformPosts = socialPosts.filter(p => p.account_id === acc.id);
+        const platformLeads = socialLeads.filter(l => l.platform === acc.platform);
+
+        const latestFollowers = platformMetrics[0]?.follower_count || 0;
+        const totalEng = platformPosts.reduce((sum, p) => sum + (p.engagement_count || 0), 0);
+
+        return {
+            platform: acc.platform,
+            followers: latestFollowers,
+            engagement: totalEng,
+            leads: platformLeads.length
+        };
+    });
+
+    const taskStatsByUser = profiles.map(p => {
+        const userTasks = tasks.filter(t => t.assigned_to?.includes(p.full_name));
+        return {
+            name: p.full_name,
+            total: userTasks.length,
+            completed: userTasks.filter(t => t.status === 'done').length,
+            pending: userTasks.filter(t => t.status === 'todo' || t.status === 'in_progress').length,
+            cancelled: userTasks.filter(t => t.status === 'cancelled').length
+        };
+    });
+
+    const specificCollections = ledgerEntries
+        .filter(entry => entry.status === 'paid')
+        .reduce((acc: any, entry) => {
+            const sale = sales.find(s => s.id === entry.sale_id);
+            if (sale && (sale.salesperson_name === 'Sara Memon' || sale.salesperson_name === 'Zia Shahid')) {
+                if (!acc[sale.salesperson_name]) acc[sale.salesperson_name] = 0;
+                acc[sale.salesperson_name] += entry.paid_amount || 0;
+            }
+            return acc;
+        }, {});
+
+    const financialSummary = journalEntries.reduce((acc, entry) => {
+        if (entry.credit_account.toLowerCase().includes('revenue') || entry.credit_account.toLowerCase().includes('sales')) {
+            acc.revenue += entry.amount;
+        }
+        if (entry.debit_account.toLowerCase().includes('expense') || entry.debit_account.toLowerCase().includes('cost')) {
+            acc.expenses += entry.amount;
+        }
+        return acc;
+    }, { revenue: 0, expenses: 0 });
+
+    const commSummary = commissions.reduce((acc, c) => {
+        const isUpcoming = c.status_30_percent !== 'paid' || c.status_70_percent !== 'paid';
+        if (isUpcoming) acc.upcoming += c.total_amount - (c.paid_amount || 0);
+        else acc.paid += c.paid_amount || 0;
+        return acc;
+    }, { paid: 0, upcoming: 0 });
+
     const generatePDF = () => {
         const doc = new jsPDF();
         const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm');
@@ -153,86 +295,99 @@ const ReportingDashboard = () => {
         // Header
         doc.setFontSize(22);
         doc.setTextColor(40, 40, 40);
-        doc.text('B&B Builders - Business Performance Report', 14, 22);
+        doc.text('B&B Builders - MEGA PERFORMANCE REPORT', 14, 22);
 
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
         doc.text(`Generated on: ${timestamp}`, 14, 30);
         doc.line(14, 35, 196, 35);
 
-        // Summary Section
+        // 1. Social Media Insights (THIS MONTH)
         doc.setFontSize(16);
         doc.setTextColor(0, 0, 0);
-        doc.text('1. Executive Summary', 14, 45);
-        if (selectedUser !== "all") {
-            doc.setFontSize(12);
-            doc.text(`Target Employee: ${selectedUser}`, 14, 52);
-        }
+        doc.text('1. Social Media Insights', 14, 45);
 
-        const summaryData = [
-            ['Metric', 'Current Value'],
-            ['Total Sales Revenue', `Rs ${filteredSales.reduce((sum, s) => sum + (s.unit_total_price || 0), 0).toLocaleString()}`],
-            ['Total Leads Generated', leads.length.toString()],
-            ['Lead Conversion Rate', `${((filteredSales.length / leads.length) * 100).toFixed(1)}%`],
-            ['Total Tasks Managed', filteredTasks.length.toString()],
-            ['Task Completion Rate', `${((filteredTasks.filter(t => t.status === 'done').length / filteredTasks.length) * 100 || 0).toFixed(1)}%`]
-        ];
-
+        const socialTable = socialStats.map(s => [s.platform.toUpperCase(), s.followers.toLocaleString(), s.engagement.toLocaleString(), s.leads.toString()]);
         autoTable(doc, {
-            startY: selectedUser === "all" ? 50 : 58,
-            head: [summaryData[0]],
-            body: summaryData.slice(1),
-            theme: 'striped',
-            headStyles: { fillColor: [41, 128, 185] }
+            startY: 50,
+            head: [['Platform', 'Followers', 'Engagement', 'Leads Captured']],
+            body: socialTable,
+            theme: 'grid',
+            headStyles: { fillColor: [52, 152, 219] }
         });
 
-        // Sales Performance
+        // 2. Task Manager Audit
         doc.addPage();
-        doc.text('2. Sales Performance Analysis', 14, 22);
-
-        const salesTableData = topSalespersons.map(s => [s.name, `Rs ${s.value.toLocaleString()}`]);
-        doc.setFontSize(12);
-        doc.text('Top Performing Salespersons:', 14, 32);
-
-        autoTable(doc, {
-            startY: 35,
-            head: [['Salesperson', 'Total Revenue']],
-            body: salesTableData,
-            theme: 'grid'
-        });
-
-        // CRM Analysis
-        doc.addPage();
-        doc.text('3. CRM & Lead Pipeline', 14, 22);
-        const leadTableData = leadsByStage.map(l => [l.name.toUpperCase(), l.value.toString()]);
-
+        doc.text('2. Task Management Efficiency (Per User)', 14, 22);
+        const taskTable = taskStatsByUser.filter(u => u.total > 0).map(u => [u.name, u.total.toString(), u.completed.toString(), u.pending.toString(), u.cancelled.toString()]);
         autoTable(doc, {
             startY: 30,
-            head: [['Lead Stage', 'Count']],
-            body: leadTableData,
-            theme: 'grid'
-        });
-
-        // User-wise Performance
-        doc.addPage();
-        doc.text('4. User Multi-Module Performance', 14, 22);
-
-        const userPerformance = profiles.slice(0, 15).map(p => {
-            const userSales = sales.filter(s => s.salesperson_name === p.full_name).length;
-            const userTasks = tasks.filter(t => t.assigned_to?.includes(p.full_name)).length;
-            const userAttendance = attendance.filter(a => a.user_name === p.full_name && a.status === 'present').length;
-            return [p.full_name, p.department || 'N/A', userSales.toString(), userTasks.toString(), userAttendance.toString()];
-        });
-
-        autoTable(doc, {
-            startY: 30,
-            head: [['Employee', 'Department', 'Sales', 'Tasks', 'Attendance']],
-            body: userPerformance,
+            head: [['User', 'Total Tasks', 'Completed', 'Pending/In-Prog', 'Cancelled']],
+            body: taskTable,
             theme: 'striped'
         });
 
-        doc.save(`BB_Business_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
-        toast.success("Report downloaded successfully");
+        // 3. Sales & Target Collections
+        doc.addPage();
+        doc.text('3. Sales & Target Collections', 14, 22);
+        doc.setFontSize(12);
+        doc.text('Installment Collections (Target Users):', 14, 32);
+
+        const collectionTable = [
+            ['Sara Memon', `Rs ${specificCollections['Sara Memon']?.toLocaleString() || '0'}`],
+            ['Zia Shahid', `Rs ${specificCollections['Zia Shahid']?.toLocaleString() || '0'}`]
+        ];
+        autoTable(doc, {
+            startY: 35,
+            head: [['Salesperson', 'Amount Collected in Installments']],
+            body: collectionTable,
+            theme: 'grid',
+            headStyles: { fillColor: [39, 174, 96] }
+        });
+
+        const monthlySalesTable = salesByMonth.map(m => [m.name, m.count.toString(), `Rs ${m.value.toLocaleString()}`]);
+        doc.text('Monthly Sales Breakdown:', 14, doc.lastAutoTable.finalY + 15);
+        autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 20,
+            head: [['Month', 'No. of Sales', 'Total Revenue']],
+            body: monthlySalesTable,
+            theme: 'grid'
+        });
+
+        // 4. Financial & HR Module
+        doc.addPage();
+        doc.text('4. Financial & HR Summary', 14, 22);
+
+        const finTable = [
+            ['Total Company Revenue', `Rs ${financialSummary.revenue.toLocaleString()}`],
+            ['Total Operating Expenses', `Rs ${financialSummary.expenses.toLocaleString()}`],
+            ['Net Profit/Loss', `Rs ${(financialSummary.revenue - financialSummary.expenses).toLocaleString()}`],
+            ['Commissions Paid (MTD)', `Rs ${commSummary.paid.toLocaleString()}`],
+            ['Upcoming Commissions (Liability)', `Rs ${commSummary.upcoming.toLocaleString()}`]
+        ];
+        autoTable(doc, {
+            startY: 30,
+            head: [['Financial Metric', 'Value']],
+            body: finTable,
+            theme: 'striped',
+            headStyles: { fillColor: [230, 126, 34] }
+        });
+
+        const hrTable = [
+            ['Total Headcount', profiles.length.toString()],
+            ['Attendance Rate Today', `${((attendance.filter(a => a.date === format(new Date(), 'yyyy-MM-dd') && a.status === 'present').length / profiles.length) * 100 || 0).toFixed(1)}%`],
+            ['Payroll Status', payroll.some(p => p.payment_status === 'pending') ? 'Pending Payments Found' : 'All Paid']
+        ];
+        doc.text('HR & Attendance Metrics:', 14, doc.lastAutoTable.finalY + 15);
+        autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 20,
+            head: [['HR Metric', 'Status/Value']],
+            body: hrTable,
+            theme: 'grid'
+        });
+
+        doc.save(`BB_Full_Business_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        toast.success("Mega Report downloaded successfully");
     };
 
     if (loading) {
@@ -429,77 +584,121 @@ const ReportingDashboard = () => {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            </div>
 
-            {/* Detailed Table Section */}
-            <Card className="shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
-                <CardHeader className="border-b bg-muted/30">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Employee Performance Matrix</CardTitle>
-                            <CardDescription>Cross-module efficiency tracking</CardDescription>
+                {/* Social Media Insights */}
+                <Card className="shadow-lg border-none bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users className="h-5 w-5 text-primary" /> Social Media Stats
+                        </CardTitle>
+                        <CardDescription>Followers and Engagement per platform</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[350px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={socialStats}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="platform" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="followers" fill="#3498db" name="Followers" />
+                                <Bar dataKey="engagement" fill="#e74c3c" name="Engagement" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                {/* Specific Collections (Sara & Zia) */}
+                <Card className="shadow-lg border-none bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <DollarSign className="h-5 w-5 text-primary" /> Installment Collections
+                        </CardTitle>
+                        <CardDescription>Target performance for Sara and Zia</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-around h-[350px]">
+                        <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Sara Memon</p>
+                            <p className="text-3xl font-bold text-green-600">Rs {specificCollections['Sara Memon']?.toLocaleString() || '0'}</p>
                         </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs uppercase bg-muted/50">
-                                <tr>
-                                    <th className="px-6 py-4 font-bold">Employee</th>
-                                    <th className="px-6 py-4 font-bold">Sales</th>
-                                    <th className="px-6 py-4 font-bold">Revenue</th>
-                                    <th className="px-6 py-4 font-bold">Leads</th>
-                                    <th className="px-6 py-4 font-bold">Tasks</th>
-                                    <th className="px-6 py-4 font-bold">Punctuality</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {profiles.slice(0, 10).map((p) => {
-                                    const userSales = sales.filter(s => s.salesperson_name === p.full_name);
-                                    const revenue = userSales.reduce((sum, s) => sum + (s.unit_total_price || 0), 0);
-                                    const userTasks = tasks.filter(t => t.assigned_to?.includes(p.full_name));
-                                    const completedTasks = userTasks.filter(t => t.status === 'done').length;
-
-                                    return (
-                                        <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                        <User className="h-4 w-4 text-primary" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold">{p.full_name}</p>
-                                                        <p className="text-[10px] text-muted-foreground uppercase">{p.position}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 font-medium">{userSales.length}</td>
-                                            <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">
-                                                Rs {revenue >= 100000 ? `${(revenue / 100000).toFixed(1)}L` : revenue.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4">12</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-primary"
-                                                            style={{ width: `${(completedTasks / userTasks.length) * 100 || 0}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-[10px]">{completedTasks}/{userTasks.length}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs">98%</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
+                        <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Zia Shahid</p>
+                            <p className="text-3xl font-bold text-blue-600">Rs {specificCollections['Zia Shahid']?.toLocaleString() || '0'}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
+
+            {/* Detailed Table Section */ }
+    <Card className="shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
+        <CardHeader className="border-b bg-muted/30">
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Employee Performance Matrix</CardTitle>
+                    <CardDescription>Cross-module efficiency tracking</CardDescription>
+                </div>
+            </div>
+        </CardHeader>
+        <CardContent className="p-0">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs uppercase bg-muted/50">
+                        <tr>
+                            <th className="px-6 py-4 font-bold">Employee</th>
+                            <th className="px-6 py-4 font-bold">Sales</th>
+                            <th className="px-6 py-4 font-bold">Revenue</th>
+                            <th className="px-6 py-4 font-bold">Leads</th>
+                            <th className="px-6 py-4 font-bold">Tasks</th>
+                            <th className="px-6 py-4 font-bold">Punctuality</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                        {profiles.slice(0, 10).map((p) => {
+                            const userSales = sales.filter(s => s.salesperson_name === p.full_name);
+                            const revenue = userSales.reduce((sum, s) => sum + (s.unit_total_price || 0), 0);
+                            const userTasks = tasks.filter(t => t.assigned_to?.includes(p.full_name));
+                            const completedTasks = userTasks.filter(t => t.status === 'done').length;
+
+                            return (
+                                <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                <User className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">{p.full_name}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase">{p.position}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 font-medium">{userSales.length}</td>
+                                    <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">
+                                        Rs {revenue >= 100000 ? `${(revenue / 100000).toFixed(1)}L` : revenue.toLocaleString()}
+                                    </td>
+                                    <td className="px-6 py-4">12</td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary"
+                                                    style={{ width: `${(completedTasks / userTasks.length) * 100 || 0}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[10px]">{completedTasks}/{userTasks.length}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-xs">98%</td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </CardContent>
+    </Card>
+        </div >
     );
 };
 

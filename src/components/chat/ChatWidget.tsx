@@ -751,7 +751,8 @@ const ChatWidget = () => {
       {!isOpen && (
         <Button
           onClick={handleOpen}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[9999] bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 h-14 w-14 rounded-full shadow-lg z-[9999] bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-95"
+          id="chat-trigger"
         >
           <MessageCircle className="h-6 w-6" />
           {unreadCount > 0 && (

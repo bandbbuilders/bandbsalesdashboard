@@ -327,13 +327,12 @@ const SalesList = () => {
                     <TableCell>
                       {format(new Date(sale.created_at), "dd/MM/yyyy")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center w-[60px]">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="outline"
-                            className="h-10 w-10 p-0"
-                            onPointerDown={(e) => e.stopPropagation()}
+                            className="h-10 w-10 p-0 flex items-center justify-center mx-auto"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
