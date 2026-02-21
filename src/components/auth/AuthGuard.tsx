@@ -125,7 +125,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         // CEO/COO has access to everything
         const ADMIN_IDS = [
           "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
-          "fab190bd-3c71-43e8-9385-3ec66044e501"  // Zain Sarwar
+          "fab190bd-3c71-43e8-9385-3ec66044e501", // Zain Sarwar
+          "e91f0415-009a-4712-97e1-c70d1c29e6f9", // Zia Shahid
+          "a1248bc9-86ba-44cc-9772-2df754d4db91"  // Hamna Malik
         ];
 
         const isCeoCoo = (roleData?.role === 'ceo_coo') ||
@@ -234,7 +236,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
           const ADMIN_IDS = [
             "2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0", // Sara Memon
-            "fab190bd-3c71-43e8-9385-3ec66044e501"  // Zain Sarwar
+            "fab190bd-3c71-43e8-9385-3ec66044e501", // Zain Sarwar
+            "e91f0415-009a-4712-97e1-c70d1c29e6f9", // Zia Shahid
+            "a1248bc9-86ba-44cc-9772-2df754d4db91"  // Hamna Malik
           ];
 
           const isCeoCoo = (roleData?.role === 'ceo_coo') || ADMIN_IDS.includes(session.user.id);
