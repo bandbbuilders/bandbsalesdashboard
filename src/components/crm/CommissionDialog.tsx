@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,12 +37,45 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const fetchCommissions = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('commissions')
+        .select('*')
+        .eq('sale_id', saleId);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setCommissions(data.map(c => ({
+          id: c.id,
+          recipient_name: c.recipient_name,
+          recipient_type: c.recipient_type as 'agent' | 'dealer' | 'coo',
+          percentage: (parseFloat(c.total_amount.toString()) / saleAmount) * 100,
+          total_amount: parseFloat(c.total_amount.toString()),
+          notes: c.notes || '',
+        })));
+      } else {
+        setCommissions([{
+          id: crypto.randomUUID(),
+          recipient_name: '',
+          recipient_type: 'agent',
+          percentage: 0,
+          total_amount: 0,
+          notes: '',
+        }]);
+      }
+    } catch (error) {
+      console.error('Error fetching commissions:', error);
+    }
+  }, [saleId, saleAmount]);
+
   useEffect(() => {
     if (open && saleId) {
       fetchCommissions();
       fetchAgents();
     }
-  }, [open, saleId]);
+  }, [open, saleId, fetchCommissions]);
 
   const fetchAgents = async () => {
     try {
@@ -84,39 +117,6 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
     }
   };
 
-  const fetchCommissions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('commissions')
-        .select('*')
-        .eq('sale_id', saleId);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setCommissions(data.map(c => ({
-          id: c.id,
-          recipient_name: c.recipient_name,
-          recipient_type: c.recipient_type as 'agent' | 'dealer' | 'coo',
-          percentage: (parseFloat(c.total_amount.toString()) / saleAmount) * 100,
-          total_amount: parseFloat(c.total_amount.toString()),
-          notes: c.notes || '',
-        })));
-      } else {
-        // Initialize with one empty entry
-        setCommissions([{
-          id: crypto.randomUUID(),
-          recipient_name: '',
-          recipient_type: 'agent',
-          percentage: 0,
-          total_amount: 0,
-          notes: '',
-        }]);
-      }
-    } catch (error) {
-      console.error('Error fetching commissions:', error);
-    }
-  };
 
   const addCommissionEntry = () => {
     setCommissions([...commissions, {
@@ -136,20 +136,20 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
   const updateCommission = (id: string, field: keyof CommissionEntry, value: any) => {
     setCommissions(commissions.map(c => {
       if (c.id !== id) return c;
-      
+
       if (field === 'percentage') {
         const percentage = parseFloat(value) || 0;
         const total_amount = (percentage / 100) * saleAmount;
         return { ...c, percentage, total_amount };
       }
-      
+
       return { ...c, [field]: value };
     }));
   };
 
   const handleSave = async () => {
     // Validate
-    const invalidEntries = commissions.filter(c => 
+    const invalidEntries = commissions.filter(c =>
       !c.recipient_name.trim() || c.percentage <= 0
     );
 
@@ -171,15 +171,27 @@ export const CommissionDialog = ({ open, onOpenChange, saleId, saleAmount }: Com
         .eq('sale_id', saleId);
 
       // Insert new commissions
-      const commissionsToInsert = commissions.map(c => ({
-        sale_id: saleId,
-        recipient_name: c.recipient_name.trim(),
-        recipient_type: c.recipient_type,
-        total_amount: c.total_amount,
-        amount_70_percent: c.total_amount * 0.7,
-        amount_30_percent: c.total_amount * 0.3,
-        notes: c.notes?.trim() || null,
-      }));
+      const INHOUSE_AGENTS = ["Zain Sarwar", "Sara memon", "Zia shahid"];
+
+      const commissionsToInsert = commissions.map(c => {
+        const isInhouse = INHOUSE_AGENTS.some(name =>
+          c.recipient_name.toLowerCase().includes(name.toLowerCase())
+        );
+
+        // Use 50/50 for inhouse agents, otherwise keep 70/30 (standard)
+        const ratio1 = isInhouse ? 0.5 : 0.7;
+        const ratio2 = isInhouse ? 0.5 : 0.3;
+
+        return {
+          sale_id: saleId,
+          recipient_name: c.recipient_name.trim(),
+          recipient_type: c.recipient_type,
+          total_amount: c.total_amount,
+          amount_70_percent: c.total_amount * ratio1,
+          amount_30_percent: c.total_amount * ratio2,
+          notes: c.notes?.trim() || null,
+        };
+      });
 
       const { error } = await supabase
         .from('commissions')

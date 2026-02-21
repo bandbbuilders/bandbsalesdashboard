@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -156,6 +156,12 @@ const playNotificationSound = () => {
   oscillator.stop(audioContext.currentTime + 0.3);
 };
 
+// Only these two users can see ALL tasks across every department
+const FULL_TASK_ACCESS_IDS = [
+  'fab190bd-3c71-43e8-9385-3ec66044e501', // Zain Sarwar
+  '2bdf88c3-56d0-4eff-8fb1-243fa17cc0f0', // Sara Memon
+];
+
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -174,6 +180,140 @@ const UserDashboard = () => {
   const profileRef = useRef<Profile | null>(null);
   const { role, isLoading: roleLoading, isCeoCoo, isManager, isAdmin } = useUserRole(userId || undefined);
   const isSuperAdmin = isCeoCoo || isAdmin || profile?.position === 'CEO/COO' || profile?.department === 'Management' || userId === 'fab190bd-3c71-43e8-9385-3ec66044e501';
+  const canSeeAllTasks = userId ? FULL_TASK_ACCESS_IDS.includes(userId) : false;
+
+  const fetchData = useCallback(async (userId: string) => {
+    try {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+      setProfile(profileData);
+      profileRef.current = profileData;
+
+      // Fetch departments first to get department_id
+      const { data: deptData } = await supabase
+        .from('departments')
+        .select('*');
+      setDepartments(deptData || []);
+
+      const userDept = deptData?.find(d => d.name === profileData.department);
+      const userDeptId = userDept?.id;
+
+      // Task visibility rules:
+      // - Zain Sarwar & Sara Memon: see ALL tasks
+      // - Everyone else: see only tasks in their own department
+      let tasksQuery = supabase.from('tasks').select('*');
+
+      if (!FULL_TASK_ACCESS_IDS.includes(userId)) {
+        // Restrict to this user's department only
+        if (userDeptId) {
+          tasksQuery = tasksQuery.eq('department_id', userDeptId);
+        } else {
+          // No department found — fall back to tasks assigned to this user
+          tasksQuery = tasksQuery.ilike('assigned_to', `%${profileData.full_name}%`);
+        }
+      }
+
+      const { data: tasksData, error: tasksError } = await tasksQuery
+        .order('due_date', { ascending: true });
+
+      if (tasksError) throw tasksError;
+      setTasks(tasksData || []);
+
+      // Fetch fines for this user (only once HR approves; paid stays visible)
+      const { data: finesData } = await supabase
+        .from('fines')
+        .select('*')
+        .eq('user_name', profileData.full_name)
+        .in('status', ['approved', 'paid'])
+        .order('date', { ascending: false });
+      setFines((finesData || []) as Fine[]);
+
+      // Fetch reminders for this user
+      const { data: remindersData } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('completed', false)
+        .order('due_date', { ascending: true });
+      setReminders((remindersData || []) as Reminder[]);
+
+      // Fetch approved leave applications for this user
+      const { data: employeeData } = await supabase
+        .from('employee_details')
+        .select('id')
+        .eq('profile_id', profileData.id)
+        .single();
+
+      if (employeeData) {
+        const { data: leavesData } = await supabase
+          .from('leave_applications')
+          .select(`
+            id,
+            leave_type_id,
+            start_date,
+            end_date,
+            total_days,
+            status,
+            leave_types(name, color)
+          `)
+          .eq('employee_id', employeeData.id)
+          .eq('status', 'approved')
+          .gte('end_date', new Date().toISOString().split('T')[0])
+          .order('start_date', { ascending: true });
+
+        setApprovedLeaves((leavesData || []) as unknown as LeaveApplication[]);
+
+        // Fetch leave balances for current year
+        const { data: balancesData } = await supabase
+          .from('leave_balances')
+          .select(`
+            id,
+            leave_type_id,
+            total_days,
+            used_days,
+            pending_days,
+            leave_types(name, color)
+          `)
+          .eq('employee_id', employeeData.id)
+          .eq('year', new Date().getFullYear());
+
+        setLeaveBalances((balancesData || []) as unknown as LeaveBalance[]);
+      }
+
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const refetchTasks = useCallback(async () => {
+    if (!profile?.full_name) return;
+
+    let tasksQuery = supabase.from('tasks').select('*');
+
+    if (canSeeAllTasks) {
+      // Zain Sarwar & Sara Memon: retrieve all tasks
+    } else {
+      // Everyone else: only their department's tasks
+      const userDeptId = departments.find(d => d.name === profile.department)?.id;
+      if (userDeptId) {
+        tasksQuery = tasksQuery.eq('department_id', userDeptId);
+      } else {
+        tasksQuery = tasksQuery.ilike('assigned_to', `%${profile.full_name}%`);
+      }
+    }
+
+    const { data: tasksData } = await tasksQuery.order('due_date', { ascending: true });
+    setTasks(tasksData || []);
+  }, [canSeeAllTasks, profile, departments]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -201,7 +341,7 @@ const UserDashboard = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, fetchData]);
 
   // Auto attendance hook with enhanced features
   const {
@@ -213,11 +353,11 @@ const UserDashboard = () => {
   } = useAutoAttendance(profile?.full_name || null);
 
   // Helper to check if user is assigned to a task (supports comma-separated multiple assignees)
-  const isUserAssigned = (assignedTo: string | null, userName: string): boolean => {
+  const isUserAssigned = useCallback((assignedTo: string | null, userName: string): boolean => {
     if (!assignedTo || !userName) return false;
     const assignees = assignedTo.split(',').map(a => a.trim().toLowerCase());
     return assignees.includes(userName.toLowerCase());
-  };
+  }, []);
 
   // Real-time subscription for new and updated tasks
   useEffect(() => {
@@ -313,147 +453,7 @@ const UserDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.full_name, isManager, isSuperAdmin]);
-
-  const fetchData = async (userId: string) => {
-    try {
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (profileError) throw profileError;
-      setProfile(profileData);
-      profileRef.current = profileData;
-
-      // Fetch tasks - for COO, fetch ALL tasks; for others, fetch tasks where user is assigned
-      // Fetch departments first to get department_id
-      const { data: deptData } = await supabase
-        .from('departments')
-        .select('*');
-      setDepartments(deptData || []);
-
-      const userDept = deptData?.find(d => d.name === profileData.department);
-      const userDeptId = userDept?.id;
-
-      // Fetch tasks for this user
-      // Managers see all tasks in their department + tasks assigned to them
-      // Others see only tasks assigned to them
-      let tasksQuery = supabase.from('tasks').select('*');
-
-      if (isManager && userDeptId) {
-        tasksQuery = tasksQuery.or(`assigned_to.ilike.%${profileData.full_name}%,department_id.eq.${userDeptId}`);
-      } else {
-        tasksQuery = tasksQuery.ilike('assigned_to', `%${profileData.full_name}%`);
-      }
-
-      const { data: tasksData, error: tasksError } = await tasksQuery
-        .order('due_date', { ascending: true });
-
-      if (tasksError) throw tasksError;
-      setTasks(tasksData || []);
-
-      // Fetch fines for this user (only once HR approves; paid stays visible)
-      const { data: finesData } = await supabase
-        .from('fines')
-        .select('*')
-        .eq('user_name', profileData.full_name)
-        .in('status', ['approved', 'paid'])
-        .order('date', { ascending: false });
-      setFines((finesData || []) as Fine[]);
-
-      // Fetch reminders for this user
-      const { data: remindersData } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('completed', false)
-        .order('due_date', { ascending: true });
-      setReminders((remindersData || []) as Reminder[]);
-
-      // Fetch approved leave applications for this user
-      const { data: employeeData } = await supabase
-        .from('employee_details')
-        .select('id')
-        .eq('profile_id', profileData.id)
-        .single();
-
-      if (employeeData) {
-        const { data: leavesData } = await supabase
-          .from('leave_applications')
-          .select(`
-            id,
-            leave_type_id,
-            start_date,
-            end_date,
-            total_days,
-            status,
-            leave_types(name, color)
-          `)
-          .eq('employee_id', employeeData.id)
-          .eq('status', 'approved')
-          .gte('end_date', new Date().toISOString().split('T')[0])
-          .order('start_date', { ascending: true });
-
-        setApprovedLeaves((leavesData || []) as unknown as LeaveApplication[]);
-
-        // Fetch leave balances for current year
-        const { data: balancesData } = await supabase
-          .from('leave_balances')
-          .select(`
-            id,
-            leave_type_id,
-            total_days,
-            used_days,
-            pending_days,
-            leave_types(name, color)
-          `)
-          .eq('employee_id', employeeData.id)
-          .eq('year', new Date().getFullYear());
-
-        setLeaveBalances((balancesData || []) as unknown as LeaveBalance[]);
-      }
-
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Refetch tasks function
-  const refetchTasks = async () => {
-    if (isSuperAdmin) {
-      // COO sees all tasks
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('due_date', { ascending: true });
-      setTasks(tasksData || []);
-    } else if (profile?.full_name) {
-      const userDeptId = departments.find(d => d.name === profile.department)?.id;
-      let tasksQuery = supabase.from('tasks').select('*');
-
-      if (isManager && userDeptId) {
-        tasksQuery = tasksQuery.or(`assigned_to.ilike.%${profile.full_name}%,department_id.eq.${userDeptId}`);
-      } else {
-        tasksQuery = tasksQuery.ilike('assigned_to', `%${profile.full_name}%`);
-      }
-
-      const { data: tasksData } = await tasksQuery.order('due_date', { ascending: true });
-      setTasks(tasksData || []);
-    }
-  };
-
-  // Refetch tasks when role or profile changes
-  useEffect(() => {
-    if (!roleLoading && profile) {
-      refetchTasks();
-    }
-  }, [roleLoading, isSuperAdmin, isManager, profile]);
+  }, [profile?.full_name, isManager, isSuperAdmin, isUserAssigned]);
 
   // Mark task as complete
   const markTaskComplete = async (taskId: string) => {

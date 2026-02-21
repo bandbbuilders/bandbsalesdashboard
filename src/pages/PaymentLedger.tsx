@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -666,7 +667,8 @@ const PaymentLedger = () => {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          {/* Desktop View: Table */}
+          <div className="hidden md:block rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -676,7 +678,7 @@ const PaymentLedger = () => {
                   <TableHead>Paid Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Paid Date</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -704,13 +706,10 @@ const PaymentLedger = () => {
                     <TableCell>
                       {entry.paid_date ? format(new Date(entry.paid_date), "dd/MM/yyyy") : "-"}
                     </TableCell>
-                    <TableCell className="text-center w-[60px]">
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="h-10 w-10 p-0 flex items-center justify-center mx-auto"
-                          >
+                          <Button variant="outline" className="h-10 w-10 p-0">
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-5 w-5" />
                           </Button>
@@ -769,6 +768,103 @@ const PaymentLedger = () => {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile View: Cards */}
+          <div className="md:hidden space-y-4">
+            {saleEntries.map((entry) => (
+              <Card key={entry.id} className="p-4 border shadow-sm">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <Badge variant="outline" className="mb-1 text-[10px] uppercase font-bold tracking-tight">
+                      {entry.entry_type}
+                    </Badge>
+                    <h3 className="text-lg font-bold text-foreground">
+                      {formatCurrency(entry.amount)}
+                    </h3>
+                  </div>
+                  <Badge className={cn("text-[10px] uppercase", getStatusColor(entry.status))}>
+                    {entry.status}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-5 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Due Date</p>
+                    <p className="font-medium">{format(new Date(entry.due_date), "dd MMM yyyy")}</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Paid Amount</p>
+                    <p className="font-medium">{formatCurrency(entry.paid_amount)}</p>
+                  </div>
+                  {entry.paid_date && (
+                    <div className="space-y-1 col-span-2 pt-2 border-t border-dashed">
+                      <p className="text-[10px] text-muted-foreground uppercase font-semibold">Paid Date</p>
+                      <p className="font-medium">{format(new Date(entry.paid_date), "dd MMM yyyy")}</p>
+                    </div>
+                  )}
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" className="w-full h-11 text-sm font-bold gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20">
+                      <MoreHorizontal className="h-4 w-4" />
+                      Actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[calc(100vw-3rem)] max-w-[280px] p-2">
+                    <DropdownMenuLabel className="pb-2 px-2 text-xs text-muted-foreground">ENTRY ACTIONS</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      className="h-11 rounded-md"
+                      onClick={() => {
+                        setEditingEntry(entry);
+                        setEditAmount(entry.amount.toString());
+                        setEditDueDate(entry.due_date);
+                        setEditType(entry.entry_type);
+                        setIsEditDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="mr-3 h-4 w-4" /> Edit Details
+                    </DropdownMenuItem>
+
+                    {entry.status !== 'paid' && (
+                      <DropdownMenuItem className="h-11 rounded-md" onClick={() => handleStatusChange(entry.id, 'paid')}>
+                        <CheckCircle className="mr-3 h-4 w-4 text-success" /> Mark as Paid
+                      </DropdownMenuItem>
+                    )}
+
+                    {entry.status !== 'overdue' && entry.status !== 'paid' && (
+                      <DropdownMenuItem className="h-11 rounded-md" onClick={() => handleStatusChange(entry.id, 'overdue')}>
+                        <XCircle className="mr-3 h-4 w-4 text-destructive" /> Mark as Overdue
+                      </DropdownMenuItem>
+                    )}
+
+                    {entry.status === 'paid' && (
+                      <DropdownMenuItem
+                        className="h-11 rounded-md"
+                        onClick={() => {
+                          setSelectedEntryForReceipt(entry);
+                          setGenerateReceivingOpen(true);
+                        }}
+                      >
+                        <FileText className="mr-3 h-4 w-4 text-primary" /> Generate Receiving
+                      </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="h-11 rounded-md text-destructive focus:text-destructive"
+                      onClick={() => {
+                        setEntryToDelete(entry.id);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-3 h-4 w-4" /> Delete Entry
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>

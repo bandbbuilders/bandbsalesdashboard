@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+    PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import {
-    FileText, Download, TrendingUp, Users, CheckCircle, Clock,
-    BarChart3, PieChart as PieChartIcon, Filter, Calendar, User, Building2
+    Download, TrendingUp, Users, CheckCircle, Clock,
+    BarChart3, PieChart as PieChartIcon, User, Building2, DollarSign
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -113,16 +113,7 @@ const ReportingDashboard = () => {
     const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
     const [payroll, setPayroll] = useState<any[]>([]);
 
-    const [dateRange, setDateRange] = useState({
-        start: startOfMonth(subMonths(new Date(), 1)),
-        end: endOfMonth(new Date())
-    });
-
-    useEffect(() => {
-        fetchAllData();
-    }, []);
-
-    const fetchAllData = async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
         try {
             const [
@@ -163,25 +154,29 @@ const ReportingDashboard = () => {
             }));
 
             setSales(formattedSales);
-            setLeads(leadsData || []);
-            setTasks(tasksData || []);
-            setAttendance(attendanceData || []);
-            setProfiles(profilesData || []);
-            setSocialAccounts(sAccData || []);
-            setSocialMetrics(sMetData || []);
-            setSocialPosts(sPostData || []);
-            setSocialLeads(sLeadData || []);
-            setCommissions(commData || []);
-            setJournalEntries(journalData || []);
-            setLedgerEntries(ledgerData || []);
-            setPayroll(payrollData || []);
+            setLeads((leadsData as any) || []);
+            setTasks((tasksData as any) || []);
+            setAttendance((attendanceData as any) || []);
+            setProfiles((profilesData as any) || []);
+            setSocialAccounts((sAccData as any) || []);
+            setSocialMetrics((sMetData as any) || []);
+            setSocialPosts((sPostData as any) || []);
+            setSocialLeads((sLeadData as any) || []);
+            setCommissions((commData as any) || []);
+            setJournalEntries((journalData as any) || []);
+            setLedgerEntries((ledgerData as any) || []);
+            setPayroll((payrollData as any) || []);
         } catch (error) {
             console.error('Error fetching reporting data:', error);
             toast.error("Failed to load reporting data");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
 
     const filteredSales = selectedUser === "all" ? sales : sales.filter(s => s.salesperson_name === selectedUser);
     const filteredTasks = selectedUser === "all" ? tasks : tasks.filter(t => t.assigned_to?.includes(selectedUser));
@@ -302,7 +297,7 @@ const ReportingDashboard = () => {
         doc.text(`Generated on: ${timestamp}`, 14, 30);
         doc.line(14, 35, 196, 35);
 
-        // 1. Social Media Insights (THIS MONTH)
+        // 1. Social Media Insights
         doc.setFontSize(16);
         doc.setTextColor(0, 0, 0);
         doc.text('1. Social Media Insights', 14, 45);
@@ -346,9 +341,9 @@ const ReportingDashboard = () => {
         });
 
         const monthlySalesTable = salesByMonth.map(m => [m.name, m.count.toString(), `Rs ${m.value.toLocaleString()}`]);
-        doc.text('Monthly Sales Breakdown:', 14, doc.lastAutoTable.finalY + 15);
+        doc.text('Monthly Sales Breakdown:', 14, (doc as any).lastAutoTable.finalY + 15);
         autoTable(doc, {
-            startY: doc.lastAutoTable.finalY + 20,
+            startY: (doc as any).lastAutoTable.finalY + 20,
             head: [['Month', 'No. of Sales', 'Total Revenue']],
             body: monthlySalesTable,
             theme: 'grid'
@@ -378,9 +373,9 @@ const ReportingDashboard = () => {
             ['Attendance Rate Today', `${((attendance.filter(a => a.date === format(new Date(), 'yyyy-MM-dd') && a.status === 'present').length / profiles.length) * 100 || 0).toFixed(1)}%`],
             ['Payroll Status', payroll.some(p => p.payment_status === 'pending') ? 'Pending Payments Found' : 'All Paid']
         ];
-        doc.text('HR & Attendance Metrics:', 14, doc.lastAutoTable.finalY + 15);
+        doc.text('HR & Attendance Metrics:', 14, (doc as any).lastAutoTable.finalY + 15);
         autoTable(doc, {
-            startY: doc.lastAutoTable.finalY + 20,
+            startY: (doc as any).lastAutoTable.finalY + 20,
             head: [['HR Metric', 'Status/Value']],
             body: hrTable,
             theme: 'grid'
@@ -481,6 +476,7 @@ const ReportingDashboard = () => {
                     </CardContent>
                 </Card>
             </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Sales Trend Chart */}
                 <Card className="shadow-lg border-none bg-card/50 backdrop-blur-sm">
@@ -628,77 +624,76 @@ const ReportingDashboard = () => {
                     </CardContent>
                 </Card>
             </div>
-        </div>
 
-            {/* Detailed Table Section */ }
-    <Card className="shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
-        <CardHeader className="border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Employee Performance Matrix</CardTitle>
-                    <CardDescription>Cross-module efficiency tracking</CardDescription>
-                </div>
-            </div>
-        </CardHeader>
-        <CardContent className="p-0">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase bg-muted/50">
-                        <tr>
-                            <th className="px-6 py-4 font-bold">Employee</th>
-                            <th className="px-6 py-4 font-bold">Sales</th>
-                            <th className="px-6 py-4 font-bold">Revenue</th>
-                            <th className="px-6 py-4 font-bold">Leads</th>
-                            <th className="px-6 py-4 font-bold">Tasks</th>
-                            <th className="px-6 py-4 font-bold">Punctuality</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {profiles.slice(0, 10).map((p) => {
-                            const userSales = sales.filter(s => s.salesperson_name === p.full_name);
-                            const revenue = userSales.reduce((sum, s) => sum + (s.unit_total_price || 0), 0);
-                            const userTasks = tasks.filter(t => t.assigned_to?.includes(p.full_name));
-                            const completedTasks = userTasks.filter(t => t.status === 'done').length;
-
-                            return (
-                                <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                <User className="h-4 w-4 text-primary" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold">{p.full_name}</p>
-                                                <p className="text-[10px] text-muted-foreground uppercase">{p.position}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-medium">{userSales.length}</td>
-                                    <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">
-                                        Rs {revenue >= 100000 ? `${(revenue / 100000).toFixed(1)}L` : revenue.toLocaleString()}
-                                    </td>
-                                    <td className="px-6 py-4">12</td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-primary"
-                                                    style={{ width: `${(completedTasks / userTasks.length) * 100 || 0}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-[10px]">{completedTasks}/{userTasks.length}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-xs">98%</td>
+            {/* Detailed Table Section */}
+            <Card className="shadow-xl bg-card/50 backdrop-blur-md overflow-hidden">
+                <CardHeader className="border-b bg-muted/30">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Employee Performance Matrix</CardTitle>
+                            <CardDescription>Cross-module efficiency tracking</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs uppercase bg-muted/50">
+                                <tr>
+                                    <th className="px-6 py-4 font-bold">Employee</th>
+                                    <th className="px-6 py-4 font-bold">Sales</th>
+                                    <th className="px-6 py-4 font-bold">Revenue</th>
+                                    <th className="px-6 py-4 font-bold">Leads</th>
+                                    <th className="px-6 py-4 font-bold">Tasks</th>
+                                    <th className="px-6 py-4 font-bold">Punctuality</th>
                                 </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        </CardContent>
-    </Card>
-        </div >
+                            </thead>
+                            <tbody className="divide-y">
+                                {profiles.slice(0, 10).map((p) => {
+                                    const userSales = sales.filter(s => s.salesperson_name === p.full_name);
+                                    const revenue = userSales.reduce((sum, s) => sum + (s.unit_total_price || 0), 0);
+                                    const userTasks = tasks.filter(t => t.assigned_to?.includes(p.full_name));
+                                    const completedTasks = userTasks.filter(t => t.status === 'done').length;
+
+                                    return (
+                                        <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                        <User className="h-4 w-4 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">{p.full_name}</p>
+                                                        <p className="text-[10px] text-muted-foreground uppercase">{p.position}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-medium">{userSales.length}</td>
+                                            <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">
+                                                Rs {revenue >= 100000 ? `${(revenue / 100000).toFixed(1)}L` : revenue.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4">12</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-primary"
+                                                            style={{ width: `${(completedTasks / userTasks.length) * 100 || 0}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-[10px]">{completedTasks}/{userTasks.length}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs">98%</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
 };
 

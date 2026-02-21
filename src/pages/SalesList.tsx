@@ -16,6 +16,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
@@ -288,7 +289,8 @@ const SalesList = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
-          <div className="rounded-md border overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -298,7 +300,7 @@ const SalesList = () => {
                   <TableHead>Agent</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -327,73 +329,43 @@ const SalesList = () => {
                     <TableCell>
                       {format(new Date(sale.created_at), "dd/MM/yyyy")}
                     </TableCell>
-                    <TableCell className="text-center w-[60px]">
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="h-10 w-10 p-0 flex items-center justify-center mx-auto"
-                          >
+                          <Button variant="outline" className="h-10 w-10 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}`)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
+                            <Eye className="mr-2 h-4 w-4" /> View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}/ledger`)}>
-                            <Calendar className="mr-2 h-4 w-4" />
-                            Payment Ledger
+                            <Calendar className="mr-2 h-4 w-4" /> Payment Ledger
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             setSelectedSaleForCommission(sale);
                             setCommissionDialogOpen(true);
                           }}>
-                            <Coins className="mr-2 h-4 w-4" />
-                            Commission
+                            <Coins className="mr-2 h-4 w-4" /> Commission
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={async () => {
                             try {
-                              const { data: entries, error } = await supabase
-                                .from('ledger_entries')
-                                .select('*')
-                                .eq('sale_id', sale.id)
-                                .order('due_date', { ascending: true });
-
+                              const { data: entries, error } = await supabase.from('ledger_entries').select('*').eq('sale_id', sale.id).order('due_date', { ascending: true });
                               if (error) throw error;
-                              if (entries) {
-                                await generateMembershipLetter(sale, entries as any);
-                                toast({
-                                  title: "Success",
-                                  description: "Membership letter generated successfully",
-                                });
-                              }
-                            } catch (error) {
-                              console.error('Error generating membership letter:', error);
-                              toast({
-                                title: "Error",
-                                description: "Failed to generate membership letter",
-                                variant: "destructive",
-                              });
-                            }
+                              if (entries) { await generateMembershipLetter(sale, entries as any); toast({ title: "Success", description: "Membership letter generated successfully" }); }
+                            } catch (error) { toast({ title: "Error", description: "Failed to generate membership letter", variant: "destructive" }); }
                           }}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Membership Letter
+                            <FileText className="mr-2 h-4 w-4" /> Membership Letter
                           </DropdownMenuItem>
                           {canEdit(sale) && (
                             <>
                               <DropdownMenuItem onClick={() => navigate(`/sales/${sale.id}/edit`)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span className="ml-2">Edit Sale</span>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Sale
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteSale(sale.id)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Sale
+                              <DropdownMenuItem onClick={() => handleDeleteSale(sale.id)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Sale
                               </DropdownMenuItem>
                             </>
                           )}
@@ -404,6 +376,82 @@ const SalesList = () => {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-4">
+            {filteredSales.map((sale) => (
+              <Card key={sale.id} className="p-4 border shadow-sm">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="font-bold text-base truncate">{sale.customer.name}</p>
+                    <p className="text-sm text-muted-foreground">{sale.customer.contact}</p>
+                  </div>
+                  <Badge className={`${getStatusColor(sale.status)} shrink-0 text-[10px] uppercase`} variant="outline">
+                    {sale.status}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Unit</p>
+                    <Badge variant="outline" className="font-mono">{sale.unit_number}</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Price</p>
+                    <p className="font-bold text-primary">{formatCurrency(sale.unit_total_price)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Agent</p>
+                    <p className="font-medium truncate">{sale.agent?.name || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" className="w-full h-11 text-sm font-semibold gap-2 bg-primary/5 hover:bg-primary/10">
+                      <MoreHorizontal className="h-4 w-4" />
+                      Actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[calc(100vw-3rem)] max-w-[300px] p-2">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground uppercase pb-2">Sale Actions</DropdownMenuLabel>
+                    <DropdownMenuItem className="h-11" onClick={() => navigate(`/sales/${sale.id}`)}>
+                      <Eye className="mr-3 h-4 w-4" /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="h-11" onClick={() => navigate(`/sales/${sale.id}/ledger`)}>
+                      <Calendar className="mr-3 h-4 w-4" /> Payment Ledger
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="h-11" onClick={() => {
+                      setSelectedSaleForCommission(sale);
+                      setCommissionDialogOpen(true);
+                    }}>
+                      <Coins className="mr-3 h-4 w-4" /> Commission
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="h-11" onClick={async () => {
+                      try {
+                        const { data: entries, error } = await supabase.from('ledger_entries').select('*').eq('sale_id', sale.id).order('due_date', { ascending: true });
+                        if (error) throw error;
+                        if (entries) { await generateMembershipLetter(sale, entries as any); toast({ title: "Success", description: "Membership letter generated" }); }
+                      } catch (error) { toast({ title: "Error", description: "Failed to generate letter", variant: "destructive" }); }
+                    }}>
+                      <FileText className="mr-3 h-4 w-4" /> Membership Letter
+                    </DropdownMenuItem>
+                    {canEdit(sale) && (
+                      <>
+                        <DropdownMenuItem className="h-11" onClick={() => navigate(`/sales/${sale.id}/edit`)}>
+                          <Edit className="mr-3 h-4 w-4" /> Edit Sale
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="h-11 text-destructive focus:text-destructive" onClick={() => handleDeleteSale(sale.id)}>
+                          <Trash2 className="mr-3 h-4 w-4" /> Delete Sale
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Card>
+            ))}
           </div>
 
           {filteredSales.length === 0 && (
